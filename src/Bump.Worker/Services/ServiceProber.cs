@@ -50,8 +50,8 @@ public sealed class ServiceProber : BackgroundService
         _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Services:IntervalSeconds", 60));
         _degradedLatencyMs = config.GetValue("Bump:Services:DegradedLatencyMs", 1000);
         _historyBars = config.GetValue("Bump:Services:HistoryBars", 60);
-        _publicBaseUrl = (config["Bump:PublicBaseUrl"] ?? "").TrimEnd('/');
-        _alertRecipient = config["Bump:AlertContact"];
+        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        _alertRecipient = config["Bump:Alerts:Contact"];
         _maintenanceWindows = config.GetSection("Bump:Services:MaintenanceWindows")
             .Get<List<MaintenanceWindow>>() ?? new List<MaintenanceWindow>();
     }

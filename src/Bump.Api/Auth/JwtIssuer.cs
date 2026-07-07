@@ -26,16 +26,16 @@ public sealed class JwtIssuer
 
     public JwtIssuer(IConfiguration config)
     {
-        var signing = config["Bump:Security:Jwt:Signing"];
+        var signing = config["Bump:Security:Jwt:Key"];
         if (string.IsNullOrWhiteSpace(signing))
         {
             throw new InvalidOperationException(
-                "Bump:Security:Jwt:Signing is empty. Provide a base64-encoded key of at least 32 bytes via config/appsettings.work.json or the Bump__Security__Jwt__Signing environment variable.");
+                "Bump:Security:Jwt:Key is empty. Provide a base64-encoded key of at least 32 bytes via config/appsettings.work.json or the Bump__Security__Jwt__Key environment variable.");
         }
         var keyBytes = Convert.FromBase64String(signing);
         if (keyBytes.Length < 32)
         {
-            throw new InvalidOperationException("Bump:Security:Jwt:Signing must decode to at least 32 bytes.");
+            throw new InvalidOperationException("Bump:Security:Jwt:Key must decode to at least 32 bytes.");
         }
         _key = new SymmetricSecurityKey(keyBytes);
         _issuer = config["Bump:Security:Jwt:Issuer"] ?? "bump-api";

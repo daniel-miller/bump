@@ -134,7 +134,7 @@ public sealed class AccountsController : ControllerBase
         var expires = DateTimeOffset.UtcNow.AddHours(1);
         await _emailChange.CreateAsync(user.UserId, req.NewEmail, hash, expires, ct);
 
-        var publicUrl = (_config["Bump:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var publicUrl = (_config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
         var confirmUrl = $"{publicUrl}/account/confirm-email?token={token}";
         await _mail.SendAsync(EmailChangeConfirm.Build(req.NewEmail, confirmUrl), ct);
 

@@ -13,7 +13,7 @@ namespace Bump.Api.Services.Controllers;
 [Authorize(AuthenticationSchemes = SessionAuthHandler.SchemeName, Roles = "admin")]
 public sealed class TenantsController : ControllerBase
 {
-    private const int DefaultMaxSubscribersPerBoard = 10_000;
+    private const int DefaultMaxSubscribersPerTenant = 10_000;
 
     private readonly BoardRepository _boards;
     private readonly SubscriberRepository _subscribers;
@@ -159,8 +159,8 @@ public sealed class TenantsController : ControllerBase
         var b = await _boards.GetBySlugAsync(slug, ct);
         if (b is null) return NotFound();
 
-        var maxPerBoard = _config.GetValue("Bump:Subscribers:MaxPerBoard", DefaultMaxSubscribersPerBoard);
-        if (await _subscribers.CountForBoardAsync(b.BoardId, ct) >= maxPerBoard)
+        var maxPerTenant = _config.GetValue("Bump:Subscribers:MaxPerTenant", DefaultMaxSubscribersPerTenant);
+        if (await _subscribers.CountForBoardAsync(b.BoardId, ct) >= maxPerTenant)
         {
             return JsonResults.TooManyRequests(
                 title: "Subscriber cap reached",
@@ -176,7 +176,7 @@ public sealed class TenantsController : ControllerBase
             return Accepted();
         }
 
-        var publicUrl = (_config["Bump:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var publicUrl = (_config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
         var confirmUrl = $"{publicUrl}/subscribe/confirm?token={confirmToken}";
         var unsubUrl = $"{publicUrl}/unsubscribe?token={unsubToken}";
 

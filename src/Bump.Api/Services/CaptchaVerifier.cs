@@ -4,10 +4,10 @@ namespace Bump.Api.Services;
 
 /// <summary>
 /// Cloudflare Turnstile verifier. Reads
-/// <c>Bump:Captcha:TurnstileSecret</c>; if unset, verification is
-/// skipped and a warning is logged on startup. The siteverify endpoint
-/// is unauthenticated for the secret holder, so we POST the user's
-/// token plus our secret and parse the boolean <c>success</c>.
+/// <c>Bump:Captcha:Secret</c>; if unset, verification is skipped and a
+/// warning is logged on startup. The siteverify endpoint is
+/// unauthenticated for the secret holder, so we POST the user's token
+/// plus our secret and parse the boolean <c>success</c>.
 /// </summary>
 public sealed class CaptchaVerifier
 {
@@ -21,11 +21,11 @@ public sealed class CaptchaVerifier
     {
         _httpFactory = httpFactory;
         _logger = logger;
-        _secret = config["Bump:Captcha:TurnstileSecret"] ?? string.Empty;
+        _secret = config["Bump:Captcha:Secret"] ?? string.Empty;
         if (string.IsNullOrEmpty(_secret))
         {
             _logger.LogWarning(
-                "Bump:Captcha:TurnstileSecret is not configured. CAPTCHA enforcement is disabled — set the secret before exposing public sign-up endpoints.");
+                "Bump:Captcha:Secret is not configured. CAPTCHA enforcement is disabled — set the secret before exposing public sign-up endpoints.");
         }
     }
 

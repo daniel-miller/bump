@@ -138,7 +138,7 @@ public sealed class AuthController : ControllerBase
             var expires = DateTimeOffset.UtcNow.AddHours(1);
             await _resetTokens.CreateAsync(user.UserId, hash, expires, ct);
 
-            var publicUrl = _config["Bump:PublicBaseUrl"] ?? "https://status.bump.example.com";
+            var publicUrl = _config["Bump:Hosting:PublicBaseUrl"] ?? "https://status.bump.example.com";
             var resetUrl = $"{publicUrl.TrimEnd('/')}/reset-password?token={token}";
             await _mail.SendAsync(PasswordReset.Build(user.UserEmail, resetUrl), ct);
         }

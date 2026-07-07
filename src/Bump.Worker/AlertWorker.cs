@@ -19,16 +19,16 @@ public class AlertWorker : BackgroundService
         _logger = logger;
         _status = status;
         _mail = mail;
-        _connectionString = config["Bump:Database:ConnectionString"] ?? "";
+        _connectionString = config.GetConnectionString("Bump") ?? "";
         if (string.IsNullOrWhiteSpace(_connectionString))
         {
             throw new InvalidOperationException(
-                "Bump:Database:ConnectionString is empty. Set it via config/appsettings.work.json or the Bump__Database__ConnectionString environment variable.");
+                "ConnectionStrings:Bump is empty. Set it via config/appsettings.work.json or the ConnectionStrings__Bump environment variable.");
         }
-        _alertRecipient = config["Bump:AlertContact"]
-            ?? throw new InvalidOperationException("Bump:AlertContact is not configured.");
-        _publicBaseUrl = (config["Bump:PublicBaseUrl"] ?? "").TrimEnd('/');
-        _interval = TimeSpan.FromMinutes(config.GetValue("Bump:PollMinutes", 5));
+        _alertRecipient = config["Bump:Alerts:Contact"]
+            ?? throw new InvalidOperationException("Bump:Alerts:Contact is not configured.");
+        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Alerts:PollSeconds", 300));
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

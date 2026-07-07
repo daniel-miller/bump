@@ -9,14 +9,24 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 
-# Derive version from git commit count on HEAD so every commit gets a unique,
-# monotonic patch number. Override with -Version when a specific build id is needed.
+# Derive version as "<prefix>.<commitCount>" so every commit gets a unique,
+# monotonic patch number. Prefix (major.minor) lives in build/version-prefix.txt
+# so a rebase, squash, or convention shift can bump the prefix in-repo without
+# editing this script. Override the whole value with -Version when needed.
 if (-not $Version) {
+    $prefixPath = Join-Path $PSScriptRoot 'version-prefix.txt'
+    if (-not (Test-Path $prefixPath)) {
+        throw "Version prefix file not found: $prefixPath"
+    }
+    $prefix = (Get-Content -Path $prefixPath -TotalCount 1).Trim()
+    if (-not $prefix) {
+        throw "Version prefix file is empty: $prefixPath"
+    }
     $commitCount = (& git -C $repoRoot rev-list --count HEAD).Trim()
     if ($LASTEXITCODE -ne 0 -or -not $commitCount) {
         throw "Could not derive version from git commit count (git rev-list exit=$LASTEXITCODE)."
     }
-    $Version = "0.1.$commitCount"
+    $Version = "$prefix.$commitCount"
 }
 $solution = Join-Path $repoRoot 'Bump.sln'
 $distDir = Join-Path $repoRoot 'dist'

@@ -108,11 +108,11 @@ namespace Bump.Api
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
             // ---- Database ----
-            var connectionString = builder.Configuration["Bump:Database:ConnectionString"];
+            var connectionString = builder.Configuration.GetConnectionString("Bump");
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new InvalidOperationException(
-                    "Bump:Database:ConnectionString is empty. Set it via config/appsettings.work.json or the Bump__Database__ConnectionString environment variable.");
+                    "ConnectionStrings:Bump is empty. Set it via config/appsettings.work.json or the ConnectionStrings__Bump environment variable.");
             }
             var dataSource = NpgsqlDataSource.Create(connectionString);
             builder.Services.AddSingleton(dataSource);
@@ -158,7 +158,7 @@ namespace Bump.Api
                 ApiKey = builder.Configuration["Bump:Mailgun:ApiKey"] ?? "",
                 Domain = builder.Configuration["Bump:Mailgun:Domain"] ?? "",
                 From = builder.Configuration["Bump:Mailgun:From"] ?? "Bump <noreply@example.com>",
-                Region = builder.Configuration["Bump:Mailgun:Region"] ?? "us"
+                Region = builder.Configuration["Bump:Mailgun:Region"] ?? "us",
             };
             if (string.IsNullOrWhiteSpace(mailgunOpts.ApiKey))
             {
@@ -292,7 +292,7 @@ namespace Bump.Api
                 // Push the deployed version from config to the DB row so
                 // the About page reflects what is actually running. Config
                 // is the source of truth; the upsert above only seeds.
-                if (TryParseSemver(builder.Configuration["Bump:Version"],
+                if (TryParseSemver(builder.Configuration["Bump:Hosting:Version"],
                         out var maj, out var min, out var pat))
                 {
                     apps.SetVersionAsync("bump", maj, min, pat).GetAwaiter().GetResult();

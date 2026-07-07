@@ -39,7 +39,7 @@ public sealed class AnnouncementScheduler : BackgroundService
         _mail = mail;
         _status = status;
         _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Announcements:TickSeconds", 60));
-        _publicBaseUrl = (config["Bump:PublicBaseUrl"] ?? "").TrimEnd('/');
+        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -55,11 +55,11 @@ try
             retainedFileCountLimit: 14,
             outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
-    var connectionString = builder.Configuration["Bump:Database:ConnectionString"];
+    var connectionString = builder.Configuration.GetConnectionString("Bump");
     if (string.IsNullOrWhiteSpace(connectionString))
     {
         throw new InvalidOperationException(
-            "Bump:Database:ConnectionString is empty. Set it via config/appsettings.work.json or the Bump__Database__ConnectionString environment variable.");
+            "ConnectionStrings:Bump is empty. Set it via config/appsettings.work.json or the ConnectionStrings__Bump environment variable.");
     }
     var dataSource = NpgsqlDataSource.Create(connectionString);
     builder.Services.AddSingleton(dataSource);
@@ -148,17 +148,18 @@ try
     var app = builder.Build();
     app.UseSerilogRequestLogging();
 
-    var pollMinutes = app.Configuration.GetValue("Bump:PollMinutes", 5);
+    var pollSeconds = app.Configuration.GetValue("Bump:Alerts:PollSeconds", 300);
     var serviceIntervalSeconds = app.Configuration.GetValue("Bump:Services:IntervalSeconds", 60);
     // Allow three missed ticks before flipping unhealthy — matches the AlertWorker
     // grace ratio and avoids paging on a single slow probe round.
     var serviceStaleAfter = TimeSpan.FromSeconds(serviceIntervalSeconds * 3);
+    var alertStaleAfter = TimeSpan.FromSeconds(pollSeconds * 3);
 
     app.MapGet("/api/health", () =>
     {
         var now = DateTime.UtcNow;
         var alertFresh = status.LastPollUtc.HasValue
-            && status.LastPollUtc.Value > now.AddMinutes(-pollMinutes * 3);
+            && status.LastPollUtc.Value > now - alertStaleAfter;
         var serviceFresh = status.LastServiceTickUtc.HasValue
             && status.LastServiceTickUtc.Value > now - serviceStaleAfter;
         var healthy = alertFresh && serviceFresh;

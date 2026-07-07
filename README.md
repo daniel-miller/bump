@@ -33,10 +33,10 @@ Built on .NET 10 (ASP.NET Core MVC), Dapper, Npgsql, Newtonsoft.Json, Serilog, a
 
 ### 1. Configure the database connection
 
-`Bump.Api` and `Bump.Worker` both read `Bump:Database:ConnectionString`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
+`Bump.Api` and `Bump.Worker` both read `ConnectionStrings:Bump`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
 
 ```bash
-export Bump__Database__ConnectionString="Host=...;Port=5432;Database=bump;Username=...;Password=..."
+export ConnectionStrings__Bump="Host=...;Port=5432;Database=bump;Username=...;Password=..."
 ```
 
 Schema migrations in `db/*.sql` are applied automatically at API startup by `Migrator`. No manual `psql` step is required for new databases — but you can apply the files manually if you prefer:
@@ -76,7 +76,7 @@ Bump uses three auth schemes, summarized in the Swagger description:
   }
   ```
 
-- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/tenants`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Security:Jwt:Signing`; cookie domain/SameSite/Secure in `Bump:Security:Cookie`.
+- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/tenants`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Security:Jwt:Key`; cookie domain/SameSite/Secure in `Bump:Security:Cookie`.
 
 Public surfaces (`/api/health`, `/api/status/**`, `/api/subscribers/confirm`, `/api/subscribers/unsubscribe`, `/swagger`) require no auth.
 
@@ -239,20 +239,22 @@ export PathBase=/bump
 
 Top-level keys under `Bump:` in `config/appsettings.json` / `config/appsettings.work.json`:
 
-| Key                       | Purpose                                                                |
-| :------------------------ | :--------------------------------------------------------------------- |
-| `Database:ConnectionString` | Postgres connection string.                                          |
-| `Security:Apps:ApiKeys`   | Bearer keys for `/api/apps/**`.                                        |
-| `Security:Problems:ApiKey`| Bearer key for `POST /api/problems`.                                   |
-| `Security:Jwt:*`          | JWT signing key, issuer, audience.                                     |
-| `Security:Cookie:*`       | Session cookie domain, SameSite, Secure.                               |
-| `Cors:AllowedOrigins`     | SPA origin allowlist.                                                  |
-| `Mailgun:*`               | Mailgun API key, domain, From, Region (`us` or `eu`).                  |
-| `Monitors:*`              | Probe interval, timeout, degraded-latency threshold, history bars, UA. |
-| `Subscribers:MaxPerBoard` | Cap on confirmed subscribers per board.                                |
-| `Captcha:Turnstile*`      | Cloudflare Turnstile site key + secret for password-reset CAPTCHA.     |
-| `PublicBaseUrl`           | Base URL embedded in outgoing emails.                                  |
-| `PollMinutes` *(worker)*  | Worker poll cadence; health turns unhealthy after 3× this without a tick. |
+| Key                              | Purpose                                                                |
+| :------------------------------- | :--------------------------------------------------------------------- |
+| `ConnectionStrings:Bump`         | Postgres connection string.                                            |
+| `Bump:Security:Apps:ApiKeys`     | Bearer keys for `/api/apps/**`.                                        |
+| `Bump:Security:Problems:ApiKey`  | Bearer key for `POST /api/problems`.                                   |
+| `Bump:Security:Jwt:{Key,Issuer,Audience}` | JWT signing key, issuer, audience.                            |
+| `Bump:Security:Cookie:*`         | Session cookie domain, SameSite, Secure.                               |
+| `Bump:Cors:AllowedOrigins`       | SPA origin allowlist.                                                  |
+| `Bump:Mailgun:*`                 | Mailgun API key, domain, From, Region (`us` or `eu`).                  |
+| `Bump:Services:*`                | Probe interval, timeout, degraded-latency threshold, history bars, maintenance windows. |
+| `Bump:Subscribers:MaxPerTenant`  | Cap on confirmed subscribers per tenant.                               |
+| `Bump:Captcha:{Secret,SiteKey}`  | Cloudflare Turnstile site key + secret.                                |
+| `Bump:Hosting:PublicBaseUrl`     | Base URL embedded in outgoing emails.                                  |
+| `Bump:Hosting:Version`           | Deployed semver, surfaced in probe UA and About page.                  |
+| `Bump:Alerts:PollSeconds` *(worker)* | Worker poll cadence; health turns unhealthy after 3× this without a tick. |
+| `Bump:Alerts:Contact` *(worker)* | Recipient of alert-digest emails.                                      |
 
 ## Building release packages
 

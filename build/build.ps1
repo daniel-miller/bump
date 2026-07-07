@@ -1,0 +1,129 @@
+param(
+    [string]$Version,
+    [string]$OctopusProject = "Bump",
+    [string]$Environment = "live",
+    [switch]$SkipDeploy
+)
+
+$ErrorActionPreference = 'Stop'
+
+$repoRoot = Split-Path -Parent $PSScriptRoot
+
+# Derive version from git commit count on HEAD so every commit gets a unique,
+# monotonic patch number. Override with -Version when a specific build id is needed.
+if (-not $Version) {
+    $commitCount = (& git -C $repoRoot rev-list --count HEAD).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $commitCount) {
+        throw "Could not derive version from git commit count (git rev-list exit=$LASTEXITCODE)."
+    }
+    $Version = "0.1.$commitCount"
+}
+$solution = Join-Path $repoRoot 'Bump.sln'
+$distDir = Join-Path $repoRoot 'dist'
+$webDir = Join-Path $repoRoot 'web'
+$apiDir = Join-Path $repoRoot 'src\Bump.Api'
+$wwwroot = Join-Path $apiDir 'wwwroot'
+
+$projects = @(
+    @{ Name = 'Bump.Api'; Path = Join-Path $repoRoot 'src\Bump.Api\Bump.Api.csproj' },
+    # @{ Name = 'Bump.Sdk'; Path = Join-Path $repoRoot 'src\Bump.Sdk\Bump.Sdk.csproj' },
+    @{ Name = 'Bump.Worker'; Path = Join-Path $repoRoot 'src\Bump.Worker\Bump.Worker.csproj' }
+)
+
+if (Test-Path $distDir) {
+    Remove-Item $distDir -Recurse -Force
+}
+New-Item -ItemType Directory -Path $distDir | Out-Null
+
+Write-Host "Building web bundle ($Version)..." -ForegroundColor Cyan
+Push-Location $webDir
+try {
+    npm ci --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { throw "npm ci failed." }
+    # APP_VERSION is read by vite.config.ts and baked into __APP_VERSION__ so the SPA
+    # footer matches the release version instead of the stale package.json.
+    $env:APP_VERSION = $Version
+    try {
+        npm run build --silent
+        if ($LASTEXITCODE -ne 0) { throw "vite build failed." }
+    }
+    finally {
+        Remove-Item Env:APP_VERSION -ErrorAction SilentlyContinue
+    }
+}
+finally {
+    Pop-Location
+}
+
+# Stage SPA into Api wwwroot so dotnet publish picks it up as static content.
+if (Test-Path $wwwroot) {
+    Remove-Item $wwwroot -Recurse -Force
+}
+New-Item -ItemType Directory -Path $wwwroot | Out-Null
+Copy-Item -Path (Join-Path $webDir 'dist\*') -Destination $wwwroot -Recurse -Force
+
+Write-Host "Restoring packages..." -ForegroundColor Cyan
+dotnet restore $solution --verbosity quiet
+if ($LASTEXITCODE -ne 0) { throw "Restore failed." }
+
+foreach ($project in $projects) {
+    $name = $project.Name
+    $csproj = $project.Path
+
+    if (-not (Test-Path $csproj)) {
+        throw "Project not found: $csproj"
+    }
+
+    $publishDir = Join-Path $distDir "$name\publish"
+    $zipPath = Join-Path $distDir "$name.$Version.zip"
+
+    Write-Host ""
+    Write-Host "Building $name $Version..." -ForegroundColor Cyan
+
+    dotnet publish $csproj `
+        --configuration Release `
+        --output $publishDir `
+        --no-restore `
+        --verbosity quiet `
+        -p:Version=$Version
+
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed for $name." }
+
+    if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+    Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
+
+    Remove-Item $publishDir -Recurse -Force
+
+    $size = [math]::Round((Get-Item $zipPath).Length / 1KB, 1)
+    Write-Host "  -> $zipPath ($size KB)" -ForegroundColor Green
+
+    $SecretsPath = "c:\base\me\secrets"
+    $env:OCTOPUS_URL = (Get-Content -Path $SecretsPath\threadwork-octo-url.txt -TotalCount 1).Trim()
+    $env:OCTOPUS_API_KEY = (Get-Content -Path $SecretsPath\threadwork-octo-key.txt -TotalCount 1).Trim()
+
+    octopus package upload --package $zipPath --overwrite-mode OverwriteExisting
+    if ($LASTEXITCODE -ne 0) { throw "octopus package upload failed with exit code $LASTEXITCODE" }
+}
+
+Write-Host ""
+Write-Host "Done. Packages:" -ForegroundColor Cyan
+Get-ChildItem "$distDir\*.zip" | ForEach-Object { Write-Host "  $($_.Name)" }
+
+if ($SkipDeploy) {
+    Write-Host ""
+    Write-Host "SkipDeploy set — release/deploy stage skipped." -ForegroundColor Yellow
+    return
+}
+
+Write-Host ""
+Write-Host "Creating release $Version on project $OctopusProject..." -ForegroundColor Cyan
+octopus release create --project $OctopusProject --version $Version
+if ($LASTEXITCODE -ne 0) { throw "octopus release create failed with exit code $LASTEXITCODE" }
+
+Write-Host ""
+Write-Host "Deploying $Version to $Environment..." -ForegroundColor Cyan
+octopus release deploy --project $OctopusProject --version $Version --environment $Environment
+if ($LASTEXITCODE -ne 0) { throw "octopus release deploy failed with exit code $LASTEXITCODE" }
+
+Write-Host ""
+Write-Host "Deployed $OctopusProject $Version → $Environment." -ForegroundColor Green

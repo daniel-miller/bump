@@ -1,0 +1,78 @@
+# Build artifacts
+
+[Bb]in/
+[Dd]ist/
+[Oo]bj/
+[Pp]ackages/
+[Pp]ublished/
+
+*.nupkg
+*.pdb
+*.preproc.xml
+
+# IDE and editor settings
+
+.claude/
+.idea/
+.local/
+.vs/
+.work/
+
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# Secrets and local configuration
+
+*.key
+*.p12
+*.pem
+*.pfx
+
+.env
+.env.*.local
+.env.local
+
+.mcp.json
+
+[Aa]pp[Ss]ettings.[Ll]ocal.json
+[Aa]pp[Ss]ettings.[Ww]ork.json
+secrets.json
+
+# Node.js
+
+node_modules/
+.vite/
+tsconfig.tsbuildinfo
+
+# Generated SPA bundle (staged into Bump.Api wwwroot by build.ps1)
+
+src/Bump.Api/wwwroot/
+
+npm-debug.log*
+yarn-error.log
+
+# Test results and coverage
+
+[Tt]est[Rr]esults/
+
+*.coverage
+*.coveragexml
+
+# Temporary and log files
+
+[Tt]emp/
+[Tt]mp/
+
+*.binlog
+*.log
+*.lscache
+*.opendb
+*.rdl.data
+*.rptproj.rsuser
+*.rsuser
+*.suo
+*.user
+*.vsidx

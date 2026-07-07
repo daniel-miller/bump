@@ -1,0 +1,74 @@
+/*
+ * Bump schema ER diagram (crow's foot notation)
+ * Render: dot -Tsvg docs/schema.dot -o docs/schema.svg
+ *         dot -Tpng docs/schema.dot -o docs/schema.png
+ *
+ * Crow's foot legend (read each end as cardinality of THAT entity):
+ *   crow    = many
+ *   tee     = exactly one
+ *   teeodot = zero or one
+ *
+ * Edges go child -> parent. SET NULL is labelled; CASCADE is the default.
+ */
+
+digraph bump_schema {
+    rankdir=LR;
+    bgcolor="white";
+    node [shape=box, style="filled,rounded", fontname="Helvetica", fontsize=11, color="#444444"];
+    edge [fontname="Helvetica", fontsize=8, color="#555555", dir=both, arrowsize=0.9];
+
+    /* Foundation */
+    server      [fillcolor="#E5E7EB"];
+    tenant      [fillcolor="#E5E7EB"];
+    environment [fillcolor="#E5E7EB"];
+
+    /* Identity */
+    account                 [fillcolor="#DFF5E1"];
+    account_session         [fillcolor="#DFF5E1"];
+    account_recovery        [fillcolor="#DFF5E1"];
+    account_password_change [fillcolor="#DFF5E1"];
+    account_email_change    [fillcolor="#DFF5E1"];
+
+    /* App */
+    app             [fillcolor="#D7E9FF"];
+    service         [fillcolor="#D7E9FF"];
+
+    /* Telemetry */
+    service_state   [fillcolor="#FFF1B8"];
+    service_daily   [fillcolor="#FFF1B8"];
+    problem         [fillcolor="#FFF1B8"];
+    idempotency     [fillcolor="#FFF1B8"];
+    outage          [fillcolor="#FFF1B8"];
+    outage_update   [fillcolor="#FFF1B8"];
+
+    /* Messaging */
+    announcement [fillcolor="#E6D9FF"];
+    subscriber   [fillcolor="#E6D9FF"];
+
+    /* ---- Mandatory N:1 (FK NOT NULL) ----------------------------------- */
+    service         -> tenant       [arrowtail=crow, arrowhead=tee];
+    service         -> environment  [arrowtail=crow, arrowhead=tee];
+    service         -> app          [arrowtail=crow, arrowhead=tee];
+    problem         -> app          [arrowtail=crow, arrowhead=tee];
+    problem         -> environment  [arrowtail=crow, arrowhead=tee];
+    service_daily   -> service      [arrowtail=crow, arrowhead=tee];
+    outage_update   -> outage       [arrowtail=crow, arrowhead=tee];
+    subscriber      -> tenant       [arrowtail=crow, arrowhead=tee];
+
+    account_session         -> account [arrowtail=crow, arrowhead=tee];
+    account_recovery        -> account [arrowtail=crow, arrowhead=tee];
+    account_password_change -> account [arrowtail=crow, arrowhead=tee];
+    account_email_change    -> account [arrowtail=crow, arrowhead=tee];
+
+    /* ---- 1:1 (PK FK) --------------------------------------------------- */
+    service_state -> service [arrowtail=tee, arrowhead=tee];
+
+    /* ---- Optional N:1 (FK nullable) ------------------------------------ */
+    outage          -> service [arrowtail=crow, arrowhead=teeodot];
+    announcement    -> tenant  [arrowtail=crow, arrowhead=teeodot];
+
+    /* ---- Audit columns (created_by uuid -> account) --------------- */
+    outage          -> account [arrowtail=crow, arrowhead=teeodot, style=dashed];
+    outage_update   -> account [arrowtail=crow, arrowhead=teeodot, style=dashed];
+    announcement    -> account [arrowtail=crow, arrowhead=teeodot, style=dashed];
+}

@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-muted: #f3f4f6;
+  --color-muted-foreground: #64748b;
+  --color-border: #e5e7eb;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-primary: #3B73FF;
+  --color-primary-foreground: #ffffff;
+  --color-success: #2ECC71;
+  --color-warning: #F5A623;
+  --color-danger: #E74C3C;
+}
+
+.dark {
+  --color-background: #0b0d12;
+  --color-foreground: #e5e7eb;
+  --color-muted: #1a1d24;
+  --color-muted-foreground: #9ca3af;
+  --color-border: #20242c;
+  --color-card: #11141a;
+  --color-card-foreground: #e5e7eb;
+  --color-primary: #3B73FF;
+  --color-primary-foreground: #ffffff;
+  --color-success: #2ECC71;
+  --color-warning: #facc15;
+  --color-danger: #E74C3C;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: 'tnum', 'cv11';
+}
+code, pre, kbd, samp {
+  font-family: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.bg-background { background-color: var(--color-background); }
+.text-foreground { color: var(--color-foreground); }
+.bg-card { background-color: var(--color-card); }
+.text-card-foreground { color: var(--color-card-foreground); }
+.bg-muted { background-color: var(--color-muted); }
+.text-muted-foreground { color: var(--color-muted-foreground); }
+.border-border { border-color: var(--color-border); }
+.bg-primary { background-color: var(--color-primary); }
+.text-primary-foreground { color: var(--color-primary-foreground); }

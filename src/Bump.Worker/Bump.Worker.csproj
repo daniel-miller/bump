@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Bump.Worker</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="Polly" Version="8.5.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bump.Api\Bump.Api.csproj" />
+  </ItemGroup>
+
+  <!-- Shared config. Same files linked into Bump.Api; single source of truth at
+       repo-root config/. None (not Content) so files don't transit to projects
+       that reference Bump.Api — each consumer links explicitly. -->
+  <ItemGroup>
+    <None Include="..\..\config\appsettings.json" Link="appsettings.json"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\config\appsettings.work.json" Link="appsettings.work.json"
+          CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never"
+          Condition="Exists('..\..\config\appsettings.work.json')" />
+  </ItemGroup>
+
+</Project>

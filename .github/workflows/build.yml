@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Restore .NET
+        run: dotnet restore bump.sln
+
+      - name: Build .NET
+        run: dotnet build bump.sln --configuration Release --no-restore
+
+      - name: Install web deps
+        working-directory: web
+        run: npm ci
+
+      - name: Build web
+        working-directory: web
+        run: npm run build

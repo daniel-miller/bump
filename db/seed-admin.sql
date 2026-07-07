@@ -1,0 +1,14 @@
+-- Manual one-shot to seed the first admin. Run separately, not by Migrator.
+-- Replace the placeholder hash/salt with values produced by Bump.Api's
+-- PasswordHasher (Argon2id). Example:
+--
+--   var (hash, salt) = PasswordHasher.Hash("changeme");
+--   Console.WriteLine(Convert.ToHexString(hash));
+--   Console.WriteLine(Convert.ToHexString(salt));
+--
+--   or dotnet run --project src/Bump.Api -- hash changeme
+--
+-- Then:
+--   INSERT INTO account (account_email, account_full_name, account_timezone, password_hash, password_salt)
+--   VALUES ('admin@example.com', 'Admin', 'UTC',
+--           decode('<hash-hex>','hex'), decode('<salt-hex>','hex'));

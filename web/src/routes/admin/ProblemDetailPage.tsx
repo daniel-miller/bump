@@ -1,0 +1,408 @@
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, Download, RotateCcw, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { api } from "@/lib/api";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+interface ExceptionInfo {
+  type?: string;
+  value?: string;
+  stackTrace?: string;
+  innerExceptions?: ExceptionInfo[] | null;
+}
+
+interface ProblemRecord {
+  problemKey: number;
+  fingerprint: string;
+  reportedAt: string;
+  dispatchedAt: string | null;
+  resolvedAt: string | null;
+  type: string;
+  title: string;
+  status: number | null;
+  detail: string | null;
+  instance: string | null;
+  extensions: string | null;
+  appSlug: string;
+  appName: string;
+  appVersion: string;
+  environment: string;
+  environmentName: string;
+  environmentDescription: string | null;
+  exception: ExceptionInfo | null;
+  userId: string | null;
+  userEmail: string | null;
+}
+
+function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="grid grid-cols-[10rem_1fr] gap-3 py-1.5 border-b last:border-b-0">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-0.5">{label}</div>
+      <div className={mono ? "font-mono text-sm break-all" : "text-sm"}>{value ?? <span className="text-muted-foreground italic">none</span>}</div>
+    </div>
+  );
+}
+
+type ContextPart = { text: string | null | undefined; mono?: boolean; muted?: boolean };
+
+function ContextRow({ label, parts }: { label: string; parts: ContextPart[] }) {
+  const visible = parts.filter((p) => p.text != null && p.text !== "");
+  return (
+    <div className="grid grid-cols-[10rem_1fr] gap-3 py-1.5 border-b last:border-b-0">
+      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-0.5">{label}</div>
+      <div className="text-sm flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        {visible.length === 0 && <span className="text-muted-foreground italic">none</span>}
+        {visible.map((p, i) => (
+          <span key={i} className="contents">
+            {i > 0 && <span className="text-muted-foreground/50">·</span>}
+            <span
+              className={[
+                p.mono ? "font-mono break-all" : "",
+                p.muted ? "text-muted-foreground" : "",
+              ].join(" ")}
+            >
+              {p.text}
+            </span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">{title}</h2>
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExceptionBlock({ ex, depth = 0 }: { ex: ExceptionInfo; depth?: number }) {
+  return (
+    <div className={depth > 0 ? "mt-3 pl-3 border-l-2 border-muted" : ""}>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+        {depth === 0 ? "Outer" : `Inner #${depth}`}
+      </div>
+      <div className="font-mono text-sm font-medium">{ex.type ?? "(unknown type)"}</div>
+      {ex.value && <div className="text-sm mt-1">{ex.value}</div>}
+      {ex.stackTrace && (
+        <pre className="mt-2 text-xs font-mono whitespace-pre-wrap bg-muted/40 p-2 rounded overflow-x-auto">
+          {ex.stackTrace}
+        </pre>
+      )}
+      {ex.innerExceptions?.map((inner, i) => (
+        <ExceptionBlock key={i} ex={inner} depth={depth + 1} />
+      ))}
+    </div>
+  );
+}
+
+function fetchMarkdown(problemKey: number) {
+  return api<string>(`/api/problems/${problemKey}`, {
+    headers: { Accept: "text/markdown" },
+  });
+}
+
+async function downloadMarkdown(problemKey: number) {
+  const md = await fetchMarkdown(problemKey);
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `problem-${problemKey}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function copyMarkdown(problemKey: number) {
+  const md = await fetchMarkdown(problemKey);
+  await navigator.clipboard.writeText(md);
+}
+
+function parseExtensions(raw: string | null): Array<[string, string]> | null {
+  if (!raw) return null;
+  try {
+    const obj = JSON.parse(raw);
+    if (obj === null || typeof obj !== "object" || Array.isArray(obj)) return null;
+    return Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+      k,
+      typeof v === "string" ? v : JSON.stringify(v),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+function ExtensionsTable({ rows }: { rows: Array<[string, string]> }) {
+  return (
+    <table className="w-full text-sm border-collapse">
+      <thead>
+        <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+          <th className="text-left font-medium py-1.5 pr-3 w-40 border-b">Key</th>
+          <th className="text-left font-medium py-1.5 border-b">Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([k, v]) => (
+          <tr key={k} className="border-b last:border-b-0">
+            <td className="py-1.5 pr-3 font-mono align-top text-muted-foreground">{k}</td>
+            <td className="py-1.5 font-mono break-all">{v}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export function ProblemDetailPage() {
+  const { id = "" } = useParams<{ id: string }>();
+  const { data, isLoading, error } = useQuery<ProblemRecord>({
+    queryKey: ["problems", id],
+    queryFn: () => api<ProblemRecord>(`/api/problems/${id}`),
+  });
+
+  const [copied, setCopied] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [resolveBusy, setResolveBusy] = useState(false);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
+  if (error || !data) {
+    return (
+      <div className="p-6">
+        <div className="text-sm text-red-600 dark:text-red-400">
+          Failed to load problem #{id}: {(error as Error)?.message ?? "not found"}
+        </div>
+      </div>
+    );
+  }
+
+  const extensionRows = parseExtensions(data.extensions);
+
+  return (
+    <div className="p-6 space-y-4 max-w-4xl">
+      <div className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-semibold flex items-baseline gap-2">
+          Problem #{data.problemKey}
+          {data.resolvedAt && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200">
+              Resolved
+            </span>
+          )}
+        </h1>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground">{data.fingerprint}</span>
+          {data.resolvedAt ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={resolveBusy}
+              onClick={async () => {
+                setResolveBusy(true);
+                try {
+                  await api<void>(`/api/problems/${data.problemKey}/unresolve`, { method: "POST" });
+                  await qc.invalidateQueries({ queryKey: ["problems"] });
+                  await qc.invalidateQueries({ queryKey: ["problems", id] });
+                } finally {
+                  setResolveBusy(false);
+                }
+              }}
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              {resolveBusy ? "Unresolving…" : "Unresolve"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={resolveBusy}
+              onClick={async () => {
+                setResolveBusy(true);
+                try {
+                  await api<void>(`/api/problems/${data.problemKey}/resolve`, { method: "POST" });
+                  await qc.invalidateQueries({ queryKey: ["problems"] });
+                  await qc.invalidateQueries({ queryKey: ["problems", id] });
+                } finally {
+                  setResolveBusy(false);
+                }
+              }}
+            >
+              <Check className="h-4 w-4 mr-1" />
+              {resolveBusy ? "Resolving…" : "Resolve"}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Download as Markdown"
+            title="Download as Markdown"
+            onClick={() => downloadMarkdown(data.problemKey)}
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Copy Markdown to clipboard"
+            title={copied ? "Copied!" : "Copy Markdown to clipboard"}
+            onClick={async () => {
+              await copyMarkdown(data.problemKey);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            <Copy className={`h-4 w-4 ${copied ? "text-green-600 dark:text-green-400" : ""}`} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Delete problem"
+            title="Delete problem"
+            onClick={() => {
+              setDeleteError(null);
+              setConfirmOpen(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete problem #{data.problemKey}?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes the problem record. This can't be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError && (
+            <div className="text-sm text-red-600 dark:text-red-400">{deleteError}</div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={async () => {
+                setDeleting(true);
+                setDeleteError(null);
+                try {
+                  await api<void>(`/api/problems/${data.problemKey}`, { method: "DELETE" });
+                  await qc.invalidateQueries({ queryKey: ["problems"] });
+                  navigate("/admin/problems");
+                } catch (e) {
+                  setDeleteError((e as Error).message || "Delete failed.");
+                  setDeleting(false);
+                }
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Section title="Problem">
+        <Row label="Type" value={data.type} mono />
+        <Row label="Title" value={data.title} />
+        <Row label="Status" value={data.status ?? null} mono />
+        <Row label="Detail" value={data.detail} />
+        <Row label="Instance" value={data.instance} mono />
+        <Row label="Fingerprint" value={data.fingerprint} mono />
+        <Row label="Reported at" value={new Date(data.reportedAt).toLocaleString()} />
+        <Row
+          label="Dispatched at"
+          value={data.dispatchedAt ? new Date(data.dispatchedAt).toLocaleString() : null}
+        />
+        <Row
+          label="Resolved at"
+          value={data.resolvedAt ? new Date(data.resolvedAt).toLocaleString() : null}
+        />
+        <Row
+          label="Extensions"
+          value={extensionRows && extensionRows.length > 0 ? <ExtensionsTable rows={extensionRows} /> : null}
+        />
+      </Section>
+
+      <Section title="Context">
+        <ContextRow
+          label="App"
+          parts={[
+            { mono: true, text: data.appSlug },
+            { text: data.appName },
+            { mono: true, text: `v${data.appVersion}` },
+          ]}
+        />
+        <ContextRow
+          label="Environment"
+          parts={[
+            { mono: true, text: data.environment },
+            { text: data.environmentName },
+            { text: data.environmentDescription, muted: true },
+          ]}
+        />
+        <ContextRow
+          label="Account"
+          parts={[
+            { mono: true, text: data.userId },
+            { text: data.userEmail },
+          ]}
+        />
+      </Section>
+
+      <Section title="Exception">
+        {data.exception ? (
+          <ExceptionBlock ex={data.exception} />
+        ) : (
+          <div className="text-sm text-muted-foreground italic">No exception attached.</div>
+        )}
+      </Section>
+
+      <p className="text-xs text-muted-foreground pt-2">
+        Problem reports follow{" "}
+        <a
+          href="https://datatracker.ietf.org/doc/html/rfc7807"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          RFC 7807
+        </a>
+        .
+      </p>
+    </div>
+  );
+}

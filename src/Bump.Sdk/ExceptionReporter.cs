@@ -25,9 +25,19 @@ public class ExceptionReporter : IDisposable
     {
         _options = options;
         _http = httpClient ?? new HttpClient();
-        _http.BaseAddress = new Uri(options.Endpoint.TrimEnd('/') + "/");
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
         _logger = logger ?? NullLogger<ExceptionReporter>.Instance;
+        // Uri.TryCreate guards against two failure modes without crashing startup:
+        //   (1) Endpoint left empty in local dev.
+        //   (2) Unresolved Octopus tokens reaching the runtime when the shared
+        //       Bump library variable set isn't scoped to the target environment.
+        // In both cases CaptureAsync no-ops on _http.BaseAddress == null.
+        if (!string.IsNullOrWhiteSpace(options.Endpoint)
+            && Uri.TryCreate(options.Endpoint.TrimEnd('/') + "/", UriKind.Absolute, out var baseAddress))
+        {
+            _http.BaseAddress = baseAddress;
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
+        }
     }
 
     public async Task CaptureAsync(
@@ -55,6 +65,9 @@ public class ExceptionReporter : IDisposable
             UserId = user?.Id,
             UserEmail = user?.Email
         };
+
+        if (_http.BaseAddress is null)
+            return;
 
         try
         {

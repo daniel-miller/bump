@@ -101,9 +101,9 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded border border-border p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums mt-1">{value}</div>
+    <div className="border-border rounded border p-3">
+      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
     </div>
   );
 }
@@ -118,23 +118,26 @@ export function AboutPage() {
     queryFn: () => api<VersionResponse>("/api/version"),
   });
 
-  if (isLoading) return <div className="p-8 text-muted-foreground">Loading…</div>;
-  if (isError || !data) return <div className="p-8 text-danger">Couldn't load about info. Try refreshing the page.</div>;
+  if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (isError || !data)
+    return (
+      <div className="text-danger p-8">Couldn't load about info. Try refreshing the page.</div>
+    );
 
   const { repository, build, server, database, registry } = data;
   const displayVersion = ver?.version ?? build.version;
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
+    <div className="max-w-5xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold">About</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Bump v{displayVersion} <span className="mx-2">·</span> {" "}
+        <p className="text-muted-foreground mt-1 text-sm">
+          Bump v{displayVersion} <span className="mx-2">·</span>{" "}
           <a
             href={repository.url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1 underline hover:text-foreground"
+            className="hover:text-foreground inline-flex items-center gap-1 underline"
           >
             {repository.url.replace(/^https?:\/\//, "")}
             <ExternalLink className="h-3 w-3" />
@@ -149,7 +152,9 @@ export function AboutPage() {
         <CardContent>
           <Row label="Version">{displayVersion}</Row>
           <Row label="Assembly">{build.assemblyVersion}</Row>
-          {build.informationalVersion && <Row label="Informational">{build.informationalVersion}</Row>}
+          {build.informationalVersion && (
+            <Row label="Informational">{build.informationalVersion}</Row>
+          )}
           {build.fileVersion && <Row label="File version">{build.fileVersion}</Row>}
           <Row label="Build date">{formatDate(build.buildDate)}</Row>
         </CardContent>
@@ -189,7 +194,10 @@ export function AboutPage() {
           <Row label="Latest">
             {database.latestMigration ?? "—"}
             {database.latestMigrationAt && (
-              <span className="text-muted-foreground"> · {formatDate(database.latestMigrationAt)}</span>
+              <span className="text-muted-foreground">
+                {" "}
+                · {formatDate(database.latestMigrationAt)}
+              </span>
             )}
           </Row>
         </CardContent>
@@ -199,20 +207,22 @@ export function AboutPage() {
         <CardHeader>
           <CardTitle className="text-sm">Registry</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <CardContent className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="Apps" value={registry.apps} />
           <Stat
             label="Environments"
-            value={registry.specialEnvironments > 0
-              ? `${registry.environments}`
-              : registry.environments}
+            value={
+              registry.specialEnvironments > 0 ? `${registry.environments}` : registry.environments
+            }
           />
           <Stat label="Tenants" value={registry.tenants} />
           <Stat
             label="Services"
-            value={registry.servicesPaused > 0
-              ? `${registry.services} (${registry.servicesPaused} paused)`
-              : registry.services}
+            value={
+              registry.servicesPaused > 0
+                ? `${registry.services} (${registry.servicesPaused} paused)`
+                : registry.services
+            }
           />
           <Stat label="Open outages" value={registry.openOutages} />
           <Stat label="Outages (7d)" value={registry.outages7d} />

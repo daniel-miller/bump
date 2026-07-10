@@ -45,7 +45,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
+    <div className="flex min-h-screen items-center justify-center p-8">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Sign in</CardTitle>
@@ -87,7 +87,9 @@ export function LoginPage() {
                 />
               </div>
             )}
-            {error && <div className="text-sm text-danger whitespace-pre-wrap break-words">{error}</div>}
+            {error && (
+              <div className="text-danger text-sm break-words whitespace-pre-wrap">{error}</div>
+            )}
             <Button type="submit" disabled={busy} className="w-full">
               {busy ? "Signing in…" : "Sign in"}
             </Button>

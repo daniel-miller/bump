@@ -30,7 +30,11 @@ interface ProblemDetail {
 
 export function AppsPage() {
   const qc = useQueryClient();
-  const { data = [], isLoading, isError } = useQuery<AppRecord[]>({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery<AppRecord[]>({
     queryKey: ["admin", "apps"],
     queryFn: () => api<AppRecord[]>("/api/admin/apps"),
   });
@@ -38,20 +42,22 @@ export function AppsPage() {
   const [editing, setEditing] = useState<AppRecord | null>(null);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold">Apps</h1>
-      {isLoading && <div className="text-sm text-muted-foreground">Loading…</div>}
-      {isError && <div className="text-sm text-danger">Couldn't load apps. Try refreshing the page.</div>}
+      {isLoading && <div className="text-muted-foreground text-sm">Loading…</div>}
+      {isError && (
+        <div className="text-danger text-sm">Couldn't load apps. Try refreshing the page.</div>
+      )}
       <div className="space-y-2">
         {data.map((a) => (
           <Card key={a.appKey}>
-            <CardContent className="p-3 flex justify-between items-center">
+            <CardContent className="flex items-center justify-between p-3">
               <div>
                 <div className="font-medium">{a.appName}</div>
-                <div className="text-xs text-muted-foreground">{a.appSlug}</div>
+                <div className="text-muted-foreground text-xs">{a.appSlug}</div>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-mono">{a.version}</span>
+                <span className="font-mono text-sm">{a.version}</span>
                 <Button variant="outline" size="sm" onClick={() => setEditing(a)}>
                   Edit
                 </Button>
@@ -60,7 +66,7 @@ export function AppsPage() {
           </Card>
         ))}
         {!isLoading && data.length === 0 && (
-          <div className="text-sm text-muted-foreground">No apps registered yet.</div>
+          <div className="text-muted-foreground text-sm">No apps registered yet.</div>
         )}
       </div>
 
@@ -137,7 +143,8 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
         <DialogHeader>
           <DialogTitle>Edit app</DialogTitle>
           <DialogDescription>
-            Changing the slug renames the app's URL. Existing SDK clients pinned to the old slug will need to be updated.
+            Changing the slug renames the app's URL. Existing SDK clients pinned to the old slug
+            will need to be updated.
           </DialogDescription>
         </DialogHeader>
 
@@ -202,7 +209,7 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
             </div>
           </div>
 
-          {error && <div className="text-sm text-danger">{error}</div>}
+          {error && <div className="text-danger text-sm">{error}</div>}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={save.isPending}>

@@ -12,7 +12,12 @@ interface BoardDetail {
   board: { boardId: number; boardSlug: string; boardName: string };
   serviceIds: number[];
 }
-interface ServiceRow { serviceId: number; slug: string; name: string; url: string }
+interface ServiceRow {
+  serviceId: number;
+  slug: string;
+  name: string;
+  url: string;
+}
 
 export function BoardDetailPage() {
   const { slug = "" } = useParams<{ slug: string }>();
@@ -42,7 +47,11 @@ export function BoardDetailPage() {
     selected.some((id) => !initialSelected.includes(id));
 
   const save = useMutation({
-    mutationFn: () => api(`/api/admin/tenants/${slug}`, { method: "PATCH", body: JSON.stringify({ serviceIds: selected }) }),
+    mutationFn: () =>
+      api(`/api/admin/tenants/${slug}`, {
+        method: "PATCH",
+        body: JSON.stringify({ serviceIds: selected }),
+      }),
     onSuccess: async () => {
       setInitialSelected(selected);
       await qc.invalidateQueries({ queryKey: ["boards", slug] });
@@ -57,9 +66,9 @@ export function BoardDetailPage() {
     },
   });
 
-  if (!data) return <div className="p-8 text-muted-foreground">Loading…</div>;
+  if (!data) return <div className="text-muted-foreground p-8">Loading…</div>;
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
+    <div className="max-w-3xl space-y-4 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{data.board.boardName}</h1>
@@ -67,7 +76,7 @@ export function BoardDetailPage() {
             href={`/tenants/${data.board.boardSlug}`}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-primary hover:underline"
+            className="text-primary text-sm hover:underline"
           >
             /tenants/{data.board.boardSlug}
           </a>
@@ -81,21 +90,27 @@ export function BoardDetailPage() {
           {services.map((m) => {
             const checked = selected.includes(m.serviceId);
             return (
-              <label key={m.serviceId} className="flex items-center gap-2 text-sm cursor-pointer">
+              <label key={m.serviceId} className="flex cursor-pointer items-center gap-2 text-sm">
                 <Checkbox
                   checked={checked}
                   onCheckedChange={(v) => {
-                    setSelected((s) => v ? [...s, m.serviceId] : s.filter((x) => x !== m.serviceId));
+                    setSelected((s) =>
+                      v ? [...s, m.serviceId] : s.filter((x) => x !== m.serviceId),
+                    );
                   }}
                 />
                 <span>{m.name}</span>
-                <span className="text-xs text-muted-foreground">{m.url}</span>
+                <span className="text-muted-foreground text-xs">{m.url}</span>
               </label>
             );
           })}
           {dirty && (
             <div className="flex justify-end gap-2 pt-3">
-              <Button variant="outline" onClick={() => setSelected(initialSelected)} disabled={save.isPending}>
+              <Button
+                variant="outline"
+                onClick={() => setSelected(initialSelected)}
+                disabled={save.isPending}
+              >
                 Cancel
               </Button>
               <Button onClick={() => save.mutate()} disabled={save.isPending}>

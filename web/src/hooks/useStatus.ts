@@ -8,9 +8,7 @@ export function useStatus(boardSlug?: string, opts?: { excludePaused?: boolean }
   const params = new URLSearchParams();
   if (opts?.excludePaused) params.set("excludePaused", "true");
   const qs = params.toString();
-  const path = boardSlug
-    ? `/api/status/tenants/${encodeURIComponent(boardSlug)}`
-    : "/api/status";
+  const path = boardSlug ? `/api/status/tenants/${encodeURIComponent(boardSlug)}` : "/api/status";
   return useQuery<StatusResponse>({
     queryKey: ["status", boardSlug ?? "_all", opts?.excludePaused ? "noPaused" : "all"],
     queryFn: () => api<StatusResponse>(`${path}${qs ? `?${qs}` : ""}`),

@@ -40,31 +40,40 @@ export function ConfirmEmailChangePage() {
         setState({ kind: "error", message: "Couldn't confirm the email change." });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
-    <div className="max-w-md mx-auto p-8 text-center space-y-2">
+    <div className="mx-auto max-w-md space-y-2 p-8 text-center">
       {state.kind === "working" && <p className="text-muted-foreground">Confirming…</p>}
       {state.kind === "done" && (
         <>
           <h1 className="text-2xl font-semibold">Email updated</h1>
           <p className="text-muted-foreground">Your account email has been changed.</p>
-          <p><Link to="/admin/account" className="underline">Back to account</Link></p>
+          <p>
+            <Link to="/admin/account" className="underline">
+              Back to account
+            </Link>
+          </p>
         </>
       )}
       {state.kind === "needs-auth" && (
         <>
           <h1 className="text-2xl font-semibold">Sign in to confirm</h1>
           <p className="text-muted-foreground">
-            Open this link in the same browser you used to request the email change, then sign in and click the link again.
+            Open this link in the same browser you used to request the email change, then sign in
+            and click the link again.
           </p>
-          <p><Link to="/login" className="underline">Sign in</Link></p>
+          <p>
+            <Link to="/login" className="underline">
+              Sign in
+            </Link>
+          </p>
         </>
       )}
-      {state.kind === "error" && (
-        <p className="text-danger">{state.message}</p>
-      )}
+      {state.kind === "error" && <p className="text-danger">{state.message}</p>}
     </div>
   );
 }

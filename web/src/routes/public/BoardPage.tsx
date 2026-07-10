@@ -31,16 +31,21 @@ export function BoardPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data, isLoading, error } = useStatus(slug);
 
-  if (isLoading) return <div className="p-8 text-muted-foreground">Loading…</div>;
-  if (error || !data) return <div className="p-8 text-danger">Couldn't load status. Try refreshing the page.</div>;
+  if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (error || !data)
+    return <div className="text-danger p-8">Couldn't load status. Try refreshing the page.</div>;
 
   const overallLabel =
-    data.overall === "operational" ? "All systems operational" :
-    data.overall === "degraded" ? "Some services degraded" :
-    data.overall === "down" ? "Major outage" : "Status unknown";
+    data.overall === "operational"
+      ? "All systems operational"
+      : data.overall === "degraded"
+        ? "Some services degraded"
+        : data.overall === "down"
+          ? "Major outage"
+          : "Status unknown";
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8 p-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{data.board?.name ?? "Status"}</h1>
         <div className="flex items-center gap-2">
@@ -55,12 +60,19 @@ export function BoardPage() {
             const style = announcementStyles[a.type] ?? announcementStyles.info;
             const Icon = style.icon;
             return (
-              <div key={a.id} className={`flex gap-3 rounded border p-3 ${style.bg} ${style.border}`}>
-                <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${style.iconColor}`} />
+              <div
+                key={a.id}
+                className={`flex gap-3 rounded border p-3 ${style.bg} ${style.border}`}
+              >
+                <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${style.iconColor}`} />
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold capitalize text-muted-foreground">{a.type}</div>
+                  <div className="text-muted-foreground text-sm font-semibold capitalize">
+                    {a.type}
+                  </div>
                   <div className="text-sm font-semibold">{a.title}</div>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">{a.content}</div>
+                  <div className="text-muted-foreground text-sm whitespace-pre-wrap">
+                    {a.content}
+                  </div>
                 </div>
               </div>
             );
@@ -68,15 +80,15 @@ export function BoardPage() {
         </div>
       )}
 
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {(["operational", "uptime", "latency", "outages"] as const).map((k) => {
           const kpi = data.kpis[k];
           return (
             <Card key={k}>
               <CardContent className="p-4">
-                <div className="text-xs text-muted-foreground">{kpi?.label ?? "—"}</div>
-                <div className="text-2xl font-semibold mt-1">{kpi?.value ?? "—"}</div>
-                <div className="text-xs text-muted-foreground mt-1">{kpi?.subtitle ?? ""}</div>
+                <div className="text-muted-foreground text-xs">{kpi?.label ?? "—"}</div>
+                <div className="mt-1 text-2xl font-semibold">{kpi?.value ?? "—"}</div>
+                <div className="text-muted-foreground mt-1 text-xs">{kpi?.subtitle ?? ""}</div>
               </CardContent>
             </Card>
           );
@@ -118,7 +130,7 @@ export function BoardPage() {
             <Card key={i.id}>
               <CardContent className="p-3">
                 <div className="font-medium">{i.title}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   Started {new Date(i.startedAt).toLocaleString()} · {i.status}
                 </div>
               </CardContent>

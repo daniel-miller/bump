@@ -38,18 +38,21 @@ function statusTone(status: number | null): string {
 
 export function ProblemsPage() {
   const [includeResolved, setIncludeResolved] = useState(false);
-  const { data = [], isLoading, error } = useQuery<ProblemRow[]>({
+  const {
+    data = [],
+    isLoading,
+    error,
+  } = useQuery<ProblemRow[]>({
     queryKey: ["problems", { includeResolved }],
-    queryFn: () =>
-      api<ProblemRow[]>(`/api/problems?includeResolved=${includeResolved}`),
+    queryFn: () => api<ProblemRow[]>(`/api/problems?includeResolved=${includeResolved}`),
   });
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4 p-6">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-semibold">Problems</h1>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+          <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
             <Checkbox
               checked={includeResolved}
               onCheckedChange={(v) => setIncludeResolved(v === true)}
@@ -57,7 +60,7 @@ export function ProblemsPage() {
             Show resolved
           </label>
           {!isLoading && data.length > 0 && (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-muted-foreground text-sm">
               {data.length} report{data.length === 1 ? "" : "s"}
             </span>
           )}
@@ -78,30 +81,36 @@ export function ProblemsPage() {
           return (
             <Link to={`/admin/problems/${p.problemKey}`} key={p.problemKey} className="block">
               <Card className="hover:border-primary transition-colors">
-                <CardContent className="p-3 space-y-1">
+                <CardContent className="space-y-1 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-2">
                         {p.status !== null && (
-                          <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${statusTone(p.status)}`}>
+                          <span
+                            className={`rounded px-1.5 py-0.5 font-mono text-xs ${statusTone(p.status)}`}
+                          >
                             {p.status}
                           </span>
                         )}
-                        <span className="font-medium truncate">{p.title || p.type || "(untitled)"}</span>
+                        <span className="truncate font-medium">
+                          {p.title || p.type || "(untitled)"}
+                        </span>
                       </div>
                       {exceptionType && (
-                        <div className="text-xs text-muted-foreground truncate">
+                        <div className="text-muted-foreground truncate text-xs">
                           <span className="font-mono">{exceptionType}</span>
                           {innerCount > 0 && <span> · {innerCount} inner</span>}
                         </div>
                       )}
-                      <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
-                        <span className="font-mono">{p.appSlug}/{p.environment}</span>
+                      <div className="text-muted-foreground flex flex-wrap gap-x-2 text-xs">
+                        <span className="font-mono">
+                          {p.appSlug}/{p.environment}
+                        </span>
                         {p.instance && <span className="truncate">{p.instance}</span>}
                         <span className="font-mono opacity-60">{p.fingerprint}</span>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap text-right">
+                    <div className="text-muted-foreground text-right text-xs whitespace-nowrap">
                       <div>{new Date(p.reportedAt).toLocaleString()}</div>
                       {p.resolvedAt && (
                         <div className="text-green-700 dark:text-green-400">Resolved</div>
@@ -115,7 +124,7 @@ export function ProblemsPage() {
           );
         })}
         {!isLoading && data.length === 0 && (
-          <div className="text-sm text-muted-foreground">No problems detected.</div>
+          <div className="text-muted-foreground text-sm">No problems detected.</div>
         )}
       </div>
     </div>

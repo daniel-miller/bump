@@ -52,7 +52,7 @@ export function DateTimePicker({
           className={cn(
             "justify-start text-left font-normal",
             !value && "text-muted-foreground",
-            className
+            className,
           )}
         >
           <CalendarIcon className="h-4 w-4" />
@@ -61,13 +61,13 @@ export function DateTimePicker({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0">
         <Calendar mode="single" selected={value ?? undefined} onSelect={handleDateSelect} />
-        <div className="border-t border-border p-3">
-          <label className="text-xs text-muted-foreground block mb-1">Time</label>
+        <div className="border-border border-t p-3">
+          <label className="text-muted-foreground mb-1 block text-xs">Time</label>
           <input
             type="time"
             value={timeValue}
             onChange={handleTimeChange}
-            className="px-2 py-1 bg-muted border border-border rounded text-sm"
+            className="bg-muted border-border rounded border px-2 py-1 text-sm"
           />
         </div>
       </PopoverContent>

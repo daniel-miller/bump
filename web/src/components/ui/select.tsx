@@ -14,11 +14,11 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between rounded border border-border bg-muted px-3 py-1 text-sm",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+      "border-border bg-muted flex h-9 w-full items-center justify-between rounded border px-3 py-1 text-sm",
+      "focus-visible:ring-primary focus-visible:ring-2 focus-visible:outline-none",
       "disabled:cursor-not-allowed disabled:opacity-50",
       "[&>span]:line-clamp-1",
-      className
+      className,
     )}
     {...props}
   >
@@ -39,16 +39,17 @@ export const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded border border-border bg-card text-card-foreground shadow-md",
+        "border-border bg-card text-card-foreground relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded border shadow-md",
         position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
-        className
+        className,
       )}
       {...props}
     >
       <SelectPrimitive.Viewport
         className={cn(
           "p-1",
-          position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          position === "popper" &&
+            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
         )}
       >
         {children}
@@ -65,10 +66,10 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+      "relative flex w-full cursor-default items-center rounded-sm py-1.5 pr-2 pl-8 text-sm outline-none select-none",
       "focus:bg-muted focus:text-foreground",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
+      className,
     )}
     {...props}
   >

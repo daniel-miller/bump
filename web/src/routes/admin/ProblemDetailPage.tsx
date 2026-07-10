@@ -46,9 +46,11 @@ interface ProblemRecord {
 
 function Row({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="grid grid-cols-[10rem_1fr] gap-3 py-1.5 border-b last:border-b-0">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-0.5">{label}</div>
-      <div className={mono ? "font-mono text-sm break-all" : "text-sm"}>{value ?? <span className="text-muted-foreground italic">none</span>}</div>
+    <div className="grid grid-cols-[10rem_1fr] gap-3 border-b py-1.5 last:border-b-0">
+      <div className="text-muted-foreground pt-0.5 text-xs tracking-wide uppercase">{label}</div>
+      <div className={mono ? "font-mono text-sm break-all" : "text-sm"}>
+        {value ?? <span className="text-muted-foreground italic">none</span>}
+      </div>
     </div>
   );
 }
@@ -58,9 +60,9 @@ type ContextPart = { text: string | null | undefined; mono?: boolean; muted?: bo
 function ContextRow({ label, parts }: { label: string; parts: ContextPart[] }) {
   const visible = parts.filter((p) => p.text != null && p.text !== "");
   return (
-    <div className="grid grid-cols-[10rem_1fr] gap-3 py-1.5 border-b last:border-b-0">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground pt-0.5">{label}</div>
-      <div className="text-sm flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+    <div className="grid grid-cols-[10rem_1fr] gap-3 border-b py-1.5 last:border-b-0">
+      <div className="text-muted-foreground pt-0.5 text-xs tracking-wide uppercase">{label}</div>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
         {visible.length === 0 && <span className="text-muted-foreground italic">none</span>}
         {visible.map((p, i) => (
           <span key={i} className="contents">
@@ -83,8 +85,10 @@ function ContextRow({ label, parts }: { label: string; parts: ContextPart[] }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
-      <CardContent className="p-4 space-y-1">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">{title}</h2>
+      <CardContent className="space-y-1 p-4">
+        <h2 className="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">
+          {title}
+        </h2>
         {children}
       </CardContent>
     </Card>
@@ -93,14 +97,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ExceptionBlock({ ex, depth = 0 }: { ex: ExceptionInfo; depth?: number }) {
   return (
-    <div className={depth > 0 ? "mt-3 pl-3 border-l-2 border-muted" : ""}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className={depth > 0 ? "border-muted mt-3 border-l-2 pl-3" : ""}>
+      <div className="text-muted-foreground text-xs tracking-wide uppercase">
         {depth === 0 ? "Outer" : `Inner #${depth}`}
       </div>
       <div className="font-mono text-sm font-medium">{ex.type ?? "(unknown type)"}</div>
-      {ex.value && <div className="text-sm mt-1">{ex.value}</div>}
+      {ex.value && <div className="mt-1 text-sm">{ex.value}</div>}
       {ex.stackTrace && (
-        <pre className="mt-2 text-xs font-mono whitespace-pre-wrap bg-muted/40 p-2 rounded overflow-x-auto">
+        <pre className="bg-muted/40 mt-2 overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre-wrap">
           {ex.stackTrace}
         </pre>
       )}
@@ -151,17 +155,17 @@ function parseExtensions(raw: string | null): Array<[string, string]> | null {
 
 function ExtensionsTable({ rows }: { rows: Array<[string, string]> }) {
   return (
-    <table className="w-full text-sm border-collapse">
+    <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-          <th className="text-left font-medium py-1.5 pr-3 w-40 border-b">Key</th>
-          <th className="text-left font-medium py-1.5 border-b">Value</th>
+        <tr className="text-muted-foreground text-xs tracking-wide uppercase">
+          <th className="w-40 border-b py-1.5 pr-3 text-left font-medium">Key</th>
+          <th className="border-b py-1.5 text-left font-medium">Value</th>
         </tr>
       </thead>
       <tbody>
         {rows.map(([k, v]) => (
           <tr key={k} className="border-b last:border-b-0">
-            <td className="py-1.5 pr-3 font-mono align-top text-muted-foreground">{k}</td>
+            <td className="text-muted-foreground py-1.5 pr-3 align-top font-mono">{k}</td>
             <td className="py-1.5 font-mono break-all">{v}</td>
           </tr>
         ))}
@@ -205,18 +209,18 @@ export function ProblemDetailPage() {
   const extensionRows = parseExtensions(data.extensions);
 
   return (
-    <div className="p-6 space-y-4 max-w-4xl">
+    <div className="max-w-4xl space-y-4 p-6">
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold flex items-baseline gap-2">
+        <h1 className="flex items-baseline gap-2 text-2xl font-semibold">
           Problem #{data.problemKey}
           {data.resolvedAt && (
-            <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200">
+            <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950 dark:text-green-200">
               Resolved
             </span>
           )}
         </h1>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono text-muted-foreground">{data.fingerprint}</span>
+          <span className="text-muted-foreground font-mono text-xs">{data.fingerprint}</span>
           {data.resolvedAt ? (
             <Button
               type="button"
@@ -234,7 +238,7 @@ export function ProblemDetailPage() {
                 }
               }}
             >
-              <RotateCcw className="h-4 w-4 mr-1" />
+              <RotateCcw className="mr-1 h-4 w-4" />
               {resolveBusy ? "Unresolving…" : "Unresolve"}
             </Button>
           ) : (
@@ -254,7 +258,7 @@ export function ProblemDetailPage() {
                 }
               }}
             >
-              <Check className="h-4 w-4 mr-1" />
+              <Check className="mr-1 h-4 w-4" />
               {resolveBusy ? "Resolving…" : "Resolve"}
             </Button>
           )}
@@ -353,7 +357,11 @@ export function ProblemDetailPage() {
         />
         <Row
           label="Extensions"
-          value={extensionRows && extensionRows.length > 0 ? <ExtensionsTable rows={extensionRows} /> : null}
+          value={
+            extensionRows && extensionRows.length > 0 ? (
+              <ExtensionsTable rows={extensionRows} />
+            ) : null
+          }
         />
       </Section>
 
@@ -376,10 +384,7 @@ export function ProblemDetailPage() {
         />
         <ContextRow
           label="Account"
-          parts={[
-            { mono: true, text: data.userId },
-            { text: data.userEmail },
-          ]}
+          parts={[{ mono: true, text: data.userId }, { text: data.userEmail }]}
         />
       </Section>
 
@@ -387,17 +392,17 @@ export function ProblemDetailPage() {
         {data.exception ? (
           <ExceptionBlock ex={data.exception} />
         ) : (
-          <div className="text-sm text-muted-foreground italic">No exception attached.</div>
+          <div className="text-muted-foreground text-sm italic">No exception attached.</div>
         )}
       </Section>
 
-      <p className="text-xs text-muted-foreground pt-2">
+      <p className="text-muted-foreground pt-2 text-xs">
         Problem reports follow{" "}
         <a
           href="https://datatracker.ietf.org/doc/html/rfc7807"
           target="_blank"
           rel="noopener noreferrer"
-          className="underline hover:text-foreground"
+          className="hover:text-foreground underline"
         >
           RFC 7807
         </a>

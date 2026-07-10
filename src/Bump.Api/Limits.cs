@@ -7,7 +7,7 @@ namespace Bump.Api;
 ///
 /// The body-byte limits are enforced via [RequestSizeLimit] on each action.
 /// The field-character limits are enforced per-DTO in <c>Validate()</c>.
-/// Column widths in <c>db/*.sql</c> are sized at least as wide as these caps.
+/// Column widths in <c>db/migrations/*.sql</c> are sized at least as wide as these caps.
 /// </summary>
 public static class Limits
 {

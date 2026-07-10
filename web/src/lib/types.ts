@@ -50,7 +50,14 @@ export interface StatusResponse {
   updatedAt: string;
   board: BoardSummary | null;
   kpis: { operational: Kpi; uptime: Kpi; latency: Kpi; outages: Kpi; problems: Kpi };
-  trend: { date: string; label: string; outages: number; uptime: number; latencyMs: number; requests: number }[];
+  trend: {
+    date: string;
+    label: string;
+    outages: number;
+    uptime: number;
+    latencyMs: number;
+    requests: number;
+  }[];
   problemsTrend: { date: string; label: string; count: number }[];
   services: ServicePayload[];
   outages: OutagePayload[];

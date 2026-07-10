@@ -3,7 +3,7 @@ using Npgsql;
 namespace Bump.Api.Migrations;
 
 /// <summary>
-/// Applies db/*.sql files in lexicographic order, recording each by filename
+/// Applies db/migrations/*.sql files in lexicographic order, recording each by filename
 /// in <c>_migration_history</c>. Each file runs in its own transaction. Files
 /// must be idempotent (CREATE ... IF NOT EXISTS) so this is safe to re-run
 /// against an existing database.
@@ -23,7 +23,7 @@ public sealed class Migrator
         _logger = logger;
 
         // Look next to the binary first (production layout: COPY db ./db),
-        // then walk up to find the repo's db/ folder (developer layout).
+        // then walk up to find the repo's db/migrations/ folder (developer layout).
         _dbDirectory = ResolveDbDirectory(env);
     }
 
@@ -95,18 +95,18 @@ public sealed class Migrator
 
     private static string ResolveDbDirectory(IHostEnvironment env)
     {
-        // Probe ContentRoot/db, BaseDirectory/db, then walk parents looking
-        // for db/004-create-app.sql as a sentinel.
+        // Probe ContentRoot/db/migrations, BaseDirectory/db/migrations, then
+        // walk parents looking for db/migrations/004-create-app.sql as a sentinel.
         var candidates = new List<string>
         {
-            Path.Combine(env.ContentRootPath, "db"),
-            Path.Combine(AppContext.BaseDirectory, "db"),
+            Path.Combine(env.ContentRootPath, "db", "migrations"),
+            Path.Combine(AppContext.BaseDirectory, "db", "migrations"),
         };
 
         var dir = new DirectoryInfo(env.ContentRootPath);
         for (int i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
         {
-            candidates.Add(Path.Combine(dir.FullName, "db"));
+            candidates.Add(Path.Combine(dir.FullName, "db", "migrations"));
         }
 
         foreach (var path in candidates)

@@ -10,9 +10,23 @@ import { Card, CardContent } from "@/components/ui/card";
 function getTimezones(): string[] {
   const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
   if (typeof intl.supportedValuesOf === "function") {
-    try { return intl.supportedValuesOf("timeZone"); } catch { /* fall through */ }
+    try {
+      return intl.supportedValuesOf("timeZone");
+    } catch {
+      /* fall through */
+    }
   }
-  return ["UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "Europe/London", "Europe/Berlin", "Asia/Tokyo", "Australia/Sydney"];
+  return [
+    "UTC",
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Europe/Berlin",
+    "Asia/Tokyo",
+    "Australia/Sydney",
+  ];
 }
 
 const TIMEZONES = getTimezones();
@@ -38,8 +52,12 @@ export function AccountDetailsPage() {
   const tzValid = useMemo(() => TIMEZONE_SET.has(timezone), [timezone]);
 
   const save = useMutation({
-    mutationFn: () => api("/api/accounts/me", { method: "PATCH", body: JSON.stringify({ fullName, timezone }) }),
-    onSuccess: async () => { setMsg("Saved."); await refetch(); },
+    mutationFn: () =>
+      api("/api/accounts/me", { method: "PATCH", body: JSON.stringify({ fullName, timezone }) }),
+    onSuccess: async () => {
+      setMsg("Saved.");
+      await refetch();
+    },
     onError: (err) => {
       if (err instanceof ApiError) {
         const p = err.problem as { detail?: string; title?: string } | undefined;
@@ -64,10 +82,11 @@ export function AccountDetailsPage() {
   });
 
   const requestEmailChange = useMutation({
-    mutationFn: () => api("/api/accounts/me/email-changes", {
-      method: "POST",
-      body: JSON.stringify({ password: emailPassword, newEmail }),
-    }),
+    mutationFn: () =>
+      api("/api/accounts/me/email-changes", {
+        method: "POST",
+        body: JSON.stringify({ password: emailPassword, newEmail }),
+      }),
     onSuccess: () => {
       setEmailMsg(`Check ${newEmail} for a confirmation link.`);
       setNewEmail("");
@@ -93,7 +112,7 @@ export function AccountDetailsPage() {
   }
 
   return (
-    <div className="p-6 max-w-xl space-y-4">
+    <div className="max-w-xl space-y-4 p-6">
       <h1 className="text-2xl font-semibold">Account details</h1>
       <Card>
         <CardContent className="space-y-3 p-4">
@@ -103,7 +122,7 @@ export function AccountDetailsPage() {
           </div>
           <div className="space-y-1.5">
             <Label>Email</Label>
-            <div className="text-sm text-muted-foreground">{user?.email}</div>
+            <div className="text-muted-foreground text-sm">{user?.email}</div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="timezone">Timezone</Label>
@@ -116,18 +135,23 @@ export function AccountDetailsPage() {
               className={!tzValid ? "border-danger focus-visible:ring-danger" : undefined}
             />
             <datalist id="timezone-options">
-              {TIMEZONES.map((tz) => <option key={tz} value={tz} />)}
+              {TIMEZONES.map((tz) => (
+                <option key={tz} value={tz} />
+              ))}
             </datalist>
-            {!tzValid && (
-              <div className="text-xs text-danger">Not a recognized IANA timezone.</div>
-            )}
+            {!tzValid && <div className="text-danger text-xs">Not a recognized IANA timezone.</div>}
           </div>
-          {msg && <div className="text-sm text-muted-foreground">{msg}</div>}
+          {msg && <div className="text-muted-foreground text-sm">{msg}</div>}
           <div className="flex gap-2">
-            <Button onClick={onSave} disabled={!tzValid || save.isPending}>Save changes</Button>
+            <Button onClick={onSave} disabled={!tzValid || save.isPending}>
+              Save changes
+            </Button>
             <Button
               variant="outline"
-              onClick={() => { setMsg(null); sendTestEmail.mutate(); }}
+              onClick={() => {
+                setMsg(null);
+                sendTestEmail.mutate();
+              }}
               disabled={sendTestEmail.isPending}
             >
               Send test email
@@ -139,12 +163,18 @@ export function AccountDetailsPage() {
       <Card>
         <CardContent className="space-y-3 p-4">
           <div className="text-sm font-semibold">Change email</div>
-          <div className="text-xs text-muted-foreground">
-            We'll send a confirmation link to the new address. The change is not applied until you click it.
+          <div className="text-muted-foreground text-xs">
+            We'll send a confirmation link to the new address. The change is not applied until you
+            click it.
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="newEmail">New email</Label>
-            <Input id="newEmail" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+            <Input
+              id="newEmail"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="emailPassword">Current password</Label>
@@ -156,7 +186,7 @@ export function AccountDetailsPage() {
               autoComplete="current-password"
             />
           </div>
-          {emailMsg && <div className="text-sm text-muted-foreground">{emailMsg}</div>}
+          {emailMsg && <div className="text-muted-foreground text-sm">{emailMsg}</div>}
           <Button
             onClick={() => requestEmailChange.mutate()}
             disabled={!newEmail || !emailPassword || requestEmailChange.isPending}

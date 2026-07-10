@@ -23,7 +23,8 @@ export function Calendar({ className, classNames, ...props }: CalendarProps) {
         weekday: "text-muted-foreground w-8 text-xs font-normal text-center",
         week: "flex w-full mt-1",
         day: "h-8 w-8 text-center text-sm p-0",
-        day_button: "h-8 w-8 inline-flex items-center justify-center rounded hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground",
+        day_button:
+          "h-8 w-8 inline-flex items-center justify-center rounded hover:bg-muted aria-selected:bg-primary aria-selected:text-primary-foreground",
         selected: "[&_button]:bg-primary [&_button]:text-primary-foreground",
         today: "[&_button]:font-bold [&_button]:underline",
         outside: "text-muted-foreground/40",

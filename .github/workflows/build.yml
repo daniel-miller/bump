@@ -31,9 +31,24 @@ jobs:
       - name: Build .NET
         run: dotnet build bump.sln --configuration Release --no-restore
 
+      - name: Test .NET
+        run: dotnet test bump.sln --configuration Release --no-build
+
       - name: Install web deps
         working-directory: web
         run: npm ci
+
+      - name: Lint web
+        working-directory: web
+        run: npm run lint
+
+      - name: Check web formatting
+        working-directory: web
+        run: npm run format:check
+
+      - name: Test web
+        working-directory: web
+        run: npm run test
 
       - name: Build web
         working-directory: web

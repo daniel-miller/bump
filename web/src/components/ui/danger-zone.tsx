@@ -11,11 +11,11 @@ export function DangerZone({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("rounded border border-danger/40 bg-danger/5", className)}>
-      <header className="px-4 py-2 border-b border-danger/30 text-sm font-semibold text-danger">
+    <section className={cn("border-danger/40 bg-danger/5 rounded border", className)}>
+      <header className="border-danger/30 text-danger border-b px-4 py-2 text-sm font-semibold">
         {title}
       </header>
-      <div className="divide-y divide-danger/20">{children}</div>
+      <div className="divide-danger/20 divide-y">{children}</div>
     </section>
   );
 }
@@ -33,9 +33,7 @@ export function DangerZoneItem({
     <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div className="min-w-0">
         <div className="text-sm font-medium">{title}</div>
-        {description && (
-          <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
-        )}
+        {description && <div className="text-muted-foreground mt-0.5 text-xs">{description}</div>}
       </div>
       <div className="shrink-0">{action}</div>
     </div>

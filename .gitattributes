@@ -1,0 +1,34 @@
+# No line-ending conversion. Files stored and checked out verbatim.
+# Binary declarations remain so Git treats them correctly for diff/merge.
+
+# Raster images
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.avif   binary
+*.ico    binary
+*.bmp    binary
+*.tiff   binary
+
+# Video / audio
+*.mp4    binary
+*.webm   binary
+*.mov    binary
+*.mp3    binary
+*.wav    binary
+
+# Fonts
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.eot    binary
+
+# Archives
+*.zip    binary
+*.gz     binary
+
+# PDF
+*.pdf    binary

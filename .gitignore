@@ -16,7 +16,6 @@
 .idea/
 .local/
 .vs/
-.work/
 
 .vscode/*
 !.vscode/extensions.json
@@ -40,6 +39,9 @@
 [Aa]pp[Ss]ettings.[Ll]ocal.json
 [Aa]pp[Ss]ettings.[Ww]ork.json
 secrets.json
+
+# Private local seed data (admin credentials) used by tools/reset.ps1
+tools/reset.sql
 
 # Node.js
 

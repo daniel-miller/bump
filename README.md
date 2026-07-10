@@ -36,13 +36,13 @@ Built on .NET 10 (ASP.NET Core MVC), Dapper, Npgsql, Newtonsoft.Json, Serilog, a
 `Bump.Api` and `Bump.Worker` both read `ConnectionStrings:Bump`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
 
 ```bash
-export ConnectionStrings__Bump="Host=...;Port=5432;Database=bump;Username=...;Password=..."
+export ConnectionStrings__Bump="Host=localhost;Port=5432;Database=bump;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
 ```
 
-Schema migrations in `db/*.sql` are applied automatically at API startup by `Migrator`. No manual `psql` step is required for new databases — but you can apply the files manually if you prefer:
+Schema migrations in `db/migrations/*.sql` are applied automatically at API startup by `Migrator`. No manual `psql` step is required for new databases — but you can apply the files manually if you prefer:
 
 ```bash
-psql -U postgres -d bump -f db/001-create-server.sql
+psql -U postgres -d bump -f db/migrations/001-create-server.sql
 # ...etc
 ```
 
@@ -216,7 +216,7 @@ Idempotency applies to:
 ## Input limits
 
 - Request body: 4 KB for app endpoints, 64 KB for problem reports.
-- String fields are capped to match the column widths in `db/*.sql`. Out-of-range input returns `422 Unprocessable Entity`.
+- String fields are capped to match the column widths in `db/migrations/*.sql`. Out-of-range input returns `422 Unprocessable Entity`.
 - Slugs: lowercase letters, digits, single hyphens; start and end with a letter or digit; max 50 characters.
 
 ## SSRF protection (monitor probes)
@@ -278,12 +278,21 @@ bump/
 │   ├── Bump.Api/              # Web API + SPA host (packages, problems, auth, monitoring, status)
 │   ├── Bump.Sdk/              # Client library for exception reporting
 │   └── Bump.Worker/           # Probes, alert digests, announcement scheduler, idempotency sweep
+├── tests/
+│   └── Bump.Api.Tests/        # xUnit tests for Bump.Api
 ├── web/                       # React + Vite + Tailwind SPA
 ├── build/
 │   └── build.ps1              # Builds SPA + publishes dist/<project>.<version>.zip
-├── db/                        # SQL migrations (applied automatically on API boot)
+├── db/
+│   ├── migrations/            # SQL migrations (applied automatically on API boot)
+│   ├── export-schema.ps1      # Regenerates schema.sql + schema.dot + schema.svg from the live DB
+│   ├── schema.sql             # Starting schema (generated)
+│   ├── schema.dot             # GraphViz ER diagram (generated)
+│   ├── schema.svg             # Rendered ER diagram (generated)
+│   └── seed-admin.sql         # Admin account seed template
 ├── docs/
-│   └── schema.dot             # GraphViz schema diagram source
+│   └── exception-reporting.md # SDK exception-reporting guide
+├── tools/                     # Dev-loop scripts (start, stop, reset, restore-database)
 ├── dist/                      # Release artifacts (gitignored)
 └── README.md
 ```

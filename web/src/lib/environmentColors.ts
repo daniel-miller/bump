@@ -17,7 +17,10 @@ const DEVELOPMENT_TAGS = new Set(["development", "dev", "test", "qa", "uat"]);
 const SANDBOX_TAGS = new Set(["sandbox", "staging", "demo"]);
 const PRODUCTION_TAGS = new Set(["production", "prod", "live"]);
 
-export function categorizeEnvironment(slug: string, aliases: readonly string[] = []): EnvironmentCategory {
+export function categorizeEnvironment(
+  slug: string,
+  aliases: readonly string[] = [],
+): EnvironmentCategory {
   const tags = [slug, ...aliases].map((t) => t.toLowerCase());
   for (const t of tags) {
     if (LOCAL_TAGS.has(t)) return "local";

@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
 
@@ -61,23 +67,25 @@ export function OutageDetailPage() {
     },
   });
 
-  if (!data) return <div className="p-8 text-muted-foreground">Loading…</div>;
+  if (!data) return <div className="text-muted-foreground p-8">Loading…</div>;
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
+    <div className="max-w-3xl space-y-4 p-6">
       <div>
         <h1 className="text-2xl font-semibold">{data.outage.outageTitle}</h1>
-        <div className="text-sm text-muted-foreground">
-          {STATUS_LABELS[data.outage.outageStatus] ?? data.outage.outageStatus} · started {new Date(data.outage.startedAt).toLocaleString()}
-          {data.outage.resolvedAt && ` · resolved ${new Date(data.outage.resolvedAt).toLocaleString()}`}
+        <div className="text-muted-foreground text-sm">
+          {STATUS_LABELS[data.outage.outageStatus] ?? data.outage.outageStatus} · started{" "}
+          {new Date(data.outage.startedAt).toLocaleString()}
+          {data.outage.resolvedAt &&
+            ` · resolved ${new Date(data.outage.resolvedAt).toLocaleString()}`}
         </div>
         {data.service && (
-          <div className="text-sm mt-1">
+          <div className="mt-1 text-sm">
             <span className="text-muted-foreground">Service: </span>
             <a
               href={data.service.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline break-all"
+              className="text-primary break-all hover:underline"
               title="Open the service in a new tab to check if it is still down"
             >
               {data.service.name}
@@ -89,7 +97,10 @@ export function OutageDetailPage() {
         {data.updates.map((u) => (
           <Card key={u.updateId}>
             <CardContent className="p-3">
-              <div className="text-xs text-muted-foreground">{new Date(u.createdAt).toLocaleString()} · {STATUS_LABELS[u.statusAtUpdate] ?? u.statusAtUpdate}</div>
+              <div className="text-muted-foreground text-xs">
+                {new Date(u.createdAt).toLocaleString()} ·{" "}
+                {STATUS_LABELS[u.statusAtUpdate] ?? u.statusAtUpdate}
+              </div>
               <div className="mt-1 whitespace-pre-wrap">{u.updateMessage}</div>
             </CardContent>
           </Card>
@@ -97,7 +108,7 @@ export function OutageDetailPage() {
       </section>
       <Card>
         <CardContent className="space-y-3 p-4">
-          <div className="space-y-1.5 w-56">
+          <div className="w-56 space-y-1.5">
             <Label htmlFor="outage-status">Status</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger id="outage-status">
@@ -113,7 +124,13 @@ export function OutageDetailPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="outage-update">Update message</Label>
-            <Textarea id="outage-update" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="What changed? Subscribers see this immediately." />
+            <Textarea
+              id="outage-update"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={3}
+              placeholder="What changed? Subscribers see this immediately."
+            />
           </div>
           <div className="flex justify-end">
             <Button onClick={() => append.mutate()} disabled={!message.trim() || append.isPending}>

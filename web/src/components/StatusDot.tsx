@@ -13,7 +13,15 @@ const STATUS_ARIA_LABELS: Record<ServiceStatus, string> = {
   down: "Down",
 };
 
-export function StatusDot({ status, size = 10, paused = false }: { status: ServiceStatus; size?: number; paused?: boolean }) {
+export function StatusDot({
+  status,
+  size = 10,
+  paused = false,
+}: {
+  status: ServiceStatus;
+  size?: number;
+  paused?: boolean;
+}) {
   if (paused) {
     return (
       <Pause
@@ -28,7 +36,13 @@ export function StatusDot({ status, size = 10, paused = false }: { status: Servi
   return (
     <span
       aria-label={STATUS_ARIA_LABELS[status] ?? status}
-      style={{ display: "inline-block", width: size, height: size, borderRadius: "50%", backgroundColor: colors[status] }}
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        backgroundColor: colors[status],
+      }}
     />
   );
 }

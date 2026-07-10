@@ -1,0 +1,1375 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+
+-- Dumped from database version 18.3
+-- Dumped by pg_dump version 18.3
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: bump; Type: DATABASE; Schema: -; Owner: -
+--
+
+CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
+
+
+\unrestrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+\connect bump
+\restrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+SET default_table_access_method = heap;
+
+--
+-- Name: _migration_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public._migration_history (
+    name text NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: account; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account (
+    account_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_email character varying(254) NOT NULL,
+    account_full_name character varying(200) NOT NULL,
+    account_timezone character varying(64) DEFAULT 'UTC'::character varying NOT NULL,
+    password_hash bytea NOT NULL,
+    password_salt bytea NOT NULL,
+    password_alg character varying(32) DEFAULT 'argon2id'::character varying NOT NULL,
+    totp_secret bytea,
+    totp_enabled boolean DEFAULT false NOT NULL,
+    account_roles text[] DEFAULT ARRAY['admin'::text] NOT NULL,
+    failed_login_count integer DEFAULT 0 NOT NULL,
+    locked_until timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: account_email_change; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_email_change (
+    change_key bigint NOT NULL,
+    account_id uuid NOT NULL,
+    new_email character varying(254) NOT NULL,
+    change_hash bytea NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: account_email_change_change_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.account_email_change_change_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: account_email_change_change_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.account_email_change_change_key_seq OWNED BY public.account_email_change.change_key;
+
+
+--
+-- Name: account_password_change; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_password_change (
+    change_key bigint NOT NULL,
+    change_hash bytea NOT NULL,
+    account_id uuid NOT NULL,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: account_password_change_change_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.account_password_change_change_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: account_password_change_change_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.account_password_change_change_key_seq OWNED BY public.account_password_change.change_key;
+
+
+--
+-- Name: account_recovery; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_recovery (
+    recovery_key bigint NOT NULL,
+    recovery_hash bytea NOT NULL,
+    account_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    used_at timestamp with time zone
+);
+
+
+--
+-- Name: account_recovery_recovery_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.account_recovery_recovery_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: account_recovery_recovery_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.account_recovery_recovery_key_seq OWNED BY public.account_recovery.recovery_key;
+
+
+--
+-- Name: account_session; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.account_session (
+    session_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    account_id uuid NOT NULL,
+    user_agent character varying(500),
+    user_ip inet,
+    bearer_token_hash bytea NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone
+);
+
+
+--
+-- Name: announcement; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.announcement (
+    announcement_key integer NOT NULL,
+    announcement_title character varying(200) NOT NULL,
+    announcement_type character varying(16) DEFAULT 'info'::character varying NOT NULL,
+    announcement_content text NOT NULL,
+    tenant_key integer,
+    notify_subscribers boolean DEFAULT true NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    publish_at timestamp with time zone NOT NULL,
+    auto_hide_at timestamp with time zone,
+    dispatched_at timestamp with time zone,
+    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'maintenance'::character varying])::text[])))
+);
+
+
+--
+-- Name: announcement_announcement_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.announcement_announcement_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: announcement_announcement_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.announcement_announcement_key_seq OWNED BY public.announcement.announcement_key;
+
+
+--
+-- Name: app; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.app (
+    app_key integer NOT NULL,
+    app_slug character varying(50) NOT NULL,
+    app_name character varying(200) NOT NULL,
+    app_description character varying(500),
+    version_major integer DEFAULT 0 NOT NULL,
+    version_minor integer DEFAULT 0 NOT NULL,
+    version_patch integer DEFAULT 1 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: app_app_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.app_app_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: app_app_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.app_app_key_seq OWNED BY public.app.app_key;
+
+
+--
+-- Name: environment; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.environment (
+    environment_key integer NOT NULL,
+    environment_slug character varying(60) NOT NULL,
+    environment_name character varying(100) NOT NULL,
+    environment_description character varying(500),
+    environment_aliases text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    is_special_purpose boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: environment_environment_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.environment_environment_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: environment_environment_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.environment_environment_key_seq OWNED BY public.environment.environment_key;
+
+
+--
+-- Name: idempotency; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.idempotency (
+    idempotency_key bigint NOT NULL,
+    idempotency_code character varying(255) NOT NULL,
+    bearer_token_hash bytea NOT NULL,
+    request_fingerprint bytea NOT NULL,
+    response_status integer NOT NULL,
+    response_content_type character varying(100),
+    response_body bytea NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- Name: idempotency_idempotency_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.idempotency_idempotency_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: idempotency_idempotency_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.idempotency_idempotency_key_seq OWNED BY public.idempotency.idempotency_key;
+
+
+--
+-- Name: outage; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.outage (
+    outage_key integer CONSTRAINT incident_incident_key_not_null NOT NULL,
+    outage_title character varying(200) CONSTRAINT incident_incident_title_not_null NOT NULL,
+    outage_status character varying(16) DEFAULT 'investigating'::character varying CONSTRAINT incident_incident_status_not_null NOT NULL,
+    outage_region character varying(100),
+    service_key integer,
+    root_cause text,
+    auto_created boolean DEFAULT false CONSTRAINT incident_auto_created_not_null NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT incident_created_at_not_null NOT NULL,
+    started_at timestamp with time zone DEFAULT now() CONSTRAINT incident_started_at_not_null NOT NULL,
+    resolved_at timestamp with time zone,
+    updated_at timestamp with time zone,
+    CONSTRAINT incident_incident_status_check CHECK (((outage_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+);
+
+
+--
+-- Name: incident_incident_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.incident_incident_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: incident_incident_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.incident_incident_key_seq OWNED BY public.outage.outage_key;
+
+
+--
+-- Name: outage_update; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.outage_update (
+    update_key bigint CONSTRAINT incident_update_update_key_not_null NOT NULL,
+    update_message character varying(2000) CONSTRAINT incident_update_update_message_not_null NOT NULL,
+    outage_key integer CONSTRAINT incident_update_incident_key_not_null NOT NULL,
+    update_status character varying(16) CONSTRAINT incident_update_update_status_not_null NOT NULL,
+    published boolean DEFAULT true CONSTRAINT incident_update_published_not_null NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT incident_update_created_at_not_null NOT NULL,
+    CONSTRAINT incident_update_update_status_check CHECK (((update_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+);
+
+
+--
+-- Name: incident_update_update_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.incident_update_update_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: incident_update_update_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.incident_update_update_key_seq OWNED BY public.outage_update.update_key;
+
+
+--
+-- Name: probe_event; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.probe_event (
+    probe_event_key bigint NOT NULL,
+    service_key integer NOT NULL,
+    checked_at timestamp with time zone DEFAULT now() NOT NULL,
+    is_operational boolean NOT NULL,
+    latency_ms integer NOT NULL,
+    probe_status character varying(16) NOT NULL
+);
+
+
+--
+-- Name: probe_event_probe_event_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.probe_event_probe_event_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: probe_event_probe_event_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.probe_event_probe_event_key_seq OWNED BY public.probe_event.probe_event_key;
+
+
+--
+-- Name: problem; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.problem (
+    problem_key bigint NOT NULL,
+    problem_fingerprint character varying(16) NOT NULL,
+    problem_exception jsonb,
+    reported_at timestamp with time zone DEFAULT now() NOT NULL,
+    dispatched_at timestamp with time zone,
+    resolved_at timestamp with time zone,
+    problem_type character varying(500) NOT NULL,
+    problem_title character varying(500) NOT NULL,
+    problem_status integer,
+    problem_detail text,
+    problem_instance character varying(2048),
+    problem_extensions jsonb,
+    app_key integer NOT NULL,
+    environment_key integer NOT NULL,
+    account_id uuid,
+    account_email character varying(254)
+);
+
+
+--
+-- Name: problem_problem_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.problem_problem_key_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: problem_problem_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.problem_problem_key_seq OWNED BY public.problem.problem_key;
+
+
+--
+-- Name: server; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.server (
+    server_key integer NOT NULL,
+    server_slug character varying(60) NOT NULL,
+    server_name character varying(100) NOT NULL,
+    server_description character varying(500),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: server_server_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.server_server_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: server_server_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.server_server_key_seq OWNED BY public.server.server_key;
+
+
+--
+-- Name: service; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service (
+    service_key integer NOT NULL,
+    service_slug character varying(60) NOT NULL,
+    service_name character varying(100) NOT NULL,
+    service_url character varying(2048) NOT NULL,
+    service_paused boolean DEFAULT false NOT NULL,
+    tenant_key integer NOT NULL,
+    environment_key integer NOT NULL,
+    app_key integer NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone,
+    is_private boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: service_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service_daily (
+    service_key integer NOT NULL,
+    day date NOT NULL,
+    probes integer DEFAULT 0 NOT NULL,
+    operational_count integer DEFAULT 0 NOT NULL,
+    latency_sum_ms bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: service_service_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.service_service_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: service_service_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.service_service_key_seq OWNED BY public.service.service_key;
+
+
+--
+-- Name: service_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.service_state (
+    service_key integer NOT NULL,
+    history_json jsonb DEFAULT '[]'::jsonb NOT NULL,
+    latency_ms integer DEFAULT 0 NOT NULL,
+    uptime_pct numeric(5,2) DEFAULT 100.00 NOT NULL,
+    last_status character varying(16) DEFAULT 'operational'::character varying NOT NULL,
+    last_check_at timestamp with time zone,
+    last_outage_at timestamp with time zone
+);
+
+
+--
+-- Name: subscriber; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subscriber (
+    subscriber_key integer NOT NULL,
+    subscriber_email character varying(254) NOT NULL,
+    tenant_key integer NOT NULL,
+    confirm_token bytea NOT NULL,
+    unsubscribe_token bytea NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    confirmed_at timestamp with time zone
+);
+
+
+--
+-- Name: subscriber_subscriber_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.subscriber_subscriber_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: subscriber_subscriber_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.subscriber_subscriber_key_seq OWNED BY public.subscriber.subscriber_key;
+
+
+--
+-- Name: tenant; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant (
+    tenant_key integer NOT NULL,
+    tenant_slug character varying(60) NOT NULL,
+    tenant_name character varying(100) NOT NULL,
+    tenant_description character varying(500),
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: tenant_tenant_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tenant_tenant_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tenant_tenant_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tenant_tenant_key_seq OWNED BY public.tenant.tenant_key;
+
+
+--
+-- Name: account_email_change change_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_email_change ALTER COLUMN change_key SET DEFAULT nextval('public.account_email_change_change_key_seq'::regclass);
+
+
+--
+-- Name: account_password_change change_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_password_change ALTER COLUMN change_key SET DEFAULT nextval('public.account_password_change_change_key_seq'::regclass);
+
+
+--
+-- Name: account_recovery recovery_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_recovery ALTER COLUMN recovery_key SET DEFAULT nextval('public.account_recovery_recovery_key_seq'::regclass);
+
+
+--
+-- Name: announcement announcement_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcement ALTER COLUMN announcement_key SET DEFAULT nextval('public.announcement_announcement_key_seq'::regclass);
+
+
+--
+-- Name: app app_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app ALTER COLUMN app_key SET DEFAULT nextval('public.app_app_key_seq'::regclass);
+
+
+--
+-- Name: environment environment_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.environment ALTER COLUMN environment_key SET DEFAULT nextval('public.environment_environment_key_seq'::regclass);
+
+
+--
+-- Name: idempotency idempotency_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.idempotency ALTER COLUMN idempotency_key SET DEFAULT nextval('public.idempotency_idempotency_key_seq'::regclass);
+
+
+--
+-- Name: outage outage_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage ALTER COLUMN outage_key SET DEFAULT nextval('public.incident_incident_key_seq'::regclass);
+
+
+--
+-- Name: outage_update update_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage_update ALTER COLUMN update_key SET DEFAULT nextval('public.incident_update_update_key_seq'::regclass);
+
+
+--
+-- Name: probe_event probe_event_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.probe_event ALTER COLUMN probe_event_key SET DEFAULT nextval('public.probe_event_probe_event_key_seq'::regclass);
+
+
+--
+-- Name: problem problem_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.problem ALTER COLUMN problem_key SET DEFAULT nextval('public.problem_problem_key_seq'::regclass);
+
+
+--
+-- Name: server server_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.server ALTER COLUMN server_key SET DEFAULT nextval('public.server_server_key_seq'::regclass);
+
+
+--
+-- Name: service service_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service ALTER COLUMN service_key SET DEFAULT nextval('public.service_service_key_seq'::regclass);
+
+
+--
+-- Name: subscriber subscriber_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriber ALTER COLUMN subscriber_key SET DEFAULT nextval('public.subscriber_subscriber_key_seq'::regclass);
+
+
+--
+-- Name: tenant tenant_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant ALTER COLUMN tenant_key SET DEFAULT nextval('public.tenant_tenant_key_seq'::regclass);
+
+
+--
+-- Name: _migration_history _migration_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public._migration_history
+    ADD CONSTRAINT _migration_history_pkey PRIMARY KEY (name);
+
+
+--
+-- Name: account_email_change account_email_change_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_email_change
+    ADD CONSTRAINT account_email_change_pkey PRIMARY KEY (change_key);
+
+
+--
+-- Name: account_password_change account_password_change_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_password_change
+    ADD CONSTRAINT account_password_change_pkey PRIMARY KEY (change_key);
+
+
+--
+-- Name: account account_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account
+    ADD CONSTRAINT account_pkey PRIMARY KEY (account_id);
+
+
+--
+-- Name: account_recovery account_recovery_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_recovery
+    ADD CONSTRAINT account_recovery_pkey PRIMARY KEY (recovery_key);
+
+
+--
+-- Name: account_session account_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_session
+    ADD CONSTRAINT account_session_pkey PRIMARY KEY (session_id);
+
+
+--
+-- Name: announcement announcement_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcement
+    ADD CONSTRAINT announcement_pkey PRIMARY KEY (announcement_key);
+
+
+--
+-- Name: app app_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app
+    ADD CONSTRAINT app_pkey PRIMARY KEY (app_key);
+
+
+--
+-- Name: environment environment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.environment
+    ADD CONSTRAINT environment_pkey PRIMARY KEY (environment_key);
+
+
+--
+-- Name: idempotency idempotency_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.idempotency
+    ADD CONSTRAINT idempotency_pkey PRIMARY KEY (idempotency_key);
+
+
+--
+-- Name: outage incident_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage
+    ADD CONSTRAINT incident_pkey PRIMARY KEY (outage_key);
+
+
+--
+-- Name: outage_update incident_update_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage_update
+    ADD CONSTRAINT incident_update_pkey PRIMARY KEY (update_key);
+
+
+--
+-- Name: probe_event probe_event_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.probe_event
+    ADD CONSTRAINT probe_event_pkey PRIMARY KEY (probe_event_key);
+
+
+--
+-- Name: problem problem_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.problem
+    ADD CONSTRAINT problem_pkey PRIMARY KEY (problem_key);
+
+
+--
+-- Name: server server_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.server
+    ADD CONSTRAINT server_pkey PRIMARY KEY (server_key);
+
+
+--
+-- Name: service_daily service_daily_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_daily
+    ADD CONSTRAINT service_daily_pkey PRIMARY KEY (service_key, day);
+
+
+--
+-- Name: service service_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service
+    ADD CONSTRAINT service_pkey PRIMARY KEY (service_key);
+
+
+--
+-- Name: service_state service_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_state
+    ADD CONSTRAINT service_state_pkey PRIMARY KEY (service_key);
+
+
+--
+-- Name: subscriber subscriber_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriber
+    ADD CONSTRAINT subscriber_pkey PRIMARY KEY (subscriber_key);
+
+
+--
+-- Name: tenant tenant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant
+    ADD CONSTRAINT tenant_pkey PRIMARY KEY (tenant_key);
+
+
+--
+-- Name: ix_account_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_account_email ON public.account USING btree (lower((account_email)::text));
+
+
+--
+-- Name: ix_account_email_change_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_account_email_change_account ON public.account_email_change USING btree (account_id);
+
+
+--
+-- Name: ix_account_email_change_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_account_email_change_hash ON public.account_email_change USING btree (change_hash);
+
+
+--
+-- Name: ix_account_password_change_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_account_password_change_hash ON public.account_password_change USING btree (change_hash);
+
+
+--
+-- Name: ix_account_recovery_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_account_recovery_account ON public.account_recovery USING btree (account_id);
+
+
+--
+-- Name: ix_account_session_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_account_session_account ON public.account_session USING btree (account_id);
+
+
+--
+-- Name: ix_account_session_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_account_session_active ON public.account_session USING btree (expires_at) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: ix_account_session_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_account_session_token ON public.account_session USING btree (bearer_token_hash);
+
+
+--
+-- Name: ix_announcement_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_announcement_pending ON public.announcement USING btree (publish_at) WHERE (dispatched_at IS NULL);
+
+
+--
+-- Name: ix_announcement_publish_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_announcement_publish_at ON public.announcement USING btree (publish_at);
+
+
+--
+-- Name: ix_announcement_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_announcement_tenant ON public.announcement USING btree (tenant_key);
+
+
+--
+-- Name: ix_app_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_app_slug ON public.app USING btree (app_slug);
+
+
+--
+-- Name: ix_environment_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_environment_slug ON public.environment USING btree (environment_slug);
+
+
+--
+-- Name: ix_idempotency_expires; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_idempotency_expires ON public.idempotency USING btree (expires_at);
+
+
+--
+-- Name: ix_idempotency_lookup; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_idempotency_lookup ON public.idempotency USING btree (bearer_token_hash, idempotency_code);
+
+
+--
+-- Name: ix_outage_open_by_svc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_outage_open_by_svc ON public.outage USING btree (service_key) WHERE ((outage_status)::text <> 'resolved'::text);
+
+
+--
+-- Name: ix_outage_service; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_outage_service ON public.outage USING btree (service_key);
+
+
+--
+-- Name: ix_outage_started; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_outage_started ON public.outage USING btree (started_at DESC);
+
+
+--
+-- Name: ix_outage_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_outage_status ON public.outage USING btree (outage_status);
+
+
+--
+-- Name: ix_outage_update_outage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_outage_update_outage ON public.outage_update USING btree (outage_key, created_at);
+
+
+--
+-- Name: ix_probe_event_service_checked; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_probe_event_service_checked ON public.probe_event USING btree (service_key, checked_at DESC);
+
+
+--
+-- Name: ix_problem_app; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_app ON public.problem USING btree (app_key);
+
+
+--
+-- Name: ix_problem_dispatched; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_dispatched ON public.problem USING btree (problem_fingerprint) WHERE (dispatched_at IS NULL);
+
+
+--
+-- Name: ix_problem_environment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_environment ON public.problem USING btree (environment_key);
+
+
+--
+-- Name: ix_problem_fingerprint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_fingerprint ON public.problem USING btree (problem_fingerprint);
+
+
+--
+-- Name: ix_problem_reported_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_reported_at ON public.problem USING btree (reported_at DESC);
+
+
+--
+-- Name: ix_problem_unresolved; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_problem_unresolved ON public.problem USING btree (reported_at DESC) WHERE (resolved_at IS NULL);
+
+
+--
+-- Name: ix_server_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_server_slug ON public.server USING btree (server_slug);
+
+
+--
+-- Name: ix_service_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_service_active ON public.service USING btree (service_paused) WHERE (service_paused = false);
+
+
+--
+-- Name: ix_service_app; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_service_app ON public.service USING btree (app_key);
+
+
+--
+-- Name: ix_service_daily_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_service_daily_day ON public.service_daily USING btree (day);
+
+
+--
+-- Name: ix_service_env; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_service_env ON public.service USING btree (environment_key);
+
+
+--
+-- Name: ix_service_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_service_slug ON public.service USING btree (service_slug);
+
+
+--
+-- Name: ix_service_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_service_tenant ON public.service USING btree (tenant_key);
+
+
+--
+-- Name: ix_subscriber_confirm_tok; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_subscriber_confirm_tok ON public.subscriber USING btree (confirm_token);
+
+
+--
+-- Name: ix_subscriber_confirmed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_subscriber_confirmed ON public.subscriber USING btree (tenant_key) WHERE (confirmed_at IS NOT NULL);
+
+
+--
+-- Name: ix_subscriber_tenant_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_subscriber_tenant_email ON public.subscriber USING btree (tenant_key, lower((subscriber_email)::text));
+
+
+--
+-- Name: ix_subscriber_unsub_tok; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_subscriber_unsub_tok ON public.subscriber USING btree (unsubscribe_token);
+
+
+--
+-- Name: ix_tenant_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_tenant_slug ON public.tenant USING btree (tenant_slug);
+
+
+--
+-- Name: account_email_change account_email_change_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_email_change
+    ADD CONSTRAINT account_email_change_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.account(account_id) ON DELETE CASCADE;
+
+
+--
+-- Name: account_password_change account_password_change_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_password_change
+    ADD CONSTRAINT account_password_change_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.account(account_id) ON DELETE CASCADE;
+
+
+--
+-- Name: account_recovery account_recovery_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_recovery
+    ADD CONSTRAINT account_recovery_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.account(account_id) ON DELETE CASCADE;
+
+
+--
+-- Name: account_session account_session_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.account_session
+    ADD CONSTRAINT account_session_account_id_fkey FOREIGN KEY (account_id) REFERENCES public.account(account_id) ON DELETE CASCADE;
+
+
+--
+-- Name: announcement announcement_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcement
+    ADD CONSTRAINT announcement_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
+
+
+--
+-- Name: announcement announcement_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcement
+    ADD CONSTRAINT announcement_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
+
+
+--
+-- Name: outage incident_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage
+    ADD CONSTRAINT incident_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
+
+
+--
+-- Name: outage incident_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage
+    ADD CONSTRAINT incident_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE SET NULL;
+
+
+--
+-- Name: outage_update incident_update_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage_update
+    ADD CONSTRAINT incident_update_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
+
+
+--
+-- Name: outage_update incident_update_incident_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage_update
+    ADD CONSTRAINT incident_update_incident_key_fkey FOREIGN KEY (outage_key) REFERENCES public.outage(outage_key) ON DELETE CASCADE;
+
+
+--
+-- Name: probe_event probe_event_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.probe_event
+    ADD CONSTRAINT probe_event_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE CASCADE;
+
+
+--
+-- Name: problem problem_app_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.problem
+    ADD CONSTRAINT problem_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE CASCADE;
+
+
+--
+-- Name: problem problem_environment_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.problem
+    ADD CONSTRAINT problem_environment_key_fkey FOREIGN KEY (environment_key) REFERENCES public.environment(environment_key) ON DELETE CASCADE;
+
+
+--
+-- Name: service service_app_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service
+    ADD CONSTRAINT service_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE CASCADE;
+
+
+--
+-- Name: service_daily service_daily_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_daily
+    ADD CONSTRAINT service_daily_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE CASCADE;
+
+
+--
+-- Name: service service_environment_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service
+    ADD CONSTRAINT service_environment_key_fkey FOREIGN KEY (environment_key) REFERENCES public.environment(environment_key) ON DELETE CASCADE;
+
+
+--
+-- Name: service_state service_state_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service_state
+    ADD CONSTRAINT service_state_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE CASCADE;
+
+
+--
+-- Name: service service_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service
+    ADD CONSTRAINT service_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
+
+
+--
+-- Name: subscriber subscriber_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriber
+    ADD CONSTRAINT subscriber_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+

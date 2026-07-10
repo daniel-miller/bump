@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import { formatDistanceToNowStrict } from "date-fns";
 import { api } from "@/lib/api";
 import { StatusDot } from "@/components/StatusDot";
@@ -127,7 +135,8 @@ export function ServiceDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const save = useMutation({
-    mutationFn: () => api(`/api/admin/services/${slug}`, { method: "PATCH", body: JSON.stringify(edit) }),
+    mutationFn: () =>
+      api(`/api/admin/services/${slug}`, { method: "PATCH", body: JSON.stringify(edit) }),
     onSuccess: async () => {
       setEditing(false);
       setEditError(null);
@@ -144,11 +153,13 @@ export function ServiceDetailPage() {
     setEditing(true);
   }
 
-  if (!m) return <div className="p-8 text-muted-foreground">Loading…</div>;
+  if (!m) return <div className="text-muted-foreground p-8">Loading…</div>;
 
   const isUp = m.lastStatus === "operational";
   const statusLabel = m.paused ? "Paused" : (STATUS_LABELS[m.lastStatus] ?? m.lastStatus);
-  const statusColor = m.paused ? "text-muted-foreground" : (STATUS_COLORS[m.lastStatus] ?? "text-foreground");
+  const statusColor = m.paused
+    ? "text-muted-foreground"
+    : (STATUS_COLORS[m.lastStatus] ?? "text-foreground");
 
   let statusHelper: string;
   if (m.paused) {
@@ -170,13 +181,15 @@ export function ServiceDetailPage() {
   const last24 = ts24?.points?.[0];
   const last24Uptime = last24 ? Number(last24.uptime).toFixed(2) : null;
   const last24Probes = last24?.probes ?? 0;
-  const last24Failures = last24 ? Math.max(0, last24.probes - Math.round((last24.uptime / 100) * last24.probes)) : 0;
+  const last24Failures = last24
+    ? Math.max(0, last24.probes - Math.round((last24.uptime / 100) * last24.probes))
+    : 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <StatusDot status={m.lastStatus} size={14} />
             {m.name}
           </h1>
@@ -185,19 +198,24 @@ export function ServiceDetailPage() {
               href={m.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline break-all"
+              className="text-primary break-all hover:underline"
             >
               {m.url}
             </a>
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">{m.tenant} / {m.environment}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            {m.tenant} / {m.environment}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div className="text-sm text-muted-foreground">
+          <div className="text-muted-foreground text-sm">
             {m.latencyMs} ms · {Number(m.uptime).toFixed(2)}%
           </div>
           <div className="flex items-center gap-3">
-            <Label htmlFor="is-private" className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+            <Label
+              htmlFor="is-private"
+              className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+            >
               <Checkbox
                 id="is-private"
                 checked={m.isPrivate}
@@ -231,11 +249,19 @@ export function ServiceDetailPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="edit-name">Name</Label>
-                <Input id="edit-name" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                <Input
+                  id="edit-name"
+                  value={edit.name}
+                  onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-url">URL</Label>
-                <Input id="edit-url" value={edit.url} onChange={(e) => setEdit({ ...edit, url: e.target.value })} />
+                <Input
+                  id="edit-url"
+                  value={edit.url}
+                  onChange={(e) => setEdit({ ...edit, url: e.target.value })}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-tenant">Tenant</Label>
@@ -254,32 +280,36 @@ export function ServiceDetailPage() {
                 />
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-muted-foreground text-xs">
               Slug <code className="font-mono">{m.slug}</code> cannot be changed.
             </div>
-            {editError && <div className="text-sm text-danger">{editError}</div>}
+            {editError && <div className="text-danger text-sm">{editError}</div>}
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
-              <Button onClick={() => save.mutate()} disabled={save.isPending}>Save changes</Button>
+              <Button variant="outline" onClick={() => setEditing(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                Save changes
+              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">Current status</div>
-            <div className={`text-2xl font-semibold mt-1 ${statusColor}`}>{statusLabel}</div>
-            <div className="text-xs text-muted-foreground mt-1">{statusHelper}</div>
+            <div className="text-muted-foreground text-xs">Current status</div>
+            <div className={`mt-1 text-2xl font-semibold ${statusColor}`}>{statusLabel}</div>
+            <div className="text-muted-foreground mt-1 text-xs">{statusHelper}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">Last check</div>
-            <div className="text-2xl font-semibold mt-1">{lastCheckLabel}</div>
-            <div className="text-xs text-muted-foreground mt-1">
+            <div className="text-muted-foreground text-xs">Last check</div>
+            <div className="mt-1 text-2xl font-semibold">{lastCheckLabel}</div>
+            <div className="text-muted-foreground mt-1 text-xs">
               {m.paused ? "Paused" : "Auto-refreshing"}
             </div>
           </CardContent>
@@ -288,13 +318,15 @@ export function ServiceDetailPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-muted-foreground">Last 24 hours</div>
-              <div className="text-sm font-semibold">{last24Uptime !== null ? `${last24Uptime}%` : "—"}</div>
+              <div className="text-muted-foreground text-xs">Last 24 hours</div>
+              <div className="text-sm font-semibold">
+                {last24Uptime !== null ? `${last24Uptime}%` : "—"}
+              </div>
             </div>
             <div className="mt-2">
               <HistoryStrip history={m.history} height={20} />
             </div>
-            <div className="text-xs text-muted-foreground mt-2">
+            <div className="text-muted-foreground mt-2 text-xs">
               {last24Probes} {last24Probes === 1 ? "check" : "checks"}
               {last24Failures > 0 && ` · ${last24Failures} failed`}
             </div>
@@ -322,9 +354,20 @@ export function ServiceDetailPage() {
                 <LineChart data={ts.points}>
                   <XAxis dataKey="day" stroke="#888" />
                   <YAxis stroke="#888" />
-                  <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
+                    }}
+                  />
                   <ReferenceLine y={1000} stroke="#facc15" strokeDasharray="3 3" />
-                  <Line type="monotone" dataKey="latencyMs" stroke="var(--color-primary)" strokeWidth={2} dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="latencyMs"
+                    stroke="var(--color-primary)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>

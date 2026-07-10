@@ -12,23 +12,29 @@ export function UnsubscribePage() {
     (async () => {
       if (!token) return setState("error");
       try {
-        await api(`/api/subscribers/unsubscribe?token=${encodeURIComponent(token)}`, { method: "POST" });
+        await api(`/api/subscribers/unsubscribe?token=${encodeURIComponent(token)}`, {
+          method: "POST",
+        });
         if (!cancelled) setState("done");
       } catch {
         if (!cancelled) setState("error");
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   return (
-    <div className="max-w-md mx-auto p-8 text-center">
+    <div className="mx-auto max-w-md p-8 text-center">
       {state === "working" && <p className="text-muted-foreground">Unsubscribing…</p>}
       {state === "done" && (
         <p>You're unsubscribed. You won't get further updates from this status page.</p>
       )}
       {state === "error" && (
-        <p className="text-danger">Couldn't unsubscribe. The link may have expired. Contact support if this keeps happening.</p>
+        <p className="text-danger">
+          Couldn't unsubscribe. The link may have expired. Contact support if this keeps happening.
+        </p>
       )}
     </div>
   );

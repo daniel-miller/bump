@@ -19,17 +19,17 @@ export function OutagesListPage() {
     queryFn: () => api<OutageRow[]>("/api/admin/outages?status=all"),
   });
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold">Outages</h1>
       {isLoading && <div className="text-muted-foreground">Loading…</div>}
       <div className="space-y-2">
         {data.map((i) => (
           <Link to={`/admin/outages/${i.outageId}`} key={i.outageId} className="block">
             <Card className="hover:border-primary transition-colors">
-              <CardContent className="p-4 flex items-center justify-between">
+              <CardContent className="flex items-center justify-between p-4">
                 <div>
                   <div className="font-medium">{i.outageTitle}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-xs">
                     Started {new Date(i.startedAt).toLocaleString()}
                     {i.resolvedAt && ` · Resolved ${new Date(i.resolvedAt).toLocaleString()}`}
                   </div>
@@ -40,7 +40,9 @@ export function OutagesListPage() {
           </Link>
         ))}
         {!isLoading && data.length === 0 && (
-          <div className="text-sm text-muted-foreground">No outages reported. All systems are calm.</div>
+          <div className="text-muted-foreground text-sm">
+            No outages reported. All systems are calm.
+          </div>
         )}
       </div>
     </div>

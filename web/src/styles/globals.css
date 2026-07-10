@@ -8,11 +8,11 @@
   --color-border: #e5e7eb;
   --color-card: #ffffff;
   --color-card-foreground: #0f172a;
-  --color-primary: #3B73FF;
+  --color-primary: #3b73ff;
   --color-primary-foreground: #ffffff;
-  --color-success: #2ECC71;
-  --color-warning: #F5A623;
-  --color-danger: #E74C3C;
+  --color-success: #2ecc71;
+  --color-warning: #f5a623;
+  --color-danger: #e74c3c;
 }
 
 .dark {
@@ -23,30 +23,62 @@
   --color-border: #20242c;
   --color-card: #11141a;
   --color-card-foreground: #e5e7eb;
-  --color-primary: #3B73FF;
+  --color-primary: #3b73ff;
   --color-primary-foreground: #ffffff;
-  --color-success: #2ECC71;
+  --color-success: #2ecc71;
   --color-warning: #facc15;
-  --color-danger: #E74C3C;
+  --color-danger: #e74c3c;
 }
 
-html, body, #root { height: 100%; }
+html,
+body,
+#root {
+  height: 100%;
+}
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-feature-settings: 'tnum', 'cv11';
+  font-family:
+    "Geist Variable",
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-feature-settings: "tnum", "cv11";
 }
-code, pre, kbd, samp {
-  font-family: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+code,
+pre,
+kbd,
+samp {
+  font-family: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.bg-background { background-color: var(--color-background); }
-.text-foreground { color: var(--color-foreground); }
-.bg-card { background-color: var(--color-card); }
-.text-card-foreground { color: var(--color-card-foreground); }
-.bg-muted { background-color: var(--color-muted); }
-.text-muted-foreground { color: var(--color-muted-foreground); }
-.border-border { border-color: var(--color-border); }
-.bg-primary { background-color: var(--color-primary); }
-.text-primary-foreground { color: var(--color-primary-foreground); }
+.bg-background {
+  background-color: var(--color-background);
+}
+.text-foreground {
+  color: var(--color-foreground);
+}
+.bg-card {
+  background-color: var(--color-card);
+}
+.text-card-foreground {
+  color: var(--color-card-foreground);
+}
+.bg-muted {
+  background-color: var(--color-muted);
+}
+.text-muted-foreground {
+  color: var(--color-muted-foreground);
+}
+.border-border {
+  border-color: var(--color-border);
+}
+.bg-primary {
+  background-color: var(--color-primary);
+}
+.text-primary-foreground {
+  color: var(--color-primary-foreground);
+}

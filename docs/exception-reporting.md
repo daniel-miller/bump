@@ -15,13 +15,42 @@ Two integration paths are supported:
 
 ## Add the SDK
 
-Reference `Bump.Sdk` from your project. If you consume it as a NuGet package from your feed:
+`Bump.Sdk` is published as a NuGet package on GitHub Packages, under the `daniel-miller` account. Feed URL:
+
+```
+https://nuget.pkg.github.com/daniel-miller/index.json
+```
+
+Reference it from the consuming project:
 
 ```xml
-<PackageReference Include="Bump.Sdk" Version="0.0.9" />
+<PackageReference Include="Bump.Sdk" Version="0.1.0" />
 ```
 
 If your solution builds Bump alongside the consumer, add a project reference to `src/Bump.Sdk/Bump.Sdk.csproj` instead.
+
+### Feed authentication (one-time, per machine)
+
+GitHub Packages requires authentication even for restore. Create a classic personal access token with the `read:packages` scope, then register the feed in your user-level NuGet config (never commit credentials to a repo):
+
+```
+dotnet nuget add source https://nuget.pkg.github.com/daniel-miller/index.json --name github-daniel-miller --username daniel-miller --password <PAT>
+```
+
+On Windows the password is encrypted in the user-level config automatically. On Linux and macOS, append `--store-password-in-clear-text` (NuGet cannot encrypt credentials there).
+
+A consuming repo whose CI restores the package needs the same PAT available as a repo secret, wired into the restore step the same way.
+
+### Publishing a new version
+
+Versions are manual semver, driven by git tags in the bump repo. The `sdk-publish` workflow packs and pushes on any `sdk-v*` tag:
+
+```
+git tag sdk-v0.1.0
+git push origin sdk-v0.1.0
+```
+
+The version is taken from the tag (`sdk-v0.1.0` publishes `0.1.0`). This scheme is independent of the app deploy versioning in `build/version-prefix.txt`.
 
 ## Configuration keys
 

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+\restrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -26,9 +26,9 @@ SET row_security = off;
 CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
 
 
-\unrestrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+\unrestrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
 \connect bump
-\restrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+\restrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -222,7 +222,7 @@ CREATE TABLE public.announcement (
     publish_at timestamp with time zone NOT NULL,
     auto_hide_at timestamp with time zone,
     dispatched_at timestamp with time zone,
-    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'maintenance'::character varying])::text[])))
+    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('maintenance'::character varying)::text])))
 );
 
 
@@ -360,19 +360,19 @@ ALTER SEQUENCE public.idempotency_idempotency_key_seq OWNED BY public.idempotenc
 --
 
 CREATE TABLE public.outage (
-    outage_key integer CONSTRAINT incident_incident_key_not_null NOT NULL,
-    outage_title character varying(200) CONSTRAINT incident_incident_title_not_null NOT NULL,
-    outage_status character varying(16) DEFAULT 'investigating'::character varying CONSTRAINT incident_incident_status_not_null NOT NULL,
+    outage_key integer NOT NULL,
+    outage_title character varying(200) NOT NULL,
+    outage_status character varying(16) DEFAULT 'investigating'::character varying NOT NULL,
     outage_region character varying(100),
     service_key integer,
     root_cause text,
-    auto_created boolean DEFAULT false CONSTRAINT incident_auto_created_not_null NOT NULL,
+    auto_created boolean DEFAULT false NOT NULL,
     created_by uuid,
-    created_at timestamp with time zone DEFAULT now() CONSTRAINT incident_created_at_not_null NOT NULL,
-    started_at timestamp with time zone DEFAULT now() CONSTRAINT incident_started_at_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    started_at timestamp with time zone DEFAULT now() NOT NULL,
     resolved_at timestamp with time zone,
     updated_at timestamp with time zone,
-    CONSTRAINT incident_incident_status_check CHECK (((outage_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+    CONSTRAINT incident_incident_status_check CHECK (((outage_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
 );
 
 
@@ -401,14 +401,14 @@ ALTER SEQUENCE public.incident_incident_key_seq OWNED BY public.outage.outage_ke
 --
 
 CREATE TABLE public.outage_update (
-    update_key bigint CONSTRAINT incident_update_update_key_not_null NOT NULL,
-    update_message character varying(2000) CONSTRAINT incident_update_update_message_not_null NOT NULL,
-    outage_key integer CONSTRAINT incident_update_incident_key_not_null NOT NULL,
-    update_status character varying(16) CONSTRAINT incident_update_update_status_not_null NOT NULL,
-    published boolean DEFAULT true CONSTRAINT incident_update_published_not_null NOT NULL,
+    update_key bigint NOT NULL,
+    update_message character varying(2000) NOT NULL,
+    outage_key integer NOT NULL,
+    update_status character varying(16) NOT NULL,
+    published boolean DEFAULT true NOT NULL,
     created_by uuid,
-    created_at timestamp with time zone DEFAULT now() CONSTRAINT incident_update_created_at_not_null NOT NULL,
-    CONSTRAINT incident_update_update_status_check CHECK (((update_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT incident_update_update_status_check CHECK (((update_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
 );
 
 
@@ -1371,5 +1371,5 @@ ALTER TABLE ONLY public.subscriber
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SxQFY1LrwGxpliYSaJ1YgKEWFweMqcWLy5G08UOS7iDz6dxbDkhERH6RbFg9Aj1
+\unrestrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
 

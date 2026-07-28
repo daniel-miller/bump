@@ -26,17 +26,21 @@ public class ExceptionReporter : IDisposable
         _options = options;
         _http = httpClient ?? new HttpClient();
         _logger = logger ?? NullLogger<ExceptionReporter>.Instance;
-        // Uri.TryCreate guards against two failure modes without crashing startup:
-        //   (1) Endpoint left empty in local dev.
-        //   (2) Unresolved Octopus tokens reaching the runtime when the shared
-        //       Bump library variable set isn't scoped to the target environment.
-        // In both cases CaptureAsync no-ops on _http.BaseAddress == null.
-        if (!string.IsNullOrWhiteSpace(options.Endpoint)
-            && Uri.TryCreate(options.Endpoint.TrimEnd('/') + "/", UriKind.Absolute, out var baseAddress))
+        // Enabled is the intended switch: false means "do not report", and nothing
+        // else about the config matters. The Endpoint checks that follow are a backstop
+        // for a misconfigured consumer, not a way to turn reporting off - they guard
+        // against an empty endpoint in local dev, and against unresolved Octopus tokens
+        // reaching the runtime when the shared Bump library variable set isn't scoped to
+        // the target environment. In every one of those cases CaptureAsync no-ops on
+        // _http.BaseAddress == null, so a consumer that cares should validate at startup
+        // that Enabled implies a usable Endpoint rather than relying on this.
+        if (options.Enabled
+            && !string.IsNullOrWhiteSpace(options.Api.Hosting.BaseUrl)
+            && Uri.TryCreate(options.Api.Hosting.BaseUrl.TrimEnd('/') + "/", UriKind.Absolute, out var baseAddress))
         {
             _http.BaseAddress = baseAddress;
-            if (!string.IsNullOrWhiteSpace(options.ApiKey))
-                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.ApiKey);
+            if (!string.IsNullOrWhiteSpace(options.Api.Hosting.ClientSecret))
+                _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", options.Api.Hosting.ClientSecret);
         }
     }
 
@@ -47,9 +51,9 @@ public class ExceptionReporter : IDisposable
         string? instance = null)
     {
         var typeName = ex.GetType().FullName ?? ex.GetType().Name;
-        var type = string.IsNullOrEmpty(_options.ProblemTypePrefix)
+        var type = string.IsNullOrEmpty(_options.ProblemTypeBaseUrl)
             ? typeName
-            : _options.ProblemTypePrefix.TrimEnd('/') + "/" + typeName;
+            : _options.ProblemTypeBaseUrl.TrimEnd('/') + "/" + typeName;
 
         var payload = new
         {

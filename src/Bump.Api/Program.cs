@@ -387,11 +387,15 @@ namespace Bump.Api
             app.UseMiddleware<ProblemJsonExceptionHandler>();
             app.UseSerilogRequestLogging();
 
-            var pathBase = builder.Configuration["PathBase"];
-            if (!string.IsNullOrWhiteSpace(pathBase))
-            {
-                app.UsePathBase(pathBase);
-            }
+            // No UsePathBase. Bump owns a hostname; it is never mounted under a
+            // path prefix. Sub-path hosting would put it on the same origin as
+            // whatever else lives there, which is a browser security boundary
+            // and not one a path divides - an XSS next door could read the CSRF
+            // cookie, which is deliberately not HttpOnly so the SPA can read it.
+            // Two things would break outright anyway: the Vite build has no
+            // `base`, so the SPA fetches /assets/* from the root, and the auth
+            // cookies hardcode Path = "/". UsePathBase fixes neither, so the
+            // knob only ever offered a blank page and leaking cookies.
 
             app.UseSwagger();
             app.UseSwaggerUI(options =>

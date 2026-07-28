@@ -237,13 +237,17 @@ The probe HTTP client in `Bump.Worker` re-resolves DNS on every connection and r
 
 Bump follows [Semantic Versioning 2.0.0](https://semver.org/). The `version/bumps` endpoint applies the SemVer reset rules atomically: bumping `major` resets `minor` and `patch` to `0`; bumping `minor` resets `patch` to `0`.
 
-## Hosting behind a reverse proxy
+## Hosting
 
-If the API is deployed under a path prefix (e.g. `https://host/bump/...`) and the proxy forwards the prefix, set `PathBase`:
+Bump expects to own a hostname and serve from the root, e.g. `https://bump.example.com/api/...`. Running behind a reverse proxy is fine, as long as it forwards to the root.
 
-```bash
-export PathBase=/bump
-```
+Sub-path hosting - mounting Bump at `https://example.com/bump/...` - is not supported, and there is no setting for it. Two reasons, in order of importance.
+
+**It puts Bump on a shared origin.** Anything else served from the same hostname is same-origin with Bump, and path does not divide that boundary. An XSS in a neighboring app can read Bump's DOM and its CSRF cookie, which is deliberately not `HttpOnly` so the SPA can read it. A subdomain per app keeps each one in its own origin.
+
+**Two assumptions are baked into the build.** `web/vite.config.ts` sets no `base`, so the bundled SPA fetches `/assets/*` from the root, and the session and CSRF cookies hardcode `Path = "/"`. Prefix-aware routing alone would fix neither, so a partial fix would produce a blank status page and cookies visible to every other app on the hostname.
+
+If sub-path hosting ever becomes a requirement, it is deliberate work - a Vite `base`, cookie paths derived from the mount point, and prefix-aware routing - not a configuration value.
 
 ## Configuration reference
 

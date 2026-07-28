@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Bump.Api;
 using Bump.Api.Mail;
 using Bump.Api.Mail.MailTemplates;
 using Bump.Api.Services;
@@ -22,6 +23,7 @@ public sealed class ServiceProber : BackgroundService
     private readonly IHttpClientFactory _httpFactory;
     private readonly WorkerStatus _status;
     private readonly TimeSpan _interval;
+    private readonly TimeSpan _timeout;
     private readonly int _degradedLatencyMs;
     private readonly int _historyBars;
     private readonly string _publicBaseUrl;
@@ -31,6 +33,8 @@ public sealed class ServiceProber : BackgroundService
     public ServiceProber(
         ILogger<ServiceProber> logger,
         IConfiguration config,
+        ServicesSettings settings,
+        AlertsSettings alerts,
         ServiceRepository services,
         OutageRepository outages,
         BoardRepository boards,
@@ -47,13 +51,13 @@ public sealed class ServiceProber : BackgroundService
         _mail = mail;
         _httpFactory = httpFactory;
         _status = status;
-        _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Services:IntervalSeconds", 60));
-        _degradedLatencyMs = config.GetValue("Bump:Services:DegradedLatencyMs", 1000);
-        _historyBars = config.GetValue("Bump:Services:HistoryBars", 60);
-        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
-        _alertRecipient = config["Bump:Alerts:Contact"];
-        _maintenanceWindows = config.GetSection("Bump:Services:MaintenanceWindows")
-            .Get<List<MaintenanceWindow>>() ?? new List<MaintenanceWindow>();
+        _interval = settings.Interval;
+        _timeout = settings.Timeout;
+        _degradedLatencyMs = settings.DegradedLatencyMs;
+        _historyBars = settings.HistoryBars;
+        _publicBaseUrl = (config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
+        _alertRecipient = alerts.Contact;
+        _maintenanceWindows = settings.MaintenanceWindows;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -117,7 +121,9 @@ public sealed class ServiceProber : BackgroundService
             {
                 using var req = new HttpRequestMessage(HttpMethod.Get, service.ServiceUrl);
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                cts.CancelAfter(TimeSpan.FromSeconds(5));
+                // Same budget as the HttpClient timeout. This used to be a literal 5s that
+                // silently disagreed with Bump:Services:TimeoutSeconds once that was raised.
+                cts.CancelAfter(_timeout);
                 using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
                 statusCode = (int)resp.StatusCode;
             }
@@ -256,9 +262,3 @@ public sealed class ServiceProber : BackgroundService
     }
 }
 
-public sealed class MaintenanceWindow
-{
-    public string? Start { get; set; }
-    public string? End { get; set; }
-    public string? TimeZone { get; set; }
-}

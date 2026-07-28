@@ -1,3 +1,4 @@
+using Bump.Api;
 using Bump.Api.Mail;
 using Bump.Api.Mail.MailTemplates;
 using Bump.Api.Services;
@@ -26,6 +27,7 @@ public sealed class AnnouncementScheduler : BackgroundService
     public AnnouncementScheduler(
         ILogger<AnnouncementScheduler> logger,
         IConfiguration config,
+        AnnouncementsSettings announcements,
         NpgsqlDataSource dataSource,
         BoardRepository boards,
         SubscriberRepository subscribers,
@@ -38,8 +40,8 @@ public sealed class AnnouncementScheduler : BackgroundService
         _subscribers = subscribers;
         _mail = mail;
         _status = status;
-        _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Announcements:TickSeconds", 60));
-        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        _interval = announcements.TickInterval;
+        _publicBaseUrl = (config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

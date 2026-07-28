@@ -11,7 +11,7 @@ Two integration paths are supported:
 
 - The consuming project must be registered in Bump. Log in to the admin UI, register the app under **Apps**, and note its slug. The slug is required at runtime - reports for an unregistered slug are rejected with 422.
 - The environment slug you plan to report against must exist under **Environments**, or be listed among an existing environment's aliases (`live`, `production`, `prod`, `qa`, etc. all commonly alias to a single canonical row).
-- Access to the shared Octopus library variable set **Bump** (contains the API endpoint and the Problems bearer key). If your project isn't already using it: **Project variables** > **Library Variable Sets** > **Include** > pick **Bump**.
+- Access to the shared Octopus library variable set **Bump** (the API endpoint, the Problems bearer key, and the Apps bearer key used by the optional version-bump step). If your project isn't already using it: **Project variables** > **Library Variable Sets** > **Include** > pick **Bump**.
 
 ## Add the SDK
 
@@ -30,16 +30,18 @@ The SDK binds a `BumpOptions` record. Consuming projects put the following keys 
 | Key                       | Purpose                                                                                   | Source                                                  |
 | :------------------------ | :---------------------------------------------------------------------------------------- | :------------------------------------------------------ |
 | `Bump:Enabled`            | Whether problem reports are sent. Defaults to `true`. Set `false` to turn reporting off.  | Project-local; usually only set in local dev.           |
-| `Bump:Api:Hosting:BaseUrl`     | Base URL of the Bump API.                                                            | Library set `Bump:Hosting:PublicBaseUrl`                |
-| `Bump:Api:Hosting:ClientSecret` | Bearer key for `POST /api/problems`. Same value across every consumer.             | Library set `Bump:Security:Problems:ApiKey`             |
+| `Bump:Api:Hosting:BaseUrl` | Base URL of the Bump API.                                                                 | Library set `Bump:Api:Hosting:BaseUrl`                  |
+| `Bump:Api:Hosting:ClientSecret` | Bearer key for `POST /api/problems`. Same value across every consumer.              | Library set `Bump:Api:Hosting:ClientSecret`             |
 | `Bump:AppSlug`            | Slug of the registered Bump app this consumer corresponds to. Unique per consumer.        | Project-local variable in the consumer.                 |
 | `Bump:Environment`        | Environment slug reported with every problem. Usually the deploy environment name.        | Project-local, typically `#{Octopus.Environment.Name}`. |
 | `Bump:ProblemTypeBaseUrl` | Optional base URL for RFC 9457 `type`. Turns bare exception type names into URLs.         | **Project-local** — the URL space belongs to the consumer. |
 | `Bump:DefaultStatus`      | HTTP status code reported with every problem unless overridden per call. Defaults to 500. | Omit unless you need to override.                       |
 
-The section name is `Bump`, and it is not a free choice. Every app that reports to Bump - Bump itself included - deploys from the same Octopus server and draws on the same library variable set, so the config path and the variable path have to be the same string. Name the section anything else and you are maintaining a second set of Octopus variables that differ from the first only by prefix, for no gain. Do not rename it to `BumpSdk` to match the package id: `Bump.Sdk` is the assembly, `Bump` is the configuration section, and they are deliberately different.
+The section name is `Bump`, and it is not a free choice. Every app that reports to Bump deploys from the same Octopus server and draws on the same library variable set, so the config path and the variable path have to be the same string. Bump itself is not one of those consumers - it does not report its own exceptions through the SDK - but it reads `Bump:Api:Hosting:ClientSecret` from that same path to validate the reports it receives, so the rule binds it too. Name the section anything else and you are maintaining a second set of Octopus variables that differ from the first only by prefix, for no gain. Do not rename it to `BumpSdk` to match the package id: `Bump.Sdk` is the assembly, `Bump` is the configuration section, and they are deliberately different.
 
 The `Api:Hosting:*` values live in the shared library set so a rotation touches one place. The `AppSlug`, `Environment`, and `ProblemTypeBaseUrl` are project-local because they differ per consumer and per deploy.
+
+Note that the consumer key and the library variable are now the same string, not a mapping. `Bump:Api:Hosting:ClientSecret` is also the key Bump itself reads to *validate* the bearer token on `POST /api/problems` (`ProblemsAuthFilter`), so one variable holds one secret and both sides of the exchange name it identically. Bump's server-side config carries the same path.
 
 `ProblemTypeBaseUrl` is worth calling out: it names a URL space the *consuming app* owns and serves, so there is no server-side origin for it and nothing to share. A single library variable could not hold `https://openscorm.com/errors/` and another consumer's value at the same time. Set it per project, or leave it empty.
 
@@ -51,8 +53,8 @@ The `Api:Hosting:*` values live in the shared library set so a rotation touches 
     "Enabled":           true,
     "Api": {
       "Hosting": {
-        "BaseUrl":      "#{Bump:Hosting:PublicBaseUrl}",
-        "ClientSecret": "#{Bump:Security:Problems:ApiKey}"
+        "BaseUrl":      "#{Bump:Api:Hosting:BaseUrl}",
+        "ClientSecret": "#{Bump:Api:Hosting:ClientSecret}"
       }
     },
     "AppSlug":           "openscorm",
@@ -72,7 +74,7 @@ Set `Enabled` to `false`. Do not disable by blanking `Api:Hosting:BaseUrl`.
 
 The two are not interchangeable. Blanking the base URL does stop reports going out, because `ExceptionReporter` never sets a base address and `CaptureAsync` returns early - but it conflates two different facts, whether to report and where to report. Once they share a field there is no way to tell a consumer that was switched off on purpose from one whose deploy-time substitution failed. Both look identical: an app that boots green and reports nothing.
 
-That second case is not hypothetical. If the shared Bump library variable set is not scoped to the target environment, `#{Bump:Hosting:PublicBaseUrl}` resolves to empty or arrives as an unresolved literal, and the consumer silently stops reporting. Nobody finds out until an incident where the problems page is empty.
+That second case is not hypothetical. If the shared Bump library variable set is not scoped to the target environment, `#{Bump:Api:Hosting:BaseUrl}` resolves to empty or arrives as an unresolved literal, and the consumer silently stops reporting. Nobody finds out until an incident where the problems page is empty.
 
 So a consumer should treat "enabled but incompletely configured" as a startup error:
 
@@ -161,15 +163,17 @@ To have Bump's About page reflect the deployed version of each consumer, add a P
 
 ```powershell
 Invoke-RestMethod -Method Post `
-  -Uri "#{Bump:Hosting:PublicBaseUrl}/api/apps/#{Bump:AppSlug}/version/bumps" `
-  -Headers @{ Authorization = "Bearer #{Bump:Deploy:ApiKey}" } `
+  -Uri "#{Bump:Api:Hosting:BaseUrl}/api/apps/#{Bump:AppSlug}/version/bumps" `
+  -Headers @{ Authorization = "Bearer #{Bump:Api:Security:Apps:ClientSecret}" } `
   -ContentType "application/json" `
   -Body '{"level":"patch"}'
 ```
 
-The `Bump:Deploy:ApiKey` variable is a separate bearer key (different auth surface than the Problems key) provided by the same library set. Use `major`, `minor`, or `patch` depending on the release semantics.
+`Bump:Api:Security:Apps:ClientSecret` is a second bearer key from the same library set, guarding a different surface than the Problems key. Bump validates it against `Bump:Api:Security:Apps:ClientSecrets` - singular is the one value a caller presents, plural is the list Bump accepts. Use `major`, `minor`, or `patch` depending on the release semantics.
 
-If the consumer app auto-registers itself on startup via `POST /api/apps` instead, this step is unnecessary.
+Do not point the Apps list at the Problems key to save a variable. The Problems key is copied into every consumer's configuration, and `/api/apps/**` creates, deletes, and re-versions app registry rows. Sharing one value would hand every consumer the ability to delete every other app.
+
+If the consumer app auto-registers itself on startup via `POST /api/apps` instead, this step is unnecessary - though the app still needs the same key at runtime, since the route is behind the same filter.
 
 ## Verify integration
 
@@ -196,7 +200,13 @@ After deploying the consumer with the new configuration:
 1. In the Bump project, temporarily accept both old and new keys - though the Problems side only allows one key at a time, so this specific rotation causes a short window where reports fail.
 2. Alternatively, coordinate a maintenance window: rotate the key, redeploy the API, redeploy every consumer in quick succession.
 
-The Apps side (`Bump:Deploy:ApiKey`, referenced by `Bump:Security:Apps:ApiKeys`) supports multi-key configuration - Bump.Api accepts an array. That side rotates without downtime.
+The Apps side rotates without downtime, because `Bump:Api:Security:Apps:ClientSecrets` is an array and Bump.Api accepts every entry in it:
+
+1. Add the new secret alongside the old one: `["#{Bump:Api:Security:Apps:ClientSecret}", "#{Bump:Api:Security:Apps:ClientSecret:Next}"]`. Redeploy Bump.
+2. Point each consumer's deploy step at the new variable and let them redeploy on their own schedule. Both keys work meanwhile.
+3. Drop the old entry from the array and delete its variable.
+
+Keep at least one non-blank entry throughout. Bump.Api refuses to start on an empty array or a blank element, which is deliberate - an empty list would otherwise reject every deploy pipeline with a 401 that looks like a credential problem rather than a configuration one.
 
 ## Related
 

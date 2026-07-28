@@ -10,7 +10,7 @@ namespace Bump.Api;
 /// <summary>
 /// MVC authorization filter that guards <c>/api/problems</c> with a single preshared key
 /// supplied in the <c>Authorization</c> header as <c>Bearer &lt;key&gt;</c>.
-/// The key is read from configuration at <c>Bump:Security:Problems:ApiKey</c>.
+/// The key is read from configuration at <c>Bump:Api:Hosting:ClientSecret</c>.
 /// Uses a fixed-time comparison so a timing side-channel cannot leak the key.
 /// </summary>
 public sealed class ProblemsAuthFilter : IAsyncAuthorizationFilter
@@ -34,12 +34,12 @@ public sealed class ProblemsAuthFilter : IAsyncAuthorizationFilter
         _jwt = jwt;
         _sessions = sessions;
         _cookies = cookies;
-        var key = config["Bump:Security:Problems:ApiKey"] ?? "";
+        var key = config["Bump:Api:Hosting:ClientSecret"] ?? "";
         _keyBytes = Encoding.UTF8.GetBytes(key);
 
         if (_keyBytes.Length == 0)
         {
-            _logger.LogWarning("Bump:Security:Problems:ApiKey is not configured. /api/problems will require a session cookie.");
+            _logger.LogWarning("Bump:Api:Hosting:ClientSecret is not configured. /api/problems will require a session cookie.");
         }
     }
 

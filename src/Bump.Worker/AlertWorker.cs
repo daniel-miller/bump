@@ -1,3 +1,4 @@
+using Bump.Api;
 using Bump.Api.Mail;
 using Bump.Api.Mail.MailTemplates;
 using Npgsql;
@@ -14,21 +15,20 @@ public class AlertWorker : BackgroundService
     private readonly WorkerStatus _status;
     private readonly TimeSpan _interval;
 
-    public AlertWorker(ILogger<AlertWorker> logger, IConfiguration config, IMailgunClient mail, WorkerStatus status)
+    public AlertWorker(ILogger<AlertWorker> logger, IConfiguration config, AlertsSettings alerts, IMailgunClient mail, WorkerStatus status)
     {
         _logger = logger;
         _status = status;
         _mail = mail;
-        _connectionString = config.GetConnectionString("Bump") ?? "";
+        _connectionString = config["Bump:Database:ConnectionString"] ?? "";
         if (string.IsNullOrWhiteSpace(_connectionString))
         {
             throw new InvalidOperationException(
-                "ConnectionStrings:Bump is empty. Set it via config/appsettings.work.json or the ConnectionStrings__Bump environment variable.");
+                "Bump:Database:ConnectionString is empty. Set it via config/appsettings.work.json or the Bump__Database__ConnectionString environment variable.");
         }
-        _alertRecipient = config["Bump:Alerts:Contact"]
-            ?? throw new InvalidOperationException("Bump:Alerts:Contact is not configured.");
-        _publicBaseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
-        _interval = TimeSpan.FromSeconds(config.GetValue("Bump:Alerts:PollSeconds", 300));
+        _alertRecipient = alerts.Contact;
+        _publicBaseUrl = (config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
+        _interval = alerts.PollInterval;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

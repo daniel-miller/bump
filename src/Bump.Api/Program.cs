@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authentication;
 using Newtonsoft.Json.Serialization;
 using Npgsql;
 using Serilog;
-using Serilog.Events;
 
 namespace Bump.Api
 {
@@ -57,6 +56,10 @@ namespace Bump.Api
             catch (Exception ex)
             {
                 Log.Fatal(ex, "Bump.Api terminated unexpectedly.");
+                // Nonzero so a service manager, container runtime, or deploy health check
+                // reads a failed start as a failure. Returning 0 here made a config error
+                // look like a clean shutdown.
+                Environment.ExitCode = 1;
             }
             finally
             {
@@ -91,28 +94,70 @@ namespace Bump.Api
 
             builder.Configuration.AddJsonFile("appsettings.work.json", optional: true, reloadOnChange: true);
 
-            // Serilog configured in code (per-project log path). Shared
-            // appsettings.json holds Bump:* keys only; logging stays here.
+            // Levels come from the Serilog section so a noisy production incident can be
+            // debugged by editing config, not by cutting a release. The sinks stay in code
+            // because the file path is the only part that varies per deployment, and it
+            // has its own key.
+            var apiLogPath = builder.Configuration["Bump:Api:LogPath"];
+            if (string.IsNullOrWhiteSpace(apiLogPath))
+            {
+                apiLogPath = Path.Combine("tmp", "logs", "api");
+            }
             builder.Host.UseSerilog((context, services, configuration) => configuration
-                .MinimumLevel.Information()
-                .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
-                .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-                .MinimumLevel.Override("System", LogEventLevel.Warning)
+                .ReadFrom.Configuration(context.Configuration)
                 .Enrich.FromLogContext()
                 .ReadFrom.Services(services)
                 .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-                .WriteTo.File("tmp/logs/bump-api-.log",
+                .WriteTo.File(Path.Combine(apiLogPath, "serilog-.log"),
                     rollingInterval: RollingInterval.Day,
                     retainedFileCountLimit: 14,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}"));
 
+            // ---- Release ----
+            // Release:Environment is a reporting label (work, demo, test, live) and is NOT
+            // ASPNETCORE_ENVIRONMENT, which switches behaviour. Two facts, two keys.
+            // Validated because blank reads as a configuration that worked: the About page
+            // renders an empty Environment row and nobody can tell which box they are on.
+            var release = builder.Configuration.GetSection("Release").Get<ReleaseSettings>() ?? new ReleaseSettings();
+            if (string.IsNullOrWhiteSpace(release.Environment))
+            {
+                throw new InvalidOperationException(
+                    "Release:Environment is empty. It labels this deployment on the About page. "
+                    + "Set it via config/appsettings.work.json or the Release__Environment environment variable.");
+            }
+            builder.Services.AddSingleton(release);
+
+            // ---- Hosting ----
+            // The listen address cannot live at the config root: Bump.Api and Bump.Worker
+            // link the same appsettings.json, so one shared Urls key put both hosts on the
+            // same port and whichever started second died on bind.
+            var apiUrls = builder.Configuration["Bump:Api:Hosting:Urls"];
+            if (string.IsNullOrWhiteSpace(apiUrls))
+            {
+                throw new InvalidOperationException(
+                    "Bump:Api:Hosting:Urls is empty. It is the address Kestrel binds. Set it via "
+                    + "config/appsettings.work.json or the Bump__Api__Hosting__Urls environment variable.");
+            }
+            builder.WebHost.UseUrls(apiUrls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+            // Every outgoing email link and the probe user agent are built from this. Empty
+            // does not fail, it produces host-less links like /reset-password?token=... that
+            // land in a user's inbox and cannot be clicked, so it is checked at boot.
+            var webBaseUrl = builder.Configuration["Bump:Web:BaseUrl"];
+            if (string.IsNullOrWhiteSpace(webBaseUrl))
+            {
+                throw new InvalidOperationException(
+                    "Bump:Web:BaseUrl is empty. It is the public status-page URL embedded in password-reset, "
+                    + "email-change, and subscriber-confirmation links. Set it via config/appsettings.work.json "
+                    + "or the Bump__Web__BaseUrl environment variable.");
+            }
+
             // ---- Database ----
-            var connectionString = builder.Configuration.GetConnectionString("Bump");
+            var connectionString = builder.Configuration["Bump:Database:ConnectionString"];
             if (string.IsNullOrWhiteSpace(connectionString))
             {
                 throw new InvalidOperationException(
-                    "ConnectionStrings:Bump is empty. Set it via config/appsettings.work.json or the ConnectionStrings__Bump environment variable.");
+                    "Bump:Database:ConnectionString is empty. Set it via config/appsettings.work.json or the Bump__Database__ConnectionString environment variable.");
             }
             var dataSource = NpgsqlDataSource.Create(connectionString);
             builder.Services.AddSingleton(dataSource);
@@ -157,28 +202,50 @@ namespace Bump.Api
             {
                 ApiKey = builder.Configuration["Bump:Mailgun:ApiKey"] ?? "",
                 Domain = builder.Configuration["Bump:Mailgun:Domain"] ?? "",
-                From = builder.Configuration["Bump:Mailgun:From"] ?? "Bump <noreply@example.com>",
+                From = builder.Configuration["Bump:Mailgun:From"] ?? "Bump <bump@example.com>",
                 Region = builder.Configuration["Bump:Mailgun:Region"] ?? "us",
             };
-            if (string.IsNullOrWhiteSpace(mailgunOpts.ApiKey))
+            // Mailgun is optional, as the README says: a clone without an account still runs,
+            // it just cannot send. MailgunClient already logs and returns on every send, so
+            // the only thing missing was a single loud line at boot instead of a warning
+            // buried in whichever request first tried to send a password reset.
+            if (string.IsNullOrWhiteSpace(mailgunOpts.ApiKey) || string.IsNullOrWhiteSpace(mailgunOpts.Domain))
             {
-                throw new InvalidOperationException(
-                    "Bump:Mailgun:ApiKey is empty. Set it via config/appsettings.work.json or the Bump__Mailgun__ApiKey environment variable.");
-            }
-            if (string.IsNullOrWhiteSpace(mailgunOpts.Domain))
-            {
-                throw new InvalidOperationException(
-                    "Bump:Mailgun:Domain is empty. Set it via config/appsettings.work.json or the Bump__Mailgun__Domain environment variable.");
+                Log.Warning("Bump:Mailgun:ApiKey or Bump:Mailgun:Domain is empty. Outbound email is disabled - "
+                    + "password resets, email-change confirmations, subscriber confirmations, and alert digests "
+                    + "will not be delivered. Set both in config/appsettings.work.json to enable them.");
             }
             builder.Services.AddSingleton(mailgunOpts);
             builder.Services.AddHttpClient<IMailgunClient, MailgunClient>();
 
-            // ---- CAPTCHA ----
-            builder.Services.AddHttpClient(nameof(CaptchaVerifier));
-            builder.Services.AddSingleton<CaptchaVerifier>();
+            // ---- Bearer secrets ----
+            // Both keys ship empty and are substituted per deployment. Empty has to stop
+            // the app rather than degrade: an empty Apps list silently 401s every deploy
+            // pipeline that calls /api/apps, and an empty Problems key silently drops
+            // /api/problems back to session-only, so every SDK consumer stops reporting.
+            // Neither looks like a configuration error at the point it happens. A
+            // placeholder left unsubstituted is worse - it authenticates.
+            var problemsSecret = builder.Configuration["Bump:Api:Hosting:ClientSecret"];
+            if (string.IsNullOrWhiteSpace(problemsSecret))
+            {
+                throw new InvalidOperationException(
+                    "Bump:Api:Hosting:ClientSecret is empty. It is the bearer key every Bump.Sdk consumer "
+                    + "presents to POST /api/problems. Set it via config/appsettings.work.json or the "
+                    + "Bump__Api__Hosting__ClientSecret environment variable.");
+            }
+
+            var appsSecrets = builder.Configuration.GetSection("Bump:Api:Security:Apps:ClientSecrets").Get<string[]>()
+                ?? Array.Empty<string>();
+            if (appsSecrets.Length == 0 || appsSecrets.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidOperationException(
+                    "Bump:Api:Security:Apps:ClientSecrets is empty or contains a blank entry. It is the bearer key "
+                    + "list for /api/apps/**, used by deploy pipelines to bump versions. Set it via "
+                    + "config/appsettings.work.json or the Bump__Api__Security__Apps__ClientSecrets__0 environment variable.");
+            }
 
             // ---- CORS ----
-            var origins = builder.Configuration.GetSection("Bump:Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+            var origins = builder.Configuration.GetSection("Bump:Api:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
             builder.Services.AddCors(opts => opts.AddDefaultPolicy(p =>
             {
                 if (origins.Length > 0)
@@ -191,7 +258,25 @@ namespace Bump.Api
                 }
             }));
 
-            builder.Services.AddBumpRateLimiting();
+            // ---- Bound sections ----
+            // Defaults live on the settings classes, not at call sites. See BumpSettings.cs.
+            var serviceSettings = builder.Configuration.GetSection("Bump:Services").Get<ServicesSettings>() ?? new ServicesSettings();
+            var subscribers = builder.Configuration.GetSection("Bump:Api:Subscribers").Get<SubscribersSettings>() ?? new SubscribersSettings();
+            var tokens = builder.Configuration.GetSection("Bump:Api:Security:Tokens").Get<TokenSettings>() ?? new TokenSettings();
+            var rateLimits = builder.Configuration.GetSection("Bump:Api:RateLimits").Get<RateLimitSettings>() ?? new RateLimitSettings();
+
+            if (tokens.PasswordResetHours <= 0 || tokens.EmailChangeHours <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Bump:Api:Security:Tokens lifetimes must be greater than zero "
+                    + $"(PasswordResetHours={tokens.PasswordResetHours}, EmailChangeHours={tokens.EmailChangeHours}). "
+                    + "A non-positive value mails a link that has already expired.");
+            }
+
+            builder.Services.AddSingleton(serviceSettings);
+            builder.Services.AddSingleton(subscribers);
+            builder.Services.AddSingleton(tokens);
+            builder.Services.AddBumpRateLimiting(rateLimits);
 
             builder.Services
                 .AddControllers(mvc =>
@@ -224,8 +309,8 @@ namespace Bump.Api
 
                         Three schemes are in use:
 
-                        - **Apps Bearer key** — `/api/apps/**` endpoints. Pre-shared key from `Bump:Security:Apps:ApiKeys`.
-                        - **Problems Bearer key** — `/api/problems` (write). Pre-shared key from `Bump:Security:Problems:ApiKey`.
+                        - **Apps Bearer key** — `/api/apps/**` endpoints. Pre-shared key from `Bump:Api:Security:Apps:ClientSecrets`.
+                        - **Problems Bearer key** — `/api/problems` (write). Pre-shared key from `Bump:Api:Hosting:ClientSecret`.
                         - **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and all admin surfaces. Established via `POST /api/auth/login`. State-changing requests must also send `X-Bump-Csrf` matching the `bump_csrf` cookie.
 
                         ## Idempotency
@@ -292,7 +377,7 @@ namespace Bump.Api
                 // Push the deployed version from config to the DB row so
                 // the About page reflects what is actually running. Config
                 // is the source of truth; the upsert above only seeds.
-                if (TryParseSemver(builder.Configuration["Bump:Hosting:Version"],
+                if (TryParseSemver(release.Version,
                         out var maj, out var min, out var pat))
                 {
                     apps.SetVersionAsync("bump", maj, min, pat).GetAwaiter().GetResult();

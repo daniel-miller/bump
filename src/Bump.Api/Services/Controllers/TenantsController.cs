@@ -13,26 +13,24 @@ namespace Bump.Api.Services.Controllers;
 [Authorize(AuthenticationSchemes = SessionAuthHandler.SchemeName, Roles = "admin")]
 public sealed class TenantsController : ControllerBase
 {
-    private const int DefaultMaxSubscribersPerTenant = 10_000;
-
     private readonly BoardRepository _boards;
     private readonly SubscriberRepository _subscribers;
     private readonly IMailgunClient _mail;
     private readonly IConfiguration _config;
-    private readonly CaptchaVerifier _captcha;
+    private readonly SubscribersSettings _settings;
 
     public TenantsController(
         BoardRepository boards,
         SubscriberRepository subscribers,
         IMailgunClient mail,
         IConfiguration config,
-        CaptchaVerifier captcha)
+        SubscribersSettings settings)
     {
         _boards = boards;
         _subscribers = subscribers;
         _mail = mail;
         _config = config;
-        _captcha = captcha;
+        _settings = settings;
     }
 
     /// <summary>List every tenant (status page grouping).</summary>
@@ -133,10 +131,10 @@ public sealed class TenantsController : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 
-    public sealed record SubscribeRequest(string Email, string? CaptchaToken);
+    public sealed record SubscribeRequest(string Email);
 
     /// <summary>Subscribe an email to a tenant's status updates. Sends a double-opt-in confirmation email.</summary>
-    /// <remarks>Public anonymous endpoint. CAPTCHA token required when CAPTCHA is configured. Rate-limited to 3 attempts per 10 minutes per IP. Honors <c>Idempotency-Key</c>.</remarks>
+    /// <remarks>Public anonymous endpoint. Rate-limited to 3 attempts per 10 minutes per IP. Honors <c>Idempotency-Key</c>.</remarks>
     [AllowAnonymous]
     // Public path; absolute route keeps it outside /api/admin where the rest of this controller lives.
     [HttpPost("/api/tenants/{slug}/subscribers", Name = "subscribe")]
@@ -150,16 +148,10 @@ public sealed class TenantsController : ControllerBase
             return JsonResults.UnprocessableEntity("Invalid email", "Email is not a valid address.").AsAction();
         }
 
-        var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
-        if (!await _captcha.VerifyAsync(req.CaptchaToken, remoteIp, ct))
-        {
-            return JsonResults.UnprocessableEntity("CAPTCHA failed", "Solve the challenge and resubmit.").AsAction();
-        }
-
         var b = await _boards.GetBySlugAsync(slug, ct);
         if (b is null) return NotFound();
 
-        var maxPerTenant = _config.GetValue("Bump:Subscribers:MaxPerTenant", DefaultMaxSubscribersPerTenant);
+        var maxPerTenant = _settings.MaxPerTenant;
         if (await _subscribers.CountForBoardAsync(b.BoardId, ct) >= maxPerTenant)
         {
             return JsonResults.TooManyRequests(
@@ -176,7 +168,7 @@ public sealed class TenantsController : ControllerBase
             return Accepted();
         }
 
-        var publicUrl = (_config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var publicUrl = (_config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
         var confirmUrl = $"{publicUrl}/subscribe/confirm?token={confirmToken}";
         var unsubUrl = $"{publicUrl}/unsubscribe?token={unsubToken}";
 

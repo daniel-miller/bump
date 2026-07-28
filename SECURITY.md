@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you believe you have found a security vulnerability in Bump — including any issue affecting authentication, sessions, CSRF, two-factor authentication, password reset, email change, CAPTCHA, rate limiting, the SSRF guard on monitor probes, or any other security-sensitive surface — please report it privately.
+If you believe you have found a security vulnerability in Bump — including any issue affecting authentication, sessions, CSRF, two-factor authentication, password reset, email change, rate limiting, the SSRF guard on monitor probes, or any other security-sensitive surface — please report it privately.
 
 **Email:** [daniel@millerdatabases.com](mailto:daniel@millerdatabases.com)
 
@@ -33,7 +33,7 @@ In scope:
 
 Out of scope:
 
-- Third-party services Bump integrates with (Mailgun, Cloudflare Turnstile). Report those to their respective vendors.
+- Third-party services Bump integrates with (Mailgun). Report those to their respective vendors.
 - Issues that require a pre-compromised host, account, or network position with no realistic path from an external attacker.
 - Self-XSS, missing security headers without a demonstrated impact, or volumetric DoS without an amplification primitive.
 - Findings produced solely by automated scanners without a working proof of concept.

@@ -13,7 +13,7 @@ namespace Bump.Api;
 ///
 /// Two paths are accepted:
 ///   1. Bearer key in the <c>Authorization</c> header (from app SDKs and CLIs).
-///      Keys come from <c>Bump:Security:Apps:ApiKeys</c>. Always allowed.
+///      Keys come from <c>Bump:Api:Security:Apps:ClientSecrets</c>. Always allowed.
 ///   2. Session cookie with the <c>admin</c> role, but only on safe methods
 ///      (GET/HEAD). Lets the React admin UI list/inspect apps without holding
 ///      a Bearer key.
@@ -46,7 +46,7 @@ public sealed class ApiKeyAuthFilter : IAsyncAuthorizationFilter
         _users = users;
         _cookies = cookies;
 
-        var configured = config.GetSection("Bump:Security:Apps:ApiKeys").Get<string[]>() ?? Array.Empty<string>();
+        var configured = config.GetSection("Bump:Api:Security:Apps:ClientSecrets").Get<string[]>() ?? Array.Empty<string>();
         _keys = configured
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => Encoding.UTF8.GetBytes(k))

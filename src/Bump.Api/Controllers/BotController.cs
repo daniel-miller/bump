@@ -15,17 +15,22 @@ namespace Bump.Api.Controllers;
 public sealed class BotController : ControllerBase
 {
     private readonly IConfiguration _config;
+    private readonly ServicesSettings _services;
 
-    public BotController(IConfiguration config) => _config = config;
+    public BotController(IConfiguration config, ServicesSettings services)
+    {
+        _config = config;
+        _services = services;
+    }
 
     [HttpGet("")]
     [HttpHead("")]
     public ContentResult Get()
     {
         var ua = BumpUserAgent.Build(_config);
-        var contact = _config["Bump:Services:AbuseContact"];
-        var interval = _config.GetValue("Bump:Services:IntervalSeconds", 60);
-        var timeout = _config.GetValue("Bump:Services:TimeoutSeconds", 5);
+        var contact = _services.AbuseContact;
+        var interval = _services.IntervalSeconds;
+        var timeout = _services.TimeoutSeconds;
 
         var contactBlock = string.IsNullOrWhiteSpace(contact)
             ? ""

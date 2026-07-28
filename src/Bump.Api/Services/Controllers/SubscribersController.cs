@@ -24,7 +24,7 @@ public sealed class SubscribersController : ControllerBase
         var hash = SubscriberRepository.HashToken(token);
         var sub = await _subscribers.ConfirmAsync(hash, ct);
         if (sub is null) return NotFound();
-        var publicUrl = (_config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var publicUrl = (_config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
         return Redirect($"{publicUrl}/subscribe/confirmed");
     }
 

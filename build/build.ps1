@@ -99,6 +99,21 @@ foreach ($project in $projects) {
 
     if ($LASTEXITCODE -ne 0) { throw "Publish failed for $name." }
 
+    # Stamp Release:Version into the published appsettings.json so the About page and the
+    # probe user agent report the release that was actually installed. Without this the key
+    # is hand-maintained and drifts from the assembly version on the very next build.
+    $publishedSettings = Join-Path $publishDir 'appsettings.json'
+    if (-not (Test-Path $publishedSettings)) {
+        throw "Published appsettings.json not found for ${name}: $publishedSettings"
+    }
+    $settings = Get-Content -Raw -LiteralPath $publishedSettings | ConvertFrom-Json
+    if (-not $settings.Release) {
+        throw "Published appsettings.json for $name has no Release section to stamp."
+    }
+    $settings.Release.Version = $Version
+    $settings | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $publishedSettings -Encoding utf8
+    Write-Host "  Stamped Release:Version = $Version" -ForegroundColor DarkGray
+
     if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath
 
@@ -136,4 +151,4 @@ octopus release deploy --project $OctopusProject --version $Version --environmen
 if ($LASTEXITCODE -ne 0) { throw "octopus release deploy failed with exit code $LASTEXITCODE" }
 
 Write-Host ""
-Write-Host "Deployed $OctopusProject $Version → $Environment." -ForegroundColor Green
+Write-Host "Deployed $OctopusProject $Version to $Environment." -ForegroundColor Green

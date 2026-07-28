@@ -2,7 +2,7 @@ namespace Bump.Api.Auth;
 
 /// <summary>
 /// Central cookie config. Defaults match the production deployment (cross-
-/// origin React on Cloudflare Pages → Railway API), but Development can
+/// origin React on Cloudflare Pages against a Railway API), but Development can
 /// override Domain/SameSite/Secure to make cookies work over plain HTTP at
 /// localhost.
 /// </summary>
@@ -22,10 +22,16 @@ public sealed class BumpCookieOptions
 
     public static BumpCookieOptions FromConfig(IConfiguration config)
     {
-        var section = config.GetSection("Bump:Security:Cookie");
+        var section = config.GetSection("Bump:Api:Security:Cookie");
+        var domain = section["Domain"];
         return new BumpCookieOptions
         {
-            Domain = section["Domain"],
+            // Normalized to null so "unset" has one representation. The config file
+            // carries "" (JSON null reads as a deliberate sentinel when it only means
+            // unset), but CookieOptions.Domain = "" emits a bare `domain=` attribute
+            // that browsers reject - which would silently stop logout from clearing
+            // the session cookie, since the delete path assigns Domain unguarded.
+            Domain = string.IsNullOrWhiteSpace(domain) ? null : domain,
             SameSite = section["SameSite"] ?? "None",
             Secure = !bool.TryParse(section["Secure"], out var s) || s
         };

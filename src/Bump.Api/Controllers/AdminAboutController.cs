@@ -20,12 +20,14 @@ public sealed class AdminAboutController : ControllerBase
     private readonly NpgsqlDataSource _db;
     private readonly AppRepository _apps;
     private readonly IHostEnvironment _env;
+    private readonly ReleaseSettings _release;
 
-    public AdminAboutController(NpgsqlDataSource db, AppRepository apps, IHostEnvironment env)
+    public AdminAboutController(NpgsqlDataSource db, AppRepository apps, IHostEnvironment env, ReleaseSettings release)
     {
         _db = db;
         _apps = apps;
         _env = env;
+        _release = release;
     }
 
     /// <summary>About payload for the admin UI. Reports build/runtime/database info and registry counts.</summary>
@@ -50,6 +52,10 @@ public sealed class AdminAboutController : ControllerBase
         var now = DateTimeOffset.UtcNow;
         var server = new ServerInfo(
             MachineName: Environment.MachineName,
+            // Two separate facts. ReleaseEnvironment is the deployment label ops sets;
+            // EnvironmentName is ASPNETCORE_ENVIRONMENT, which switches app behaviour.
+            // Showing both makes a mismatch visible instead of guessing which one is wrong.
+            ReleaseEnvironment: _release.Environment,
             EnvironmentName: _env.EnvironmentName,
             ProcessId: proc.Id,
             ProcessStartedAt: proc.StartTime.ToUniversalTime(),
@@ -207,6 +213,7 @@ public sealed record BuildInfo(
 
 public sealed record ServerInfo(
     string MachineName,
+    string ReleaseEnvironment,
     string EnvironmentName,
     int ProcessId,
     DateTimeOffset ProcessStartedAt,

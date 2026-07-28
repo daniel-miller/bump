@@ -26,6 +26,7 @@ public sealed class AuthController : ControllerBase
     private readonly BumpCookieOptions _cookies;
     private readonly IMailgunClient _mail;
     private readonly IConfiguration _config;
+    private readonly TokenSettings _tokens;
 
     public AuthController(
         AppUserRepository users,
@@ -35,7 +36,8 @@ public sealed class AuthController : ControllerBase
         JwtIssuer jwt,
         BumpCookieOptions cookies,
         IMailgunClient mail,
-        IConfiguration config)
+        IConfiguration config,
+        TokenSettings tokens)
     {
         _users = users;
         _sessions = sessions;
@@ -45,6 +47,7 @@ public sealed class AuthController : ControllerBase
         _cookies = cookies;
         _mail = mail;
         _config = config;
+        _tokens = tokens;
     }
 
     public sealed record LoginRequest(string Email, string Password, string? Totp);
@@ -135,10 +138,13 @@ public sealed class AuthController : ControllerBase
             var raw = RandomNumberGenerator.GetBytes(32);
             var token = Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_').TrimEnd('=');
             var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-            var expires = DateTimeOffset.UtcNow.AddHours(1);
+            var expires = DateTimeOffset.UtcNow.AddHours(_tokens.PasswordResetHours);
             await _resetTokens.CreateAsync(user.UserId, hash, expires, ct);
 
-            var publicUrl = _config["Bump:Hosting:PublicBaseUrl"] ?? "https://status.bump.example.com";
+            // No fallback: Program validates Bump:Web:BaseUrl at startup. The old
+            // example.com default could never fire anyway - an unset key reads as "",
+            // not null - so it only looked like a safety net.
+            var publicUrl = _config["Bump:Web:BaseUrl"]!;
             var resetUrl = $"{publicUrl.TrimEnd('/')}/reset-password?token={token}";
             await _mail.SendAsync(PasswordReset.Build(user.UserEmail, resetUrl), ct);
         }

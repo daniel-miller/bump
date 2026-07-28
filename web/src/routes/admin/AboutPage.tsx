@@ -17,6 +17,7 @@ interface BuildInfo {
 
 interface ServerInfo {
   machineName: string;
+  releaseEnvironment: string;
   environmentName: string;
   processId: number;
   processStartedAt: string;
@@ -166,7 +167,8 @@ export function AboutPage() {
         </CardHeader>
         <CardContent>
           <Row label="Host">{server.machineName}</Row>
-          <Row label="Environment">{server.environmentName}</Row>
+          <Row label="Release environment">{server.releaseEnvironment}</Row>
+          <Row label="Host environment">{server.environmentName}</Row>
           <Row label="Framework">{server.framework}</Row>
           <Row label="OS">{server.operatingSystem}</Row>
           <Row label="Architecture">{server.architecture}</Row>

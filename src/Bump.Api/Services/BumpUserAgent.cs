@@ -6,15 +6,15 @@ namespace Bump.Api.Services;
 /// <summary>
 /// Builds the prober User-Agent string from config. Single source of truth so
 /// version/URL/contact never drift between probe headers and the /bot landing
-/// page. All parts derived from Bump:Hosting:Version, Bump:Hosting:PublicBaseUrl,
+/// page. All parts derived from Release:Version, Bump:Web:BaseUrl,
 /// and Bump:Services:AbuseContact.
 /// </summary>
 public static class BumpUserAgent
 {
     public static string Build(IConfiguration config)
     {
-        var version = (config["Bump:Hosting:Version"] ?? "0.0.0").Trim();
-        var baseUrl = (config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var version = (config["Release:Version"] ?? "0.0.0").Trim();
+        var baseUrl = (config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
         var contact = config["Bump:Services:AbuseContact"];
 
         var sb = new StringBuilder();

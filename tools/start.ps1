@@ -31,7 +31,9 @@ $services = @(
         Out  = Join-Path $logDir 'api\out.log'
         Err  = Join-Path $logDir 'api\err.log'
         File = 'dotnet'
-        Args = @('run', '--project', $apiProj, '--launch-profile', 'Bump.Api', '--', '--urls', 'http://localhost:5135')
+        # No --urls override: the port comes from Bump:Api:Hosting:Urls in
+        # config/appsettings.work.json, so there is one place to change it.
+        Args = @('run', '--project', $apiProj, '--launch-profile', 'Bump.Api')
         Cwd  = $repoRoot
         Wait = $true
     },

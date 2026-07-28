@@ -20,6 +20,7 @@ public sealed class AccountsController : ControllerBase
     private readonly UserRecoveryCodeRepository _recovery;
     private readonly IMailgunClient _mail;
     private readonly IConfiguration _config;
+    private readonly TokenSettings _tokens;
 
     public AccountsController(
         AppUserRepository users,
@@ -27,7 +28,8 @@ public sealed class AccountsController : ControllerBase
         EmailChangeTokenRepository emailChange,
         UserRecoveryCodeRepository recovery,
         IMailgunClient mail,
-        IConfiguration config)
+        IConfiguration config,
+        TokenSettings tokens)
     {
         _users = users;
         _sessions = sessions;
@@ -35,6 +37,7 @@ public sealed class AccountsController : ControllerBase
         _recovery = recovery;
         _mail = mail;
         _config = config;
+        _tokens = tokens;
     }
 
     public sealed record ProfileResponse(Guid UserId, string Email, string FullName, string Timezone, bool TotpEnabled, string? IpAddress);
@@ -131,10 +134,10 @@ public sealed class AccountsController : ControllerBase
         var raw = RandomNumberGenerator.GetBytes(32);
         var token = Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_').TrimEnd('=');
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(token));
-        var expires = DateTimeOffset.UtcNow.AddHours(1);
+        var expires = DateTimeOffset.UtcNow.AddHours(_tokens.EmailChangeHours);
         await _emailChange.CreateAsync(user.UserId, req.NewEmail, hash, expires, ct);
 
-        var publicUrl = (_config["Bump:Hosting:PublicBaseUrl"] ?? "").TrimEnd('/');
+        var publicUrl = (_config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
         var confirmUrl = $"{publicUrl}/account/confirm-email?token={token}";
         await _mail.SendAsync(EmailChangeConfirm.Build(req.NewEmail, confirmUrl), ct);
 
@@ -240,7 +243,7 @@ public sealed class AccountsController : ControllerBase
         var hashes = codes.Select(TotpService.HashCode);
         await _recovery.ReplaceAllAsync(userId, hashes, ct);
 
-        var issuer = _config["Bump:Security:Jwt:Issuer"] ?? "Bump";
+        var issuer = _config["Bump:Api:Security:Jwt:Issuer"] ?? "Bump";
         var uri = TotpService.OtpAuthUri(secret, user.UserEmail, issuer);
         var b32 = OtpNet.Base32Encoding.ToString(secret);
 

@@ -33,8 +33,18 @@ public static class RateLimiting
     private const string BearerPrefix = "Bearer ";
     private const string AnonymousPartition = "__anon__";
 
-    public static IServiceCollection AddBumpRateLimiting(this IServiceCollection services)
+    public static IServiceCollection AddBumpRateLimiting(this IServiceCollection services, RateLimitSettings limits)
     {
+        // A limiter built with a non-positive permit or window throws deep inside the
+        // rate-limiter factory on the first matching request, not at startup - so the app
+        // would look healthy and then 500 the endpoint the setting was meant to protect.
+        Validate(nameof(limits.Apps), limits.Apps);
+        Validate(nameof(limits.Problems), limits.Problems);
+        Validate(nameof(limits.Auth), limits.Auth);
+        Validate(nameof(limits.AuthLogin), limits.AuthLogin);
+        Validate(nameof(limits.Subscribe), limits.Subscribe);
+        Validate(nameof(limits.Status), limits.Status);
+
         services.AddRateLimiter(options =>
         {
             // On rejection, emit problem+json so the shape matches other
@@ -64,8 +74,8 @@ public static class RateLimiting
                     partitionKey: GetPartitionKey(httpContext),
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 120,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = limits.Apps.PermitLimit,
+                        Window = limits.Apps.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -79,8 +89,8 @@ public static class RateLimiting
                     partitionKey: GetPartitionKey(httpContext),
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 600,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = limits.Problems.PermitLimit,
+                        Window = limits.Problems.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -92,8 +102,8 @@ public static class RateLimiting
                     partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? AnonymousPartition,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 10,
-                        Window = TimeSpan.FromMinutes(5),
+                        PermitLimit = limits.Auth.PermitLimit,
+                        Window = limits.Auth.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -107,8 +117,8 @@ public static class RateLimiting
                     partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? AnonymousPartition,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 5,
-                        Window = TimeSpan.FromMinutes(15),
+                        PermitLimit = limits.AuthLogin.PermitLimit,
+                        Window = limits.AuthLogin.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -116,15 +126,15 @@ public static class RateLimiting
 
             // /api/subscribers — unauthenticated sign-up. Tight per-IP
             // cap to keep the endpoint from being used as a mailbomb
-            // relay; CAPTCHA in the controller is the primary defense
-            // and a per-board cap is the last line.
+            // relay. With no CAPTCHA on the endpoint this limiter is the
+            // primary defense; a per-board cap is the last line.
             options.AddPolicy(SubscribePolicy, httpContext =>
                 RateLimitPartition.GetFixedWindowLimiter(
                     partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? AnonymousPartition,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 3,
-                        Window = TimeSpan.FromMinutes(10),
+                        PermitLimit = limits.Subscribe.PermitLimit,
+                        Window = limits.Subscribe.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -137,8 +147,8 @@ public static class RateLimiting
                     partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? AnonymousPartition,
                     factory: _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 60,
-                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = limits.Status.PermitLimit,
+                        Window = limits.Status.Window,
                         QueueLimit = 0,
                         QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                         AutoReplenishment = true
@@ -146,6 +156,17 @@ public static class RateLimiting
         });
 
         return services;
+    }
+
+    private static void Validate(string name, RateLimitPolicySettings policy)
+    {
+        if (policy.PermitLimit <= 0 || policy.WindowMinutes <= 0)
+        {
+            throw new InvalidOperationException(
+                $"Bump:Api:RateLimits:{name} is invalid (PermitLimit={policy.PermitLimit}, "
+                + $"WindowMinutes={policy.WindowMinutes}). Both must be greater than zero. "
+                + "To widen a limit, raise PermitLimit; there is no 'unlimited' value.");
+        }
     }
 
     /// <summary>

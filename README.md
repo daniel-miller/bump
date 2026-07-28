@@ -27,17 +27,21 @@ Built on .NET 10 (ASP.NET Core MVC), Dapper, Npgsql, Newtonsoft.Json, Serilog, a
 - PostgreSQL 13 or later.
 - Node.js 24+ and npm (pinned via `.nvmrc`).
 - PowerShell 7+ (for the release build script).
-- A Mailgun account (optional; required for password resets, subscriber confirmations, and alert digests).
+- A Mailgun account (optional; required for password resets, subscriber confirmations, and alert digests). Both hosts start without it and log a warning at boot; nothing is delivered until it is set.
 
 ## Getting started
 
 ### 1. Configure the database connection
 
-`Bump.Api` and `Bump.Worker` both read `ConnectionStrings:Bump`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
+Copy `config/appsettings.work.example.json` to `config/appsettings.work.json` and fill it in. The example carries every key both hosts require, so you find out what is missing once instead of one restart at a time.
+
+`Bump.Api` and `Bump.Worker` both read `Bump:Database:ConnectionString`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
 
 ```bash
-export ConnectionStrings__Bump="Host=localhost;Port=5432;Database=bump;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
+export Bump__Database__ConnectionString="Host=localhost;Port=5432;Database=bump;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
 ```
+
+Environment variables override `config/appsettings.json`, but not `config/appsettings.work.json` - that file is added last and wins. Production ships without it, so the variables above apply there.
 
 Schema migrations in `db/migrations/*.sql` are applied automatically at API startup by `Migrator`. No manual `psql` step is required for new databases — but you can apply the files manually if you prefer:
 
@@ -50,33 +54,37 @@ psql -U postgres -d bump -f db/migrations/001-create-server.sql
 
 Bump uses three auth schemes, summarized in the Swagger description:
 
-- **Apps bearer key** — `/api/apps/**`. Pre-shared keys from `Bump:Security:Apps:ApiKeys` (array). Empty array rejects every request with `401`.
+Both bearer keys ship empty in `config/appsettings.json` and the API refuses to start until they are set. That is deliberate: an empty Apps list silently `401`s every deploy pipeline, and an empty Problems key silently drops `/api/problems` back to session-only so every SDK consumer stops reporting. Neither looks like a configuration error at the point it happens.
+
+- **Apps bearer key** — `/api/apps/**`. Pre-shared keys from `Bump:Api:Security:Apps:ClientSecrets` (array).
 
   ```json
   {
     "Bump": {
-      "Security": {
-        "Apps": {
-          "ApiKeys": [ "generate-a-long-random-string-per-client" ]
+      "Api": {
+        "Security": {
+          "Apps": {
+            "ClientSecrets": [ "generate-a-long-random-string-per-client" ]
+          }
         }
       }
     }
   }
   ```
 
-- **Problems bearer key** — `POST /api/problems`. Single pre-shared key from `Bump:Security:Problems:ApiKey`.
+- **Problems bearer key** — `POST /api/problems`. Single pre-shared key from `Bump:Api:Hosting:ClientSecret`. Same key every `Bump.Sdk` consumer presents, so it is named identically on both sides of the exchange.
 
   ```json
   {
     "Bump": {
-      "Security": {
-        "Problems": { "ApiKey": "change-this-to-a-real-key" }
+      "Api": {
+        "Hosting": { "ClientSecret": "change-this-to-a-real-key" }
       }
     }
   }
   ```
 
-- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/tenants`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Security:Jwt:Key`; cookie domain/SameSite/Secure in `Bump:Security:Cookie`.
+- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/tenants`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Api:Security:Jwt:Key`; cookie domain/SameSite/Secure in `Bump:Api:Security:Cookie`.
 
 Public surfaces (`/api/health`, `/api/status/**`, `/api/subscribers/confirm`, `/api/subscribers/unsubscribe`, `/swagger`) require no auth.
 
@@ -97,13 +105,15 @@ dotnet run --project src/Bump.Api/Bump.Api.csproj
 dotnet run --project src/Bump.Worker/Bump.Worker.csproj
 ```
 
+The two hosts listen on different ports, set per host by `Bump:Api:Hosting:Urls` and `Bump:Worker:Hosting:Urls`. The example work config puts the API on `5135` (what `web/vite.config.ts` proxies to) and the worker on `8080`; committed defaults are `8080` and `8081` for deployment. `tools/start.ps1` runs both and writes pid files.
+
 In another terminal, run the SPA in dev mode:
 
 ```bash
 cd web && npm install && npm run dev
 ```
 
-The Vite dev server serves at `http://localhost:5173`; the API allows it via `Bump:Cors:AllowedOrigins`. Swagger UI is at `/swagger` — click **Authorize** and paste a bearer key (no `Bearer ` prefix) to exercise the bearer-protected endpoints.
+The Vite dev server serves at `http://localhost:5173`; the API allows it via `Bump:Api:AllowedOrigins`. Swagger UI is at `/swagger` — click **Authorize** and paste a bearer key (no `Bearer ` prefix) to exercise the bearer-protected endpoints.
 
 ## API
 
@@ -135,7 +145,7 @@ All routes are prefixed with `/api`. Full request/response shapes are in Swagger
 | :----- | :--------------------------------- | :--------------------------------------------------- |
 | POST   | `/api/auth/login`                  | Email + password (+ TOTP if enrolled). Sets session and CSRF cookies. |
 | POST   | `/api/auth/logout`                 | Revoke the current session.                          |
-| POST   | `/api/auth/password-resets`        | Request a password reset email (CAPTCHA-protected).  |
+| POST   | `/api/auth/password-resets`        | Request a password reset email. Rate-limited per IP. |
 | POST   | `/api/auth/password-resets/confirm`| Confirm a reset using the emailed token.             |
 
 ### Accounts — `/api/accounts/me` (Session)
@@ -237,24 +247,51 @@ export PathBase=/bump
 
 ## Configuration reference
 
-Top-level keys under `Bump:` in `config/appsettings.json` / `config/appsettings.work.json`:
+Keys in `config/appsettings.json` / `config/appsettings.work.json`. Each key sits under the process that reads it - `Bump:Api:*` for the API, `Bump:Worker:*` for the worker - and only genuinely shared values stay at the `Bump:` root. Look at the path and you know which host restarts when you change it.
+
+Defaults are not repeated at call sites. Each section binds to a class in `src/Bump.Api/BumpSettings.cs` whose property initializers *are* the defaults, so a value has one home and a section that loses a key during deploy-time substitution cannot silently fall back to a stale literal.
+
+Deploy-time facts, read by both hosts:
+
+| Key                     | Purpose                                                                     |
+| :---------------------- | :-------------------------------------------------------------------------- |
+| `Release:Environment`   | Deployment label (`work`, `demo`, `test`, `live`). Not `ASPNETCORE_ENVIRONMENT`, which switches behavior. The API refuses to start when empty. |
+| `Release:Version`       | Deployed semver, surfaced in the probe user agent and on the About page. Stamped into the published `appsettings.json` by `build/build.ps1`; do not hand-edit. |
+| `Serilog:MinimumLevel`  | Log level and per-namespace overrides. Raise a level without cutting a release. |
+
+Shared by the API and the worker:
 
 | Key                              | Purpose                                                                |
 | :------------------------------- | :--------------------------------------------------------------------- |
-| `ConnectionStrings:Bump`         | Postgres connection string.                                            |
-| `Bump:Security:Apps:ApiKeys`     | Bearer keys for `/api/apps/**`.                                        |
-| `Bump:Security:Problems:ApiKey`  | Bearer key for `POST /api/problems`.                                   |
-| `Bump:Security:Jwt:{Key,Issuer,Audience}` | JWT signing key, issuer, audience.                            |
-| `Bump:Security:Cookie:*`         | Session cookie domain, SameSite, Secure.                               |
-| `Bump:Cors:AllowedOrigins`       | SPA origin allowlist.                                                  |
-| `Bump:Mailgun:*`                 | Mailgun API key, domain, From, Region (`us` or `eu`).                  |
-| `Bump:Services:*`                | Probe interval, timeout, degraded-latency threshold, history bars, maintenance windows. |
-| `Bump:Subscribers:MaxPerTenant`  | Cap on confirmed subscribers per tenant.                               |
-| `Bump:Captcha:{Secret,SiteKey}`  | Cloudflare Turnstile site key + secret.                                |
-| `Bump:Hosting:PublicBaseUrl`     | Base URL embedded in outgoing emails.                                  |
-| `Bump:Hosting:Version`           | Deployed semver, surfaced in probe UA and About page.                  |
-| `Bump:Alerts:PollSeconds` *(worker)* | Worker poll cadence; health turns unhealthy after 3× this without a tick. |
-| `Bump:Alerts:Contact` *(worker)* | Recipient of alert-digest emails.                                      |
+| `Bump:Database:ConnectionString` | Postgres connection string.                                            |
+| `Bump:Mailgun:*`                 | Mailgun API key, domain, From, Region (`us` or `eu`). Optional; empty disables outbound email with a warning at boot. |
+| `Bump:Services:*`                | Probe interval, timeout, degraded-latency threshold, history bars, abuse contact, maintenance windows. |
+| `Bump:Web:BaseUrl`               | Public status-page URL, embedded in outgoing emails and the probe user agent. Both hosts refuse to start when empty. |
+
+API only:
+
+| Key                                           | Purpose                                                                |
+| :-------------------------------------------- | :--------------------------------------------------------------------- |
+| `Bump:Api:LogPath`                            | Serilog file directory. Defaults to `tmp/logs/api` when empty.         |
+| `Bump:Api:Hosting:Urls`                       | Kestrel listen address. Refuses to start when empty.                   |
+| `Bump:Api:Hosting:ClientSecret`               | Bearer key for `POST /api/problems`. Same string every `Bump.Sdk` consumer presents. Refuses to start when empty. |
+| `Bump:Api:AllowedOrigins`                     | SPA origin allowlist.                                                  |
+| `Bump:Api:Security:Apps:ClientSecrets`        | Bearer keys for `/api/apps/**`. Refuses to start when empty.           |
+| `Bump:Api:Security:Jwt:{Key,Issuer,Audience}` | JWT signing key, issuer, audience.                                     |
+| `Bump:Api:Security:Cookie:*`                  | Session cookie domain, SameSite, Secure.                               |
+| `Bump:Api:Security:Tokens:*`                  | Password-reset and email-change link lifetimes, in hours.              |
+| `Bump:Api:RateLimits:*`                       | `PermitLimit` and `WindowMinutes` per policy: `Apps`, `Problems`, `Auth`, `AuthLogin`, `Subscribe`, `Status`. Both must be greater than zero. |
+| `Bump:Api:Subscribers:MaxPerTenant`           | Cap on confirmed subscribers per tenant.                               |
+
+Worker only:
+
+| Key                                | Purpose                                                                |
+| :--------------------------------- | :--------------------------------------------------------------------- |
+| `Bump:Worker:LogPath`              | Serilog file directory. Defaults to `tmp/logs/worker` when empty.      |
+| `Bump:Worker:Hosting:Urls`         | Health-endpoint listen address. Refuses to start when empty.           |
+| `Bump:Worker:Alerts:PollSeconds`   | Poll cadence; health turns unhealthy after 3× this without a tick.     |
+| `Bump:Worker:Alerts:Contact`       | Recipient of alert-digest emails.                                      |
+| `Bump:Worker:Announcements:TickSeconds` | Announcement scheduler tick interval.                             |
 
 ## Building release packages
 

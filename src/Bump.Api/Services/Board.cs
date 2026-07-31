@@ -9,6 +9,7 @@ public sealed class Board
     public string BoardSlug { get; set; } = "";
     public string BoardName { get; set; } = "";
     public string? BoardHost { get; set; }
+    public string? BoardTheme { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 }
@@ -20,6 +21,7 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
                tenant_slug AS BoardSlug,
                tenant_name AS BoardName,
                tenant_host AS BoardHost,
+               tenant_theme::text AS BoardTheme,
                created_at  AS CreatedAt,
                updated_at  AS UpdatedAt
           FROM tenant
@@ -62,6 +64,7 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
                       tenant_slug AS BoardSlug,
                       tenant_name AS BoardName,
                       tenant_host AS BoardHost,
+                      tenant_theme::text AS BoardTheme,
                       created_at  AS CreatedAt,
                       updated_at  AS UpdatedAt
             """,

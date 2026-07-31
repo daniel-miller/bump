@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace Bump.Api.Services.Controllers;
 
@@ -51,7 +52,12 @@ public sealed class StatusController : ControllerBase
         if (string.IsNullOrEmpty(host)) return NotFound();
         var b = await _boards.GetByHostAsync(host, ct);
         if (b is null) return NotFound();
-        return Ok(new { boardSlug = b.BoardSlug, boardName = b.BoardName });
+        return Ok(new
+        {
+            boardSlug = b.BoardSlug,
+            boardName = b.BoardName,
+            theme = b.BoardTheme is null ? null : (object)JToken.Parse(b.BoardTheme),
+        });
     }
 
     /// <summary>Currently-visible global announcements (not scoped to any tenant).</summary>

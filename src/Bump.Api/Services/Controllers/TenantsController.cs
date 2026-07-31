@@ -109,6 +109,25 @@ public sealed class TenantsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Set or clear the tenant's board theme.</summary>
+    /// <remarks>The body is the whole theme object; it replaces the stored theme.
+    /// Send JSON <c>null</c> to clear it and restore the default look.</remarks>
+    [HttpPut("{slug}/theme", Name = "setTenantTheme")]
+    [RequestSizeLimit(16 * 1024)]
+    public async Task<IActionResult> SetTheme(string slug, [FromBody] Newtonsoft.Json.Linq.JToken? theme, CancellationToken ct)
+    {
+        var b = await _boards.GetBySlugAsync(slug, ct);
+        if (b is null) return NotFound();
+        var clear = theme is null || theme.Type == Newtonsoft.Json.Linq.JTokenType.Null;
+        if (!clear && theme!.Type != Newtonsoft.Json.Linq.JTokenType.Object)
+        {
+            return JsonResults.UnprocessableEntity("Invalid theme", "Theme must be a JSON object or null.").AsAction();
+        }
+        var json = clear ? null : theme!.ToString(Newtonsoft.Json.Formatting.None);
+        await _boards.UpdateThemeAsync(b.BoardId, json, ct);
+        return NoContent();
+    }
+
     /// <summary>Permanently delete a tenant. Subscribers and announcements scoped to it are deleted too.</summary>
     [HttpDelete("{slug}", Name = "deleteTenant")]
     public async Task<IActionResult> Delete(string slug, CancellationToken ct)

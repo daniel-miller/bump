@@ -79,6 +79,14 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
             new { I = id, S = slug.ToLowerInvariant(), N = name, H = host?.ToLowerInvariant() });
     }
 
+    public async Task UpdateThemeAsync(int id, string? themeJson, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        await conn.ExecuteAsync(
+            "UPDATE tenant SET tenant_theme = @T::jsonb, updated_at = now() WHERE tenant_key = @I",
+            new { I = id, T = themeJson });
+    }
+
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);

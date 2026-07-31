@@ -75,9 +75,10 @@ public sealed class TenantsController : ControllerBase
         return Ok(new { board = b, serviceIds });
     }
 
-    public sealed record UpdateTenantRequest(string? Slug, string? Name, IReadOnlyList<int>? ServiceIds);
+    public sealed record UpdateTenantRequest(string? Slug, string? Name, string? Host, IReadOnlyList<int>? ServiceIds);
 
-    /// <summary>Rename a tenant or replace its set of included services.</summary>
+    /// <summary>Rename a tenant, set its custom hostname, or replace its set of included services.</summary>
+    /// <remarks>Send <c>Host</c> as an empty string to clear a previously assigned hostname.</remarks>
     [HttpPatch("{slug}", Name = "updateTenant")]
     [RequestSizeLimit(4 * 1024)]
     public async Task<IActionResult> Update(string slug, [FromBody] UpdateTenantRequest req, CancellationToken ct)
@@ -86,13 +87,20 @@ public sealed class TenantsController : ControllerBase
         if (b is null) return NotFound();
         var newSlug = req.Slug ?? b.BoardSlug;
         var newName = req.Name ?? b.BoardName;
+        // Host semantics: null = leave unchanged, "" = clear, otherwise set.
+        var newHost = req.Host is null ? b.BoardHost : NormalizeHost(req.Host);
+        if (req.Host is not null && newHost is null && !string.IsNullOrWhiteSpace(req.Host))
+        {
+            return JsonResults.UnprocessableEntity("Invalid host", "Host must be a bare hostname such as status.example.com.").AsAction();
+        }
         try
         {
-            await _boards.UpdateAsync(b.BoardId, newSlug, newName, ct);
+            await _boards.UpdateAsync(b.BoardId, newSlug, newName, newHost, ct);
         }
         catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
         {
-            return JsonResults.Conflict("Slug already exists").AsAction();
+            var what = ex.ConstraintName == "ix_tenant_host" ? "Host" : "Slug";
+            return JsonResults.Conflict($"{what} already exists").AsAction();
         }
         if (req.ServiceIds is not null)
         {
@@ -174,6 +182,16 @@ public sealed class TenantsController : ControllerBase
 
         await _mail.SendAsync(SubscriberConfirm.Build(req.Email, b.BoardName, confirmUrl, unsubUrl), ct);
         return Accepted();
+    }
+
+    /// <summary>Lowercase and validate a custom hostname. Returns null for empty (clear) or invalid input.</summary>
+    private static string? NormalizeHost(string host)
+    {
+        var h = host.Trim().ToLowerInvariant();
+        if (h.Length == 0) return null;
+        if (h.Length > 255) return null;
+        // Bare hostname only: no scheme, port, path, or wildcard.
+        return Uri.CheckHostName(h) == UriHostNameType.Dns ? h : null;
     }
 
     private static bool IsValidEmail(string? s)

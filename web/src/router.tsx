@@ -1,5 +1,6 @@
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { BoardPage } from "@/routes/public/BoardPage";
+import { HostGate } from "@/routes/public/HostGate";
 import { LoginPage } from "@/routes/auth/LoginPage";
 import { TwoFactorPage } from "@/routes/auth/TwoFactorPage";
 import { SubscribeConfirmPage } from "@/routes/public/SubscribeConfirmPage";
@@ -23,7 +24,7 @@ import { AccountSecurityPage } from "@/routes/admin/AccountSecurityPage";
 import { AboutPage } from "@/routes/admin/AboutPage";
 
 export const router = createBrowserRouter([
-  { path: "/", element: <Navigate to="/admin/dashboard" replace /> },
+  { path: "/", element: <HostGate /> },
   { path: "/login", element: <LoginPage /> },
   { path: "/login/mfa", element: <TwoFactorPage /> },
   { path: "/tenants/:slug", element: <BoardPage /> },

@@ -41,6 +41,19 @@ public sealed class StatusController : ControllerBase
         return Ok(payload);
     }
 
+    /// <summary>Resolve the request's Host header to a tenant with a matching custom hostname.</summary>
+    /// <remarks>Anonymous endpoint. Returns 404 when the host is not assigned to any tenant,
+    /// which tells the SPA to fall back to its default root behavior.</remarks>
+    [HttpGet("site", Name = "getSiteTenant")]
+    public async Task<IActionResult> Site(CancellationToken ct)
+    {
+        var host = Request.Host.Host;
+        if (string.IsNullOrEmpty(host)) return NotFound();
+        var b = await _boards.GetByHostAsync(host, ct);
+        if (b is null) return NotFound();
+        return Ok(new { boardSlug = b.BoardSlug, boardName = b.BoardName });
+    }
+
     /// <summary>Currently-visible global announcements (not scoped to any tenant).</summary>
     [HttpGet("global/announcements", Name = "getGlobalAnnouncements")]
     public async Task<IActionResult> Announcements(CancellationToken ct)

@@ -8,6 +8,7 @@ public sealed class Board
     public int BoardId { get; set; }
     public string BoardSlug { get; set; } = "";
     public string BoardName { get; set; } = "";
+    public string? BoardHost { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 }
@@ -18,6 +19,7 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
         SELECT tenant_key  AS BoardId,
                tenant_slug AS BoardSlug,
                tenant_name AS BoardName,
+               tenant_host AS BoardHost,
                created_at  AS CreatedAt,
                updated_at  AS UpdatedAt
           FROM tenant
@@ -43,6 +45,13 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
             Cols + " WHERE lower(tenant_slug) = lower(@S)", new { S = slug });
     }
 
+    public async Task<Board?> GetByHostAsync(string host, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        return await conn.QuerySingleOrDefaultAsync<Board>(
+            Cols + " WHERE lower(tenant_host) = lower(@H)", new { H = host });
+    }
+
     public async Task<Board> CreateAsync(string slug, string name, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
@@ -52,18 +61,19 @@ public sealed class BoardRepository(NpgsqlDataSource dataSource)
             RETURNING tenant_key  AS BoardId,
                       tenant_slug AS BoardSlug,
                       tenant_name AS BoardName,
+                      tenant_host AS BoardHost,
                       created_at  AS CreatedAt,
                       updated_at  AS UpdatedAt
             """,
             new { S = slug.ToLowerInvariant(), N = name });
     }
 
-    public async Task UpdateAsync(int id, string slug, string name, CancellationToken ct = default)
+    public async Task UpdateAsync(int id, string slug, string name, string? host, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
-            "UPDATE tenant SET tenant_slug = @S, tenant_name = @N, updated_at = now() WHERE tenant_key = @I",
-            new { I = id, S = slug.ToLowerInvariant(), N = name });
+            "UPDATE tenant SET tenant_slug = @S, tenant_name = @N, tenant_host = @H, updated_at = now() WHERE tenant_key = @I",
+            new { I = id, S = slug.ToLowerInvariant(), N = name, H = host?.ToLowerInvariant() });
     }
 
     public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)

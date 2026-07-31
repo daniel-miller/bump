@@ -27,8 +27,11 @@ const announcementStyles = {
   },
 } as const;
 
-export function BoardPage() {
-  const { slug } = useParams<{ slug: string }>();
+export function BoardPage({ slug: slugProp }: { slug?: string } = {}) {
+  // Slug comes from the route param (/tenants/:slug) or as a prop when the
+  // HostGate resolves a custom hostname to a tenant at the site root.
+  const { slug: slugParam } = useParams<{ slug: string }>();
+  const slug = slugProp ?? slugParam;
   const { data, isLoading, error } = useStatus(slug);
 
   if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;

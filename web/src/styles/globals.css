@@ -13,6 +13,8 @@
   --color-success: #2ecc71;
   --color-warning: #f5a623;
   --color-danger: #e74c3c;
+  --radius-card: 0.25rem;
+  --radius-badge: 0.25rem;
 }
 
 .dark {
@@ -38,14 +40,18 @@ body,
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family:
+  /* --app-font-sans is set at runtime by tenant themes (lib/theme.ts);
+     absent a theme the Geist stack applies. */
+  font-family: var(
+    --app-font-sans,
     "Geist Variable",
     ui-sans-serif,
     system-ui,
     -apple-system,
     "Segoe UI",
     Roboto,
-    sans-serif;
+    sans-serif
+  );
   font-feature-settings: "tnum", "cv11";
 }
 code,

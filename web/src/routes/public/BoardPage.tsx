@@ -27,7 +27,7 @@ const announcementStyles = {
   },
 } as const;
 
-export function BoardPage({ slug: slugProp }: { slug?: string } = {}) {
+export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?: string } = {}) {
   // Slug comes from the route param (/tenants/:slug) or as a prop when the
   // HostGate resolves a custom hostname to a tenant at the site root.
   const { slug: slugParam } = useParams<{ slug: string }>();
@@ -49,8 +49,11 @@ export function BoardPage({ slug: slugProp }: { slug?: string } = {}) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{data.board?.name ?? "Status"}</h1>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {logoUrl && <img src={logoUrl} alt="" className="h-8 w-8" />}
+          <h1 className="text-2xl font-semibold">{data.board?.name ?? "Status"}</h1>
+        </div>
         <div className="flex items-center gap-2">
           <StatusDot status={data.overall} size={14} />
           <span className="text-lg">{overallLabel}</span>
@@ -65,7 +68,7 @@ export function BoardPage({ slug: slugProp }: { slug?: string } = {}) {
             return (
               <div
                 key={a.id}
-                className={`flex gap-3 rounded border p-3 ${style.bg} ${style.border}`}
+                className={`rounded-card flex gap-3 border p-3 ${style.bg} ${style.border}`}
               >
                 <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${style.iconColor}`} />
                 <div className="min-w-0">

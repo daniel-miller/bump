@@ -30,6 +30,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <!-- Migrations must ship with the app: the Migrator applies db/migrations/*.sql
+         on boot. Without this the publish output carries only db/schema.sql and
+         production silently skips every new migration. -->
+    <Content Include="..\..\db\migrations\*.sql">
+      <Link>db\migrations\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Shared config. Single source of truth at repo-root config/. Linked so both

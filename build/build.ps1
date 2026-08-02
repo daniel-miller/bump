@@ -2,6 +2,7 @@ param(
     [string]$Version,
     [string]$OctopusProject = "Bump",
     [string]$Environment = "live",
+    [string]$Tenant = "djm",
     [switch]$SkipDeploy
 )
 
@@ -125,6 +126,7 @@ foreach ($project in $projects) {
     $SecretsPath = "c:\base\me\secrets"
     $env:OCTOPUS_URL = (Get-Content -Path $SecretsPath\threadwork-octo-url.txt -TotalCount 1).Trim()
     $env:OCTOPUS_API_KEY = (Get-Content -Path $SecretsPath\threadwork-octo-key.txt -TotalCount 1).Trim()
+    $env:OCTOPUS_SPACE = "Threadwork"
 
     octopus package upload --package $zipPath --overwrite-mode OverwriteExisting
     if ($LASTEXITCODE -ne 0) { throw "octopus package upload failed with exit code $LASTEXITCODE" }
@@ -142,12 +144,12 @@ if ($SkipDeploy) {
 
 Write-Host ""
 Write-Host "Creating release $Version on project $OctopusProject..." -ForegroundColor Cyan
-octopus release create --project $OctopusProject --version $Version
+octopus release create --project $OctopusProject --version $Version --ignore-existing --no-prompt
 if ($LASTEXITCODE -ne 0) { throw "octopus release create failed with exit code $LASTEXITCODE" }
 
 Write-Host ""
 Write-Host "Deploying $Version to $Environment..." -ForegroundColor Cyan
-octopus release deploy --project $OctopusProject --version $Version --environment $Environment
+octopus release deploy --project $OctopusProject --version $Version --environment $Environment --tenant $Tenant --no-prompt
 if ($LASTEXITCODE -ne 0) { throw "octopus release deploy failed with exit code $LASTEXITCODE" }
 
 Write-Host ""

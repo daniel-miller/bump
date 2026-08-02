@@ -13,12 +13,12 @@ $repoRoot   = Split-Path -Parent $PSScriptRoot
 $apiProj    = Join-Path $repoRoot 'src\Bump.Api\Bump.Api.csproj'
 $workerProj = Join-Path $repoRoot 'src\Bump.Worker\Bump.Worker.csproj'
 $webDir     = Join-Path $repoRoot 'web'
-$resetSql   = Join-Path $PSScriptRoot 'reset.ps1'
+$resetScript = Join-Path $PSScriptRoot 'reset-database.ps1'
 
-# Logs under tmp/log/<subsystem>/ (one directory per subsystem), pids under
-# tmp/pid/. Both gitignored via tmp/; tools/ stays clean of runtime files.
-$logDir = Join-Path $repoRoot 'tmp\log'
-$pidDir = Join-Path $repoRoot 'tmp\pid'
+# Logs under tmp/logs/<subsystem>/ (one directory per subsystem), pids under
+# tmp/pids/. Both gitignored via tmp/; tools/ stays clean of runtime files.
+$logDir = Join-Path $repoRoot 'tmp\logs'
+$pidDir = Join-Path $repoRoot 'tmp\pids'
 foreach ($d in @("$logDir\api", "$logDir\worker", "$logDir\web", $pidDir)) {
     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
 }
@@ -91,7 +91,7 @@ function Wait-PortReady {
 
 if ($ResetDb) {
     Write-Host "Resetting database..." -ForegroundColor Cyan
-    & $resetSql
+    & $resetScript
 }
 
 Write-Host "Checking postgres on localhost:5432..." -ForegroundColor Cyan

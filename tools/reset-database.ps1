@@ -2,16 +2,19 @@ param(
     [string]$DbHost = 'localhost',
     [int]$Port = 5432,
     [string]$User = 'postgres',
-    # Placeholder default: pass -Password with your local postgres password.
-    [string]$Password = 'YOUR_LOCAL_PASSWORD',
+    [string]$Password = $env:PGPASSWORD,
     [string]$Database = 'bump'
 )
 
 $ErrorActionPreference = 'Stop'
 
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    throw 'Password required via -Password parameter or PGPASSWORD environment variable.'
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dbDir = Join-Path $repoRoot 'db\migrations'
-$reseed = Join-Path $PSScriptRoot 'reset.sql'
+$reseed = Join-Path $repoRoot 'db\seed-work.sql'
 
 $env:PGPASSWORD = $Password
 
@@ -94,11 +97,11 @@ foreach ($m in $migrations) {
 
 Write-Host ""
 if (Test-Path $reseed) {
-    Write-Host "Reseeding from reset.sql..." -ForegroundColor Cyan
+    Write-Host "Reseeding from db\seed-work.sql..." -ForegroundColor Cyan
     Invoke-PsqlFile -DbName $Database -File $reseed
 }
 else {
-    Write-Warning "reset.sql not found at $reseed - skipping reseed step."
+    Write-Warning "seed-work.sql not found at $reseed - skipping reseed step."
 }
 
 Write-Host ""

@@ -5,7 +5,7 @@
 -- derived-from-live (cold, echo) and independent (demo).
 --
 -- Also (re)sets is_special_purpose here: migration 070 only updated rows that
--- existed at the time, so a database seeded after 070 ran (the tools/reset.ps1
+-- existed at the time, so a database seeded after 070 ran (the tools/reset-database.ps1
 -- flow: migrations against an empty database, then the seed) lost the flags.
 
 ALTER TABLE environment

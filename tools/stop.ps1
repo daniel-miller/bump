@@ -10,7 +10,7 @@ $labels = @{
     5173 = 'Bump.Web'
 }
 
-$pidDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'tmp\pid'
+$pidDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'tmp\pids'
 
 $pidFiles = @{
     5135 = Join-Path $pidDir 'api.pid'

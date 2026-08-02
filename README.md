@@ -333,7 +333,7 @@ bump/
 │   └── seed-admin.sql         # Admin account seed template
 ├── docs/
 │   └── exception-reporting.md # SDK exception-reporting guide
-├── tools/                     # Dev-loop scripts (start, stop, reset, restore-database)
+├── tools/                     # Dev-loop scripts (start, stop, reset-database, restore-database)
 ├── dist/                      # Release artifacts (gitignored)
 └── README.md
 ```

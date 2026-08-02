@@ -40,8 +40,8 @@
 [Aa]pp[Ss]ettings.[Ww]ork.json
 secrets.json
 
-# Private local seed data (admin credentials) used by tools/reset.ps1
-tools/reset.sql
+# Private local seed data (admin credentials) used by tools/reset-database.ps1
+db/seed-work.sql
 
 # Node.js
 

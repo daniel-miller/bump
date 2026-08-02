@@ -27,7 +27,7 @@ export function UnsubscribePage() {
 
   return (
     <div className="mx-auto max-w-md p-8 text-center">
-      {state === "working" && <p className="text-muted-foreground">Unsubscribing…</p>}
+      {state === "working" && <p className="text-muted-foreground">Unsubscribing...</p>}
       {state === "done" && (
         <p>You're unsubscribed. You won't get further updates from this status page.</p>
       )}

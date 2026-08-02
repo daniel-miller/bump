@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -67,16 +68,15 @@ export function OutageDetailPage() {
     },
   });
 
-  if (!data) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (!data) return <div className="text-muted-foreground p-8">Loading...</div>;
   return (
     <div className="max-w-3xl space-y-4 p-6">
       <div>
         <h1 className="text-2xl font-semibold">{data.outage.outageTitle}</h1>
         <div className="text-muted-foreground text-sm">
           {STATUS_LABELS[data.outage.outageStatus] ?? data.outage.outageStatus} · started{" "}
-          {new Date(data.outage.startedAt).toLocaleString()}
-          {data.outage.resolvedAt &&
-            ` · resolved ${new Date(data.outage.resolvedAt).toLocaleString()}`}
+          {formatAbsolute(data.outage.startedAt)}
+          {data.outage.resolvedAt && ` · resolved ${formatAbsolute(data.outage.resolvedAt)}`}
         </div>
         {data.service && (
           <div className="mt-1 text-sm">
@@ -98,7 +98,7 @@ export function OutageDetailPage() {
           <Card key={u.updateId}>
             <CardContent className="p-3">
               <div className="text-muted-foreground text-xs">
-                {new Date(u.createdAt).toLocaleString()} ·{" "}
+                {formatAbsolute(u.createdAt)} ·{" "}
                 {STATUS_LABELS[u.statusAtUpdate] ?? u.statusAtUpdate}
               </div>
               <div className="mt-1 whitespace-pre-wrap">{u.updateMessage}</div>

@@ -38,7 +38,7 @@ export function HostGate() {
     if (data.theme) applyTenantTheme(data.theme);
   }, [data]);
 
-  if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (isLoading) return <div className="text-muted-foreground p-8">Loading...</div>;
   if (!data) return <Navigate to="/admin/dashboard" replace />;
   return <BoardPage slug={data.boardSlug} logoUrl={data.theme?.logo} />;
 }

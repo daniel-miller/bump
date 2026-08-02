@@ -47,7 +47,7 @@ export function ConfirmEmailChangePage() {
 
   return (
     <div className="mx-auto max-w-md space-y-2 p-8 text-center">
-      {state.kind === "working" && <p className="text-muted-foreground">Confirming…</p>}
+      {state.kind === "working" && <p className="text-muted-foreground">Confirming...</p>}
       {state.kind === "done" && (
         <>
           <h1 className="text-2xl font-semibold">Email updated</h1>

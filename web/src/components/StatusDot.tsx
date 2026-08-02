@@ -1,4 +1,3 @@
-import { Pause } from "lucide-react";
 import type { ServiceStatus } from "@/lib/types";
 
 const colors: Record<ServiceStatus, string> = {
@@ -24,12 +23,11 @@ export function StatusDot({
 }) {
   if (paused) {
     return (
-      <Pause
+      <i
+        role="img"
         aria-label="Paused"
-        size={size + 4}
-        style={{ color: "var(--color-muted-foreground)" }}
-        fill="currentColor"
-        strokeWidth={0}
+        className="fa-sharp fa-solid fa-pause"
+        style={{ color: "var(--color-muted-foreground)", fontSize: size + 2 }}
       />
     );
   }

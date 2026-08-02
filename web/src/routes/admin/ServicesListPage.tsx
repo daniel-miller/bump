@@ -171,7 +171,7 @@ export function ServicesListPage() {
         </Card>
       )}
 
-      {isLoading && <div className="text-muted-foreground">Loading…</div>}
+      {isLoading && <div className="text-muted-foreground">Loading...</div>}
 
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {filtered.map((m) => (

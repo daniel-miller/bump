@@ -1,6 +1,5 @@
 import * as React from "react";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,7 +54,7 @@ export function DateTimePicker({
             className,
           )}
         >
-          <CalendarIcon className="h-4 w-4" />
+          <i className="fa-sharp fa-regular fa-calendar" aria-hidden="true" />
           {value ? format(value, "PPP p") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
@@ -67,7 +66,7 @@ export function DateTimePicker({
             type="time"
             value={timeValue}
             onChange={handleTimeChange}
-            className="bg-muted border-border rounded border px-2 py-1 text-sm"
+            className="bg-card border-border rounded-lg border px-2 py-1 text-sm"
           />
         </div>
       </PopoverContent>

@@ -143,7 +143,7 @@ export function BoardDetailPage() {
     },
   });
 
-  if (!data) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (!data) return <div className="text-muted-foreground p-8">Loading...</div>;
   return (
     <div className="max-w-3xl space-y-4 p-6">
       <div className="flex items-start justify-between gap-3">

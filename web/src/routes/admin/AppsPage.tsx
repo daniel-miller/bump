@@ -44,7 +44,7 @@ export function AppsPage() {
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold">Apps</h1>
-      {isLoading && <div className="text-muted-foreground text-sm">Loading…</div>}
+      {isLoading && <div className="text-muted-foreground text-sm">Loading...</div>}
       {isError && (
         <div className="text-danger text-sm">Couldn't load apps. Try refreshing the page.</div>
       )}
@@ -216,7 +216,7 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
               Cancel
             </Button>
             <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? "Saving…" : "Save changes"}
+              {save.isPending ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </form>

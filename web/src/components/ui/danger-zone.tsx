@@ -11,7 +11,7 @@ export function DangerZone({
   children: React.ReactNode;
 }) {
   return (
-    <section className={cn("border-danger/40 bg-danger/5 rounded border", className)}>
+    <section className={cn("border-danger/40 bg-danger/5 rounded-card border", className)}>
       <header className="border-danger/30 text-danger border-b px-4 py-2 text-sm font-semibold">
         {title}
       </header>

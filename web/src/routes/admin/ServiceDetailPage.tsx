@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { formatDistanceToNowStrict } from "date-fns";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { StatusDot } from "@/components/StatusDot";
 import { HistoryStrip } from "@/components/HistoryStrip";
 import type { ServiceStatus } from "@/lib/types";
@@ -153,7 +154,7 @@ export function ServiceDetailPage() {
     setEditing(true);
   }
 
-  if (!m) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (!m) return <div className="text-muted-foreground p-8">Loading...</div>;
 
   const isUp = m.lastStatus === "operational";
   const statusLabel = m.paused ? "Paused" : (STATUS_LABELS[m.lastStatus] ?? m.lastStatus);
@@ -169,7 +170,7 @@ export function ServiceDetailPage() {
       ? `Up for ${formatDistanceToNowStrict(new Date(m.lastOutageAt))}`
       : "Operational";
   } else if (m.lastOutageAt) {
-    statusHelper = `Down since ${new Date(m.lastOutageAt).toLocaleString()}`;
+    statusHelper = `Down since ${formatAbsolute(m.lastOutageAt)}`;
   } else {
     statusHelper = "Last check failed";
   }

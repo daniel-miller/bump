@@ -17,6 +17,8 @@ export interface TenantTheme {
 const COLOR_KEYS = new Set([
   "background",
   "foreground",
+  "foreground-strong",
+  "link",
   "muted",
   "muted-foreground",
   "border",

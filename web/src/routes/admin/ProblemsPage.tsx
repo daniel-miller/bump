@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -31,8 +32,8 @@ interface ProblemRow {
 
 function statusTone(status: number | null): string {
   if (status === null) return "bg-muted text-muted-foreground";
-  if (status >= 500) return "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200";
-  if (status >= 400) return "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200";
+  if (status >= 500) return "bg-danger/15 text-danger";
+  if (status >= 400) return "bg-warning/15 text-warning";
   return "bg-muted text-muted-foreground";
 }
 
@@ -67,9 +68,9 @@ export function ProblemsPage() {
         </div>
       </div>
 
-      {isLoading && <div className="text-muted-foreground">Loading…</div>}
+      {isLoading && <div className="text-muted-foreground">Loading...</div>}
       {error && (
-        <div className="text-sm text-red-600 dark:text-red-400">
+        <div className="text-danger text-sm">
           Failed to load problems: {(error as Error).message}
         </div>
       )}
@@ -87,7 +88,7 @@ export function ProblemsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         {p.status !== null && (
                           <span
-                            className={`rounded px-1.5 py-0.5 font-mono text-xs ${statusTone(p.status)}`}
+                            className={`rounded-md px-1.5 py-0.5 font-mono text-xs ${statusTone(p.status)}`}
                           >
                             {p.status}
                           </span>
@@ -111,10 +112,8 @@ export function ProblemsPage() {
                       </div>
                     </div>
                     <div className="text-muted-foreground text-right text-xs whitespace-nowrap">
-                      <div>{new Date(p.reportedAt).toLocaleString()}</div>
-                      {p.resolvedAt && (
-                        <div className="text-green-700 dark:text-green-400">Resolved</div>
-                      )}
+                      <div>{formatAbsolute(p.reportedAt)}</div>
+                      {p.resolvedAt && <div className="text-success">Resolved</div>}
                       {p.userEmail && <div className="opacity-70">{p.userEmail}</div>}
                     </div>
                   </div>

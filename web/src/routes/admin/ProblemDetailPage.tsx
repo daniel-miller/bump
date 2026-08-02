@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Download, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,7 +104,7 @@ function ExceptionBlock({ ex, depth = 0 }: { ex: ExceptionInfo; depth?: number }
       <div className="font-mono text-sm font-medium">{ex.type ?? "(unknown type)"}</div>
       {ex.value && <div className="mt-1 text-sm">{ex.value}</div>}
       {ex.stackTrace && (
-        <pre className="bg-muted/40 mt-2 overflow-x-auto rounded p-2 font-mono text-xs whitespace-pre-wrap">
+        <pre className="bg-muted/40 mt-2 overflow-x-auto rounded-md p-2 font-mono text-xs whitespace-pre-wrap">
           {ex.stackTrace}
         </pre>
       )}
@@ -192,14 +192,14 @@ export function ProblemDetailPage() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <div className="text-muted-foreground">Loading…</div>
+        <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
   if (error || !data) {
     return (
       <div className="p-6">
-        <div className="text-sm text-red-600 dark:text-red-400">
+        <div className="text-danger text-sm">
           Failed to load problem #{id}: {(error as Error)?.message ?? "not found"}
         </div>
       </div>
@@ -214,7 +214,7 @@ export function ProblemDetailPage() {
         <h1 className="flex items-baseline gap-2 text-2xl font-semibold">
           Problem #{data.problemKey}
           {data.resolvedAt && (
-            <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-950 dark:text-green-200">
+            <span className="bg-success/15 text-success rounded-md px-2 py-0.5 text-xs font-medium">
               Resolved
             </span>
           )}
@@ -238,8 +238,8 @@ export function ProblemDetailPage() {
                 }
               }}
             >
-              <RotateCcw className="mr-1 h-4 w-4" />
-              {resolveBusy ? "Unresolving…" : "Unresolve"}
+              <i className="fa-sharp fa-regular fa-rotate-left" aria-hidden="true" />
+              {resolveBusy ? "Unresolving..." : "Unresolve"}
             </Button>
           ) : (
             <Button
@@ -258,8 +258,8 @@ export function ProblemDetailPage() {
                 }
               }}
             >
-              <Check className="mr-1 h-4 w-4" />
-              {resolveBusy ? "Resolving…" : "Resolve"}
+              <i className="fa-sharp fa-regular fa-check" aria-hidden="true" />
+              {resolveBusy ? "Resolving..." : "Resolve"}
             </Button>
           )}
           <Button
@@ -270,7 +270,7 @@ export function ProblemDetailPage() {
             title="Download as Markdown"
             onClick={() => downloadMarkdown(data.problemKey)}
           >
-            <Download className="h-4 w-4" />
+            <i className="fa-sharp fa-regular fa-download" aria-hidden="true" />
           </Button>
           <Button
             type="button"
@@ -284,7 +284,10 @@ export function ProblemDetailPage() {
               setTimeout(() => setCopied(false), 1500);
             }}
           >
-            <Copy className={`h-4 w-4 ${copied ? "text-green-600 dark:text-green-400" : ""}`} />
+            <i
+              className={`fa-sharp fa-regular fa-copy ${copied ? "text-success" : ""}`}
+              aria-hidden="true"
+            />
           </Button>
           <Button
             type="button"
@@ -297,7 +300,7 @@ export function ProblemDetailPage() {
               setConfirmOpen(true);
             }}
           >
-            <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <i className="fa-sharp fa-regular fa-trash-can text-danger" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -310,9 +313,7 @@ export function ProblemDetailPage() {
               This permanently deletes the problem record. This can't be undone.
             </DialogDescription>
           </DialogHeader>
-          {deleteError && (
-            <div className="text-sm text-red-600 dark:text-red-400">{deleteError}</div>
-          )}
+          {deleteError && <div className="text-danger text-sm">{deleteError}</div>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={deleting}>
               Cancel
@@ -333,7 +334,7 @@ export function ProblemDetailPage() {
                 }
               }}
             >
-              {deleting ? "Deleting…" : "Delete"}
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -346,15 +347,12 @@ export function ProblemDetailPage() {
         <Row label="Detail" value={data.detail} />
         <Row label="Instance" value={data.instance} mono />
         <Row label="Fingerprint" value={data.fingerprint} mono />
-        <Row label="Reported at" value={new Date(data.reportedAt).toLocaleString()} />
+        <Row label="Reported at" value={formatAbsolute(data.reportedAt)} />
         <Row
           label="Dispatched at"
-          value={data.dispatchedAt ? new Date(data.dispatchedAt).toLocaleString() : null}
+          value={data.dispatchedAt ? formatAbsolute(data.dispatchedAt) : null}
         />
-        <Row
-          label="Resolved at"
-          value={data.resolvedAt ? new Date(data.resolvedAt).toLocaleString() : null}
-        />
+        <Row label="Resolved at" value={data.resolvedAt ? formatAbsolute(data.resolvedAt) : null} />
         <Row
           label="Extensions"
           value={

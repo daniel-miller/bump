@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
-import { ExternalLink } from "lucide-react";
 
 interface RepositoryInfo {
   url: string;
@@ -88,7 +88,7 @@ function formatBytes(n: number): string {
 
 function formatDate(s: string | null): string {
   if (!s) return "—";
-  return new Date(s).toLocaleString(undefined, { timeZoneName: "short" });
+  return formatAbsolute(s);
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -102,7 +102,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="border-border rounded border p-3">
+    <div className="border-border rounded-lg border p-3">
       <div className="text-muted-foreground text-xs">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
     </div>
@@ -119,7 +119,7 @@ export function AboutPage() {
     queryFn: () => api<VersionResponse>("/api/version"),
   });
 
-  if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (isLoading) return <div className="text-muted-foreground p-8">Loading...</div>;
   if (isError || !data)
     return (
       <div className="text-danger p-8">Couldn't load about info. Try refreshing the page.</div>
@@ -141,7 +141,10 @@ export function AboutPage() {
             className="hover:text-foreground inline-flex items-center gap-1 underline"
           >
             {repository.url.replace(/^https?:\/\//, "")}
-            <ExternalLink className="h-3 w-3" />
+            <i
+              className="fa-sharp fa-regular fa-arrow-up-right-from-square text-xs"
+              aria-hidden="true"
+            />
           </a>
         </p>
       </div>

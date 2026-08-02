@@ -138,8 +138,8 @@ export function AccountSecurityPage() {
               <div className="text-sm">
                 Scan this with your authenticator app, or enter the secret manually.
               </div>
-              <code className="bg-muted block rounded p-2 text-xs break-all">{setupSecret}</code>
-              <code className="bg-muted block rounded p-2 text-xs break-all">{setupUri}</code>
+              <code className="bg-muted block rounded-md p-2 text-xs break-all">{setupSecret}</code>
+              <code className="bg-muted block rounded-md p-2 text-xs break-all">{setupUri}</code>
               <div className="text-sm">Save these recovery codes — you won't see them again.</div>
               <ul className="space-y-1 font-mono text-xs">
                 {setupCodes?.map((c) => (

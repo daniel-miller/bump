@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,8 +165,8 @@ export function AnnouncementsPage() {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{a.announcementTitle}</div>
                 <div className="text-muted-foreground text-xs">
-                  {a.announcementType} · publishes {new Date(a.publishAt).toLocaleString()}
-                  {a.autoHideAt && ` · hides ${new Date(a.autoHideAt).toLocaleString()}`}
+                  {a.announcementType} · publishes {formatAbsolute(a.publishAt)}
+                  {a.autoHideAt && ` · hides ${formatAbsolute(a.autoHideAt)}`}
                 </div>
                 <div className="mt-1 whitespace-pre-wrap">{a.announcementContent}</div>
               </div>

@@ -91,7 +91,7 @@ export function LoginPage() {
               <div className="text-danger text-sm break-words whitespace-pre-wrap">{error}</div>
             )}
             <Button type="submit" disabled={busy} className="w-full">
-              {busy ? "Signing in…" : "Sign in"}
+              {busy ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </CardContent>

@@ -1,6 +1,5 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export const Dialog = DialogPrimitive.Root;
@@ -14,7 +13,7 @@ export const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/40",
+      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/60",
       className,
     )}
     {...props}
@@ -31,7 +30,7 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "border-border bg-card fixed top-1/2 left-1/2 z-50 grid w-full max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded border p-6 shadow-md",
+        "border-border bg-card fixed top-1/2 left-1/2 z-50 grid w-full max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border p-6 shadow-xl",
         "focus:outline-none",
         className,
       )}
@@ -43,7 +42,7 @@ export const DialogContent = React.forwardRef<
           aria-label="Close"
           className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:ring-primary absolute top-3 right-3 rounded p-1 focus-visible:ring-2 focus-visible:outline-none"
         >
-          <X className="h-4 w-4" />
+          <i className="fa-sharp fa-regular fa-xmark" aria-hidden="true" />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>

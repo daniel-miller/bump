@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
-import { AlertTriangle, Info, Wrench } from "lucide-react";
 import { useStatus } from "@/hooks/useStatus";
+import { formatAbsolute } from "@/lib/dates";
 import { StatusDot } from "@/components/StatusDot";
 import { ServiceCard } from "@/components/ServiceCard";
 import { TrendBars } from "@/components/TrendBars";
@@ -8,19 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const announcementStyles = {
   info: {
-    icon: Info,
+    icon: "fa-circle-info",
     bg: "bg-primary/10",
     border: "border-primary/40",
     iconColor: "text-primary",
   },
   warning: {
-    icon: AlertTriangle,
+    icon: "fa-triangle-exclamation",
     bg: "bg-warning/10",
     border: "border-warning/50",
     iconColor: "text-warning",
   },
   maintenance: {
-    icon: Wrench,
+    icon: "fa-wrench",
     bg: "bg-muted",
     border: "border-border",
     iconColor: "text-muted-foreground",
@@ -34,7 +34,7 @@ export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?
   const slug = slugProp ?? slugParam;
   const { data, isLoading, error } = useStatus(slug);
 
-  if (isLoading) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (isLoading) return <div className="text-muted-foreground p-8">Loading...</div>;
   if (error || !data)
     return <div className="text-danger p-8">Couldn't load status. Try refreshing the page.</div>;
 
@@ -64,13 +64,15 @@ export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?
         <div className="space-y-2">
           {data.announcements.map((a) => {
             const style = announcementStyles[a.type] ?? announcementStyles.info;
-            const Icon = style.icon;
             return (
               <div
                 key={a.id}
                 className={`rounded-card flex gap-3 border p-3 ${style.bg} ${style.border}`}
               >
-                <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${style.iconColor}`} />
+                <i
+                  className={`fa-sharp fa-regular ${style.icon} mt-0.5 shrink-0 text-lg ${style.iconColor}`}
+                  aria-hidden="true"
+                />
                 <div className="min-w-0">
                   <div className="text-muted-foreground text-sm font-semibold capitalize">
                     {a.type}
@@ -137,7 +139,7 @@ export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?
               <CardContent className="p-3">
                 <div className="font-medium">{i.title}</div>
                 <div className="text-muted-foreground text-xs">
-                  Started {new Date(i.startedAt).toLocaleString()} · {i.status}
+                  Started {formatAbsolute(i.startedAt)} · {i.status}
                 </div>
               </CardContent>
             </Card>

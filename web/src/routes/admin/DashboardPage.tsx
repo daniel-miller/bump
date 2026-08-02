@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { STATUS_REFETCH_INTERVAL_MS, useStatus } from "@/hooks/useStatus";
+import { formatAbsolute } from "@/lib/dates";
 import { StatusDot } from "@/components/StatusDot";
 import { TrendBars } from "@/components/TrendBars";
 import { ProblemsBars } from "@/components/ProblemsBars";
@@ -15,11 +16,9 @@ export function DashboardPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  if (isLoading || !data) return <div className="text-muted-foreground p-8">Loading…</div>;
+  if (isLoading || !data) return <div className="text-muted-foreground p-8">Loading...</div>;
 
-  const updatedAtLabel = new Date(data.updatedAt).toLocaleString(undefined, {
-    timeZoneName: "short",
-  });
+  const updatedAtLabel = formatAbsolute(data.updatedAt);
   const secondsLeft = Math.max(
     0,
     Math.ceil((dataUpdatedAt + STATUS_REFETCH_INTERVAL_MS - now) / 1000),

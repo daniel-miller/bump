@@ -1,35 +1,55 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
-  --color-muted: #f3f4f6;
-  --color-muted-foreground: #64748b;
-  --color-border: #e5e7eb;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.4rem;
+
+  /* Warm near-neutral page with pure white cards: enough separation to read,
+     not enough to look dirty. Follows the CMDS design system; the accent is
+     the one sanctioned difference (bump blue instead of CMDS indigo). */
+  --color-background: #f7f5f0;
+  --color-foreground: oklch(0.32 0.03 258);
+  --color-foreground-strong: oklch(0.21 0.04 265);
+  --color-muted: oklch(0.97 0.005 255);
+  --color-muted-foreground: oklch(0.55 0.03 258);
+  --color-border: oklch(0.92 0.008 255);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.32 0.03 258);
+
   --color-primary: #3b73ff;
   --color-primary-foreground: #ffffff;
-  --color-success: #2ecc71;
-  --color-warning: #f5a623;
-  --color-danger: #e74c3c;
-  --radius-card: 0.25rem;
-  --radius-badge: 0.25rem;
+
+  --color-link: #3b73ff;
+
+  --color-success: oklch(0.72 0.18 152);
+  --color-warning: oklch(0.79 0.16 78);
+  --color-danger: oklch(0.63 0.22 27);
+
+  --radius-card: 0.75rem;
+  --radius-badge: 0.375rem;
 }
 
 .dark {
-  --color-background: #0b0d12;
-  --color-foreground: #e5e7eb;
-  --color-muted: #1a1d24;
-  --color-muted-foreground: #9ca3af;
-  --color-border: #20242c;
-  --color-card: #11141a;
-  --color-card-foreground: #e5e7eb;
+  --color-background: oklch(0.17 0.02 265);
+  --color-foreground: oklch(0.9 0.01 258);
+  --color-foreground-strong: oklch(0.97 0.005 258);
+  --color-muted: oklch(0.24 0.02 265);
+  --color-muted-foreground: oklch(0.68 0.02 258);
+  --color-border: oklch(0.28 0.02 265);
+  --color-card: oklch(0.2 0.02 265);
+  --color-card-foreground: oklch(0.9 0.01 258);
+
   --color-primary: #3b73ff;
   --color-primary-foreground: #ffffff;
-  --color-success: #2ecc71;
-  --color-warning: #facc15;
-  --color-danger: #e74c3c;
+
+  /* Links lighten in dark mode so they stay readable on the dark card. */
+  --color-link: oklch(0.72 0.16 262);
+
+  --color-success: oklch(0.75 0.17 152);
+  --color-warning: oklch(0.83 0.17 82);
+  --color-danger: oklch(0.68 0.22 27);
 }
 
 html,
@@ -37,14 +57,15 @@ body,
 #root {
   height: 100%;
 }
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
   /* --app-font-sans is set at runtime by tenant themes (lib/theme.ts);
-     absent a theme the Geist stack applies. */
+     absent a theme the Inter stack applies. */
   font-family: var(
     --app-font-sans,
-    "Geist Variable",
+    "Inter Variable",
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -52,8 +73,10 @@ body {
     Roboto,
     sans-serif
   );
+  font-size: 16px;
   font-feature-settings: "tnum", "cv11";
 }
+
 code,
 pre,
 kbd,
@@ -61,30 +84,15 @@ samp {
   font-family: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.bg-background {
-  background-color: var(--color-background);
-}
-.text-foreground {
-  color: var(--color-foreground);
-}
-.bg-card {
-  background-color: var(--color-card);
-}
-.text-card-foreground {
-  color: var(--color-card-foreground);
-}
-.bg-muted {
-  background-color: var(--color-muted);
-}
-.text-muted-foreground {
-  color: var(--color-muted-foreground);
-}
-.border-border {
-  border-color: var(--color-border);
-}
-.bg-primary {
-  background-color: var(--color-primary);
-}
-.text-primary-foreground {
-  color: var(--color-primary-foreground);
+/* In @layer base so utility classes can override it - unlayered rules would
+   beat Tailwind's layered utilities in the cascade. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--color-foreground-strong);
+  }
 }

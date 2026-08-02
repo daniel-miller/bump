@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
+import { formatAbsolute } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,7 +22,7 @@ export function OutagesListPage() {
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-2xl font-semibold">Outages</h1>
-      {isLoading && <div className="text-muted-foreground">Loading…</div>}
+      {isLoading && <div className="text-muted-foreground">Loading...</div>}
       <div className="space-y-2">
         {data.map((i) => (
           <Link to={`/admin/outages/${i.outageId}`} key={i.outageId} className="block">
@@ -30,8 +31,8 @@ export function OutagesListPage() {
                 <div>
                   <div className="font-medium">{i.outageTitle}</div>
                   <div className="text-muted-foreground text-xs">
-                    Started {new Date(i.startedAt).toLocaleString()}
-                    {i.resolvedAt && ` · Resolved ${new Date(i.resolvedAt).toLocaleString()}`}
+                    Started {formatAbsolute(i.startedAt)}
+                    {i.resolvedAt && ` · Resolved ${formatAbsolute(i.resolvedAt)}`}
                   </div>
                 </div>
                 <Badge className="capitalize">{i.outageStatus}</Badge>

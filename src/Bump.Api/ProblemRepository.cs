@@ -47,7 +47,7 @@ public class ProblemRepository
         await using (var resolveCmd = new NpgsqlCommand(resolveSql, conn))
         {
             resolveCmd.Parameters.AddWithValue("app_slug", payload.Application);
-            resolveCmd.Parameters.AddWithValue("environment", payload.Environment);
+            resolveCmd.Parameters.AddWithValue("environment", EnvironmentTokens.Resolve(payload.Environment));
             await using var reader = await resolveCmd.ExecuteReaderAsync();
             await reader.ReadAsync();
             var appResolved      = reader.IsDBNull(0) ? (int?)null : reader.GetInt32(0);
@@ -118,7 +118,7 @@ public class ProblemRepository
         if (filter.Environment != null)
         {
             conditions.Add("(e.environment_slug = @environment OR @environment = ANY(e.environment_aliases))");
-            parameters.Add(new NpgsqlParameter("environment", filter.Environment));
+            parameters.Add(new NpgsqlParameter("environment", EnvironmentTokens.Resolve(filter.Environment)));
         }
 
         if (filter.AppSlug != null)

@@ -145,7 +145,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
               JOIN tenant      t ON t.tenant_key      = i.tenant_key
               JOIN environment e ON e.environment_key = i.environment_key
             """,
-            new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = environment }, tx);
+            new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = EnvironmentTokens.Resolve(environment) }, tx);
 
         // Pre-fill the history with operational so the UI bar isn't blank.
         var history = JsonConvert.SerializeObject(Enumerable.Repeat(ServiceStatuses.Operational, 60));
@@ -173,7 +173,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    is_private      = @IsPrivate,
                    updated_at      = now()
              WHERE service_slug = @Slug
-            """, new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = environment, IsPrivate = isPrivate });
+            """, new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate });
     }
 
     public async Task SetPrivateAsync(string slug, bool isPrivate, CancellationToken ct = default)

@@ -12,6 +12,7 @@ public sealed class EnvironmentRepository(NpgsqlDataSource dataSource)
                environment_description AS EnvironmentDescription,
                environment_aliases     AS EnvironmentAliases,
                is_special_purpose      AS IsSpecialPurpose,
+               is_derived_from_live    AS IsDerivedFromLive,
                created_at              AS CreatedAt,
                updated_at              AS UpdatedAt
           FROM environment

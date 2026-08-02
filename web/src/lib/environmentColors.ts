@@ -14,7 +14,9 @@ export type EnvironmentCategory = keyof typeof ENVIRONMENT_COLORS;
 
 const LOCAL_TAGS = new Set(["local", "work"]);
 const DEVELOPMENT_TAGS = new Set(["development", "dev", "test", "qa", "uat"]);
-const SANDBOX_TAGS = new Set(["sandbox", "staging", "demo"]);
+// "demo" is deliberately absent: since the 2026-07-31 roster rename it names
+// the demonstration environment (gray "other"), not the pre-production gate.
+const SANDBOX_TAGS = new Set(["sandbox", "stage", "staging"]);
 const PRODUCTION_TAGS = new Set(["production", "prod", "live"]);
 
 export function categorizeEnvironment(

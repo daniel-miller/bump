@@ -233,6 +233,7 @@ export function ServicesListPage() {
               service={{
                 name: m.name,
                 url: m.url,
+                handle: m.handle,
                 owner: m.owner,
                 environment: m.environment,
                 paused: m.paused,

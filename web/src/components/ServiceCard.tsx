@@ -8,6 +8,7 @@ import type { ServiceStatus } from "@/lib/types";
 export interface ServiceCardData {
   name: string;
   url?: string;
+  handle?: string;
   owner?: string;
   environment?: string;
   paused: boolean;
@@ -24,10 +25,9 @@ export function ServiceCard({
   service: ServiceCardData;
   interactive?: boolean;
 }) {
-  const tag =
-    service.owner || service.environment
-      ? `${service.owner ?? ""}/${service.environment ?? ""}`
-      : null;
+  // owner/environment/handle: the full canonical address of the service.
+  const tagParts = [service.owner, service.environment, service.handle].filter(Boolean);
+  const tag = tagParts.length > 0 ? tagParts.join("/") : null;
   return (
     <Card className={interactive ? "hover:border-primary transition-colors" : undefined}>
       <CardContent className="p-4">
@@ -51,7 +51,7 @@ export function ServiceCard({
                         style={{ backgroundColor: environmentColor(service.environment) }}
                       />
                     )}
-                    <span>{tag}</span>
+                    <span className="font-mono">{tag}</span>
                   </>
                 )}
               </div>

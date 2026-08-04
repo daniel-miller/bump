@@ -119,6 +119,7 @@ export function BoardPage({ handle: handleProp, logoUrl }: { handle?: string; lo
             service={{
               name: m.name,
               url: m.url,
+              handle: m.handle,
               owner: m.owner,
               environment: m.environment,
               paused: m.paused,

@@ -75,21 +75,21 @@ VALUES ('bump',     'Bump',     'Status, versions, and problem reports (this app
 INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key, app_key, is_private)
 SELECT s.service_handle, s.service_name, s.service_url, o.owner_key, e.environment_key, a.app_key, s.is_private
   FROM (VALUES
-               ('cmds-api',            'CMDS API',                          'https://live-api.cmds.app',             'cmds',      'live', NULL,       false),
-               ('cmds-hub',            'CMDS Hub',                          'https://hub.cmds.app/api/health',       'cmds',      'live', 'spark',    false),
-               ('cmds-web',            'CMDS Application',                  'https://keyera.cmds.app',               'cmds',      'live', NULL,       false),
-               ('cmds-www',            'CMDS Website',                      'https://www.keyeracmds.com',            'cmds',      'live', NULL,       false),
-               ('myorientations-www',  'My Orientations Website',           'https://www.myorientations.com',        'cmds',      'live', NULL,       false),
+               ('prism-api',          'CMDS API',                          'https://live-api.cmds.app',             'cmds',      'live', NULL,       false),
+               ('spark-hub',          'CMDS Hub',                          'https://hub.cmds.app/api/health',       'cmds',      'live', 'spark',    false),
+               ('prism-web',          'CMDS Application',                  'https://keyera.cmds.app',               'cmds',      'live', NULL,       false),
+               ('keyeracmds-www',     'CMDS Website',                      'https://www.keyeracmds.com',            'cmds',      'live', NULL,       false),
+               ('myorientations-www', 'My Orientations Website',           'https://www.myorientations.com',        'cmds',      'live', NULL,       false),
 
-               ('danielmiller-www',    'Daniel''s Career Portfolio',        'https://danielmiller.ca',               'djm',       'live', NULL,       false),
+               ('danielmiller-www',   'Daniel''s Career Portfolio',        'https://danielmiller.ca',               'djm',       'live', NULL,       false),
 
-               ('bridgemarket-web',    'BridgeMarket Web Application (UI)', 'https://prod-nmb.bridgemarket.app',     'nmb',       'live', 'bridge',   true),
+               ('bridge-web',         'BridgeMarket Web Application (UI)', 'https://prod-nmb.bridgemarket.app',     'nmb',       'live', 'bridge',   true),
 
-               ('openscorm-api',       'OpenSCORM API',                     'https://live.openscorm.com/api/health', 'openscorm', 'live', 'slate',    false),
-               ('openscorm-web',       'OpenSCORM Application',             'https://live.openscorm.com',            'openscorm', 'live', 'slate',    false),
-               ('openscorm-www',       'OpenSCORM Website',                 'https://www.openscorm.com',             'openscorm', 'live', 'slate',    false),
+               ('slate-api',          'OpenSCORM API',                     'https://live.openscorm.com/api/health', 'openscorm', 'live', 'slate',    false),
+               ('slate-web',          'OpenSCORM Application',             'https://live.openscorm.com',            'openscorm', 'live', 'slate',    false),
+               ('slate-www',          'OpenSCORM Website',                 'https://www.openscorm.com',             'openscorm', 'live', 'slate',    false),
 
-               ('pgmusicfestival-www', 'PGMF Website and Application',      'https://www.pgmusicfestival.com',       'pgmf',      'live', 'festival', false))
+               ('festival-www',       'PGMF Website and Application',      'https://www.pgmusicfestival.com',       'pgmf',      'live', 'festival', false))
 
       AS s(service_handle, service_name, service_url, owner_handle, environment_handle, app_handle, is_private)
            JOIN owner o

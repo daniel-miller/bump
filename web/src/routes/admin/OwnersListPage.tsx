@@ -18,7 +18,11 @@ interface OwnerRow {
 
 export function OwnersListPage() {
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery<OwnerRow[]>({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery<OwnerRow[]>({
     queryKey: ["owners"],
     queryFn: () => api<OwnerRow[]>("/api/admin/owners"),
   });
@@ -87,6 +91,10 @@ export function OwnersListPage() {
           </CardContent>
         </Card>
       )}
+      {/* A failed fetch must never read as an empty roster. */}
+      {isError && (
+        <div className="text-danger text-sm">Couldn't load owners. Try refreshing the page.</div>
+      )}
       <div className="space-y-2">
         {data.map((o) => (
           <Link to={`/owners/${o.ownerHandle}`} key={o.ownerId} className="block">
@@ -115,7 +123,7 @@ export function OwnersListPage() {
             </Card>
           </Link>
         ))}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && !isError && data.length === 0 && (
           <div className="text-muted-foreground text-sm">
             No owners yet. Add one to host a public status page.
           </div>

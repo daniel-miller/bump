@@ -44,7 +44,11 @@ interface EnvironmentOption {
 
 export function ServicesListPage() {
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery<ServiceRow[]>({
+  const {
+    data = [],
+    isLoading,
+    isError,
+  } = useQuery<ServiceRow[]>({
     queryKey: ["services"],
     queryFn: () => api<ServiceRow[]>("/api/admin/services"),
   });
@@ -216,6 +220,10 @@ export function ServicesListPage() {
       )}
 
       {isLoading && <div className="text-muted-foreground">Loading...</div>}
+      {/* A failed fetch must never read as an empty roster. */}
+      {isError && (
+        <div className="text-danger text-sm">Couldn't load services. Try refreshing the page.</div>
+      )}
 
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {filtered.map((m) => (
@@ -236,7 +244,7 @@ export function ServicesListPage() {
             />
           </Link>
         ))}
-        {!isLoading && data.length === 0 && (
+        {!isLoading && !isError && data.length === 0 && (
           <div className="text-muted-foreground col-span-full text-sm">
             No services yet. Add one to start monitoring.
           </div>

@@ -9,6 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ServiceRow {
   handle: string;
@@ -25,9 +32,14 @@ interface ServiceRow {
   lastCheckAt: string | null;
 }
 
-// Allow lowercase a-z, 0-9, hyphens, underscores. Strips everything else.
-function sanitizeTag(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+interface OwnerOption {
+  ownerHandle: string;
+  ownerName: string;
+}
+
+interface EnvironmentOption {
+  environmentHandle: string;
+  environmentName: string;
 }
 
 export function ServicesListPage() {
@@ -46,6 +58,19 @@ export function ServicesListPage() {
   const [owner, setOwner] = useState("");
   const [environment, setEnvironment] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  // Canon tokens only: owner and environment come from the rosters, so an
+  // alias or a typo can never be written. Aliases are for reading.
+  const { data: owners = [] } = useQuery<OwnerOption[]>({
+    queryKey: ["owners"],
+    queryFn: () => api<OwnerOption[]>("/api/admin/owners"),
+    enabled: showNew,
+  });
+  const { data: environments = [] } = useQuery<EnvironmentOption[]>({
+    queryKey: ["admin", "environments"],
+    queryFn: () => api<EnvironmentOption[]>("/api/admin/environments"),
+    enabled: showNew,
+  });
 
   const create = useMutation({
     mutationFn: () =>
@@ -141,21 +166,37 @@ export function ServicesListPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="owner">Owner</Label>
-                <Input
-                  id="owner"
-                  placeholder="e.g. acme-corp"
-                  value={owner}
-                  onChange={(e) => setOwner(sanitizeTag(e.target.value))}
-                />
+                <Select value={owner} onValueChange={setOwner}>
+                  <SelectTrigger id="owner">
+                    <SelectValue placeholder="Select owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {owners.map((o) => (
+                      <SelectItem key={o.ownerHandle} value={o.ownerHandle}>
+                        <span className="font-mono">{o.ownerHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{o.ownerName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="environment">Environment</Label>
-                <Input
-                  id="environment"
-                  placeholder="e.g. production"
-                  value={environment}
-                  onChange={(e) => setEnvironment(sanitizeTag(e.target.value))}
-                />
+                <Select value={environment} onValueChange={setEnvironment}>
+                  <SelectTrigger id="environment">
+                    <SelectValue placeholder="Select environment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {environments.map((e) => (
+                      <SelectItem key={e.environmentHandle} value={e.environmentHandle}>
+                        <span className="font-mono">{e.environmentHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">
+                          {e.environmentName}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {error && <div className="text-danger text-sm">{error}</div>}
@@ -163,7 +204,10 @@ export function ServicesListPage() {
               <Button variant="outline" onClick={() => setShowNew(false)}>
                 Cancel
               </Button>
-              <Button onClick={() => create.mutate()} disabled={create.isPending}>
+              <Button
+                onClick={() => create.mutate()}
+                disabled={!handle || !name || !url || !owner || !environment || create.isPending}
+              >
                 Create service
               </Button>
             </div>

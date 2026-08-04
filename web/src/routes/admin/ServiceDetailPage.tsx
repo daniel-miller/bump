@@ -23,9 +23,34 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-function sanitizeTag(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9_-]/g, "");
+// Mechanical rendering of the infra naming convention: same tokens, one
+// separator rule per medium, DNS inverted to most-specific-first.
+function canonicalNames(owner: string, environment: string, app?: string | null) {
+  const parts = app ? [owner, environment, app] : [owner, environment];
+  return {
+    site: parts.join("."),
+    sql: parts.join("_"),
+    label: parts.join("-"),
+    host: [...parts].reverse().join(".") + ".<zone>",
+  };
+}
+
+interface OwnerOption {
+  ownerHandle: string;
+  ownerName: string;
+}
+
+interface EnvironmentOption {
+  environmentHandle: string;
+  environmentName: string;
 }
 
 interface ServiceDetail {
@@ -34,6 +59,8 @@ interface ServiceDetail {
   url: string;
   owner: string;
   environment: string;
+  app: string | null;
+  siteId: number | null;
   paused: boolean;
   isPrivate: boolean;
   lastStatus: ServiceStatus;
@@ -131,13 +158,36 @@ export function ServiceDetailPage() {
   });
 
   const [editing, setEditing] = useState(false);
-  const [edit, setEdit] = useState({ name: "", url: "", owner: "", environment: "" });
+  const [edit, setEdit] = useState({ name: "", url: "", owner: "", environment: "", siteId: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Canon tokens only: owner and environment come from the rosters, so an
+  // alias or a typo can never be written. Aliases are for reading.
+  const { data: owners = [] } = useQuery<OwnerOption[]>({
+    queryKey: ["owners"],
+    queryFn: () => api<OwnerOption[]>("/api/admin/owners"),
+    enabled: editing,
+  });
+  const { data: environments = [] } = useQuery<EnvironmentOption[]>({
+    queryKey: ["admin", "environments"],
+    queryFn: () => api<EnvironmentOption[]>("/api/admin/environments"),
+    enabled: editing,
+  });
+
   const save = useMutation({
     mutationFn: () =>
-      api(`/api/admin/services/${handle}`, { method: "PATCH", body: JSON.stringify(edit) }),
+      api(`/api/admin/services/${handle}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: edit.name,
+          url: edit.url,
+          owner: edit.owner,
+          environment: edit.environment,
+          // 0 clears a previously recorded site ID.
+          siteId: edit.siteId.trim() === "" ? 0 : Number(edit.siteId),
+        }),
+      }),
     onSuccess: async () => {
       setEditing(false);
       setEditError(null);
@@ -149,7 +199,13 @@ export function ServiceDetailPage() {
 
   function startEdit() {
     if (!m) return;
-    setEdit({ name: m.name, url: m.url, owner: m.owner, environment: m.environment });
+    setEdit({
+      name: m.name,
+      url: m.url,
+      owner: m.owner,
+      environment: m.environment,
+      siteId: m.siteId?.toString() ?? "",
+    });
     setEditError(null);
     setEditing(true);
   }
@@ -206,6 +262,7 @@ export function ServiceDetailPage() {
           </div>
           <div className="text-muted-foreground mt-0.5 text-xs">
             {m.owner} / {m.environment}
+            {m.app && <span className="ml-1">· app {m.app}</span>}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -266,19 +323,59 @@ export function ServiceDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-owner">Owner</Label>
-                <Input
-                  id="edit-owner"
+                <Select
                   value={edit.owner}
-                  onChange={(e) => setEdit({ ...edit, owner: sanitizeTag(e.target.value) })}
-                />
+                  onValueChange={(v) => setEdit({ ...edit, owner: v })}
+                >
+                  <SelectTrigger id="edit-owner">
+                    <SelectValue placeholder="Select owner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {owners.map((o) => (
+                      <SelectItem key={o.ownerHandle} value={o.ownerHandle}>
+                        <span className="font-mono">{o.ownerHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{o.ownerName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-environment">Environment</Label>
-                <Input
-                  id="edit-environment"
+                <Select
                   value={edit.environment}
-                  onChange={(e) => setEdit({ ...edit, environment: sanitizeTag(e.target.value) })}
+                  onValueChange={(v) => setEdit({ ...edit, environment: v })}
+                >
+                  <SelectTrigger id="edit-environment">
+                    <SelectValue placeholder="Select environment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {environments.map((e) => (
+                      <SelectItem key={e.environmentHandle} value={e.environmentHandle}>
+                        <span className="font-mono">{e.environmentHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">
+                          {e.environmentName}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-site-id">IIS site ID</Label>
+                <Input
+                  id="edit-site-id"
+                  inputMode="numeric"
+                  placeholder="e.g. 10310"
+                  className="font-mono"
+                  value={edit.siteId}
+                  onChange={(e) =>
+                    setEdit({ ...edit, siteId: e.target.value.replace(/[^0-9]/g, "") })
+                  }
                 />
+                <p className="text-muted-foreground text-xs">
+                  STTEA digits assigned in IIS; leave empty when not IIS-hosted
+                </p>
               </div>
             </div>
             <div className="text-muted-foreground text-xs">
@@ -375,6 +472,42 @@ export function ServiceDetailPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Canonical names</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {(() => {
+            const names = canonicalNames(m.owner, m.environment, m.app);
+            const rows: [string, string][] = [
+              ["IIS site", names.site],
+              ["SQL identifier", names.sql],
+              ["Task / label media", names.label],
+              ["DNS hostname", names.host],
+            ];
+            return rows.map(([label, value]) => (
+              <div key={label} className="flex items-baseline gap-3 text-sm">
+                <span className="text-muted-foreground w-36 shrink-0 text-xs">{label}</span>
+                <span className="font-mono">{value}</span>
+              </div>
+            ));
+          })()}
+          {m.siteId !== null && (
+            <div className="flex items-baseline gap-3 text-sm">
+              <span className="text-muted-foreground w-36 shrink-0 text-xs">IIS site ID</span>
+              <span className="font-mono">
+                {m.siteId}
+                <span className="text-muted-foreground ml-2">logs in W3SVC{m.siteId}</span>
+              </span>
+            </div>
+          )}
+          <p className="text-muted-foreground pt-1 text-xs">
+            Derived mechanically from the owner, environment, and app tokens per the infra naming
+            convention; deployed names may differ
+          </p>
+        </CardContent>
+      </Card>
 
       <DangerZone>
         <DangerZoneItem

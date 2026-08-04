@@ -21,6 +21,7 @@ const navItems = [
   { to: "/announcements", label: "Announcements" },
   { to: "/apps", label: "Apps" },
   { to: "/environments", label: "Environments" },
+  { to: "/servers", label: "Servers" },
   { to: "/owners", label: "Owners" },
 ];
 

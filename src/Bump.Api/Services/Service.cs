@@ -13,8 +13,10 @@ public sealed class Service
     public string ServiceUrl { get; set; } = "";
     public string ServiceOwner { get; set; } = "";
     public string ServiceEnvironment { get; set; } = "";
+    public string? ServiceApp { get; set; }
     public bool ServicePaused { get; set; }
     public bool IsPrivate { get; set; }
+    public int? SiteId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 }
@@ -68,25 +70,31 @@ public static class ServiceHandleRules
 public sealed class ServiceRepository(NpgsqlDataSource dataSource)
 {
     private const string Cols = """
-        SELECT s.service_key      AS ServiceId,
+        SELECT s.service_key        AS ServiceId,
                s.service_handle     AS ServiceHandle,
-               s.service_name     AS ServiceName,
-               s.service_url      AS ServiceUrl,
+               s.service_name       AS ServiceName,
+               s.service_url        AS ServiceUrl,
                o.owner_handle       AS ServiceOwner,
                e.environment_handle AS ServiceEnvironment,
-               s.service_paused   AS ServicePaused,
-               s.is_private       AS IsPrivate,
-               s.created_at       AS CreatedAt,
-               s.updated_at       AS UpdatedAt
+               a.app_handle         AS ServiceApp,
+               s.service_paused     AS ServicePaused,
+               s.is_private         AS IsPrivate,
+               s.site_id            AS SiteId,
+               s.created_at         AS CreatedAt,
+               s.updated_at         AS UpdatedAt
           FROM service s
           JOIN owner       o ON o.owner_key       = s.owner_key
           JOIN environment e ON e.environment_key = s.environment_key
+          LEFT JOIN app    a ON a.app_key         = s.app_key
         """;
 
+    // Roster order, not alphabetical: owners in infra roster position, then
+    // environments by roster number, then service name.
     public async Task<IReadOnlyList<Service>> ListAsync(CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
-        var rows = await conn.QueryAsync<Service>(Cols + " ORDER BY s.service_name");
+        var rows = await conn.QueryAsync<Service>(
+            Cols + " ORDER BY o.owner_number NULLS LAST, o.owner_name, e.environment_number NULLS LAST, s.service_name");
         return rows.AsList();
     }
 
@@ -128,18 +136,20 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                       LIMIT 1)
                 )
                 RETURNING service_key, service_handle, service_name, service_url,
-                          owner_key, environment_key, service_paused, is_private, created_at, updated_at
+                          owner_key, environment_key, service_paused, is_private, site_id, created_at, updated_at
             )
-            SELECT i.service_key      AS ServiceId,
+            SELECT i.service_key        AS ServiceId,
                    i.service_handle     AS ServiceHandle,
-                   i.service_name     AS ServiceName,
-                   i.service_url      AS ServiceUrl,
+                   i.service_name       AS ServiceName,
+                   i.service_url        AS ServiceUrl,
                    o.owner_handle       AS ServiceOwner,
                    e.environment_handle AS ServiceEnvironment,
-                   i.service_paused   AS ServicePaused,
-                   i.is_private       AS IsPrivate,
-                   i.created_at       AS CreatedAt,
-                   i.updated_at       AS UpdatedAt
+                   NULL                 AS ServiceApp,
+                   i.service_paused     AS ServicePaused,
+                   i.is_private         AS IsPrivate,
+                   i.site_id            AS SiteId,
+                   i.created_at         AS CreatedAt,
+                   i.updated_at         AS UpdatedAt
               FROM ins i
               JOIN owner       o ON o.owner_key       = i.owner_key
               JOIN environment e ON e.environment_key = i.environment_key
@@ -156,7 +166,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return service;
     }
 
-    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, bool isPrivate, CancellationToken ct = default)
+    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, bool isPrivate, int? siteId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
@@ -170,9 +180,10 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                                           OR @Environment = ANY(environment_aliases)
                                        LIMIT 1),
                    is_private      = @IsPrivate,
+                   site_id         = @SiteId,
                    updated_at      = now()
              WHERE service_handle = @Handle
-            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate });
+            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate, SiteId = siteId });
     }
 
     public async Task SetPrivateAsync(string handle, bool isPrivate, CancellationToken ct = default)

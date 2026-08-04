@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
+\restrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -26,9 +26,9 @@ SET row_security = off;
 CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
 
 
-\unrestrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
+\unrestrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
 \connect bump
-\restrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
+\restrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -592,6 +592,7 @@ CREATE TABLE public.service (
     service_url character varying(2048) NOT NULL,
     service_paused boolean DEFAULT false NOT NULL,
     is_private boolean DEFAULT false NOT NULL,
+    site_id integer,
     owner_key integer NOT NULL,
     environment_key integer NOT NULL,
     app_key integer,
@@ -1405,5 +1406,5 @@ ALTER TABLE ONLY public.subscriber
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
+\unrestrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
 

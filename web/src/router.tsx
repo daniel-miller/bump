@@ -17,6 +17,7 @@ import { OwnerDetailPage } from "@/routes/admin/OwnerDetailPage";
 import { AnnouncementsPage } from "@/routes/admin/AnnouncementsPage";
 import { AppsPage } from "@/routes/admin/AppsPage";
 import { EnvironmentsPage } from "@/routes/admin/EnvironmentsPage";
+import { ServersPage } from "@/routes/admin/ServersPage";
 import { ProblemsPage } from "@/routes/admin/ProblemsPage";
 import { ProblemDetailPage } from "@/routes/admin/ProblemDetailPage";
 import { AccountDetailsPage } from "@/routes/admin/AccountDetailsPage";
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
       { path: "/announcements", element: <AnnouncementsPage /> },
       { path: "/apps", element: <AppsPage /> },
       { path: "/environments", element: <EnvironmentsPage /> },
+      { path: "/servers", element: <ServersPage /> },
       { path: "/problems", element: <ProblemsPage /> },
       { path: "/problems/:id", element: <ProblemDetailPage /> },
       { path: "/account", element: <AccountDetailsPage /> },

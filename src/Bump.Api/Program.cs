@@ -165,6 +165,7 @@ namespace Bump.Api
             // ---- Repositories (existing + new) ----
             builder.Services.AddSingleton<AppRepository>();
             builder.Services.AddSingleton<EnvironmentRepository>();
+            builder.Services.AddSingleton<ServerRepository>();
             builder.Services.AddSingleton<ProblemRepository>();
             builder.Services.AddSingleton<IdempotencyRepository>();
             builder.Services.AddSingleton<AppUserRepository>();

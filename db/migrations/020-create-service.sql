@@ -8,6 +8,13 @@
 --
 -- is_private hides a service from the admin services list by default.
 -- It has no effect on probing or public boards.
+--
+-- site_id records the IIS site ID (STTEA per the infra README: server,
+-- two-digit owner, environment, application) so the W3SVC<id> log folder is
+-- findable from the UI. IDs are assigned in IIS and entered by hand; NULL
+-- for services not hosted on a Threadwork IIS server. Not unique: two
+-- services may share a site (root application and a child application), and
+-- IDs are only unique at a moment in time, not across renumbers.
 
 CREATE TABLE IF NOT EXISTS service
 (
@@ -17,6 +24,7 @@ CREATE TABLE IF NOT EXISTS service
     service_url         varchar(2048) NOT NULL,
     service_paused      boolean       NOT NULL DEFAULT false,
     is_private          boolean       NOT NULL DEFAULT false,
+    site_id             int,
 
     owner_key           int           NOT NULL REFERENCES owner(owner_key)             ON DELETE CASCADE,
 

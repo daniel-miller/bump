@@ -17,7 +17,7 @@ public sealed class ServiceProber : BackgroundService
     private readonly ILogger<ServiceProber> _logger;
     private readonly ServiceRepository _services;
     private readonly OutageRepository _outages;
-    private readonly BoardRepository _boards;
+    private readonly OwnerRepository _owners;
     private readonly SubscriberRepository _subscribers;
     private readonly IMailgunClient _mail;
     private readonly IHttpClientFactory _httpFactory;
@@ -37,7 +37,7 @@ public sealed class ServiceProber : BackgroundService
         AlertsSettings alerts,
         ServiceRepository services,
         OutageRepository outages,
-        BoardRepository boards,
+        OwnerRepository owners,
         SubscriberRepository subscribers,
         IMailgunClient mail,
         IHttpClientFactory httpFactory,
@@ -46,7 +46,7 @@ public sealed class ServiceProber : BackgroundService
         _logger = logger;
         _services = services;
         _outages = outages;
-        _boards = boards;
+        _owners = owners;
         _subscribers = subscribers;
         _mail = mail;
         _httpFactory = httpFactory;
@@ -114,7 +114,7 @@ public sealed class ServiceProber : BackgroundService
         {
             if (!ProbeAddressGuard.TryValidateUrl(service.ServiceUrl, out _, out var urlErr))
             {
-                _logger.LogWarning("Skipping service {Slug}: {Reason}", service.ServiceSlug, urlErr);
+                _logger.LogWarning("Skipping service {Handle}: {Reason}", service.ServiceHandle, urlErr);
                 networkError = true;
             }
             else
@@ -134,7 +134,7 @@ public sealed class ServiceProber : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Probe error for {Slug}.", service.ServiceSlug);
+            _logger.LogDebug(ex, "Probe error for {Handle}.", service.ServiceHandle);
             networkError = true;
         }
         sw.Stop();
@@ -202,17 +202,17 @@ public sealed class ServiceProber : BackgroundService
                 await _mail.SendAsync(OutageAlert.Build(_alertRecipient, service.ServiceName, title, outage.StartedAt.ToString("u"), detail), ct);
             }
 
-            // Notify subscribers of every board this service sits on.
-            var boardIds = await _boards.GetBoardIdsForServiceAsync(service.ServiceId, ct);
-            foreach (var boardId in boardIds)
+            // Notify subscribers of the owner whose board carries this service.
+            var ownerIds = await _owners.GetOwnerIdsForServiceAsync(service.ServiceId, ct);
+            foreach (var ownerId in ownerIds)
             {
-                var board = await _boards.GetByIdAsync(boardId, ct);
-                if (board is null) continue;
-                var subs = await _subscribers.ListConfirmedAsync(boardId, ct);
+                var owner = await _owners.GetByIdAsync(ownerId, ct);
+                if (owner is null) continue;
+                var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
                 foreach (var s in subs)
                 {
                     var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={Convert.ToBase64String(s.UnsubscribeToken).Replace('+', '-').Replace('/', '_').TrimEnd('=')}";
-                    await _mail.SendAsync(OutageOpened.Build(s.SubscriberEmail, board.BoardName, title, OutageStatuses.Investigating, outage.StartedAt.ToString("u"), unsubUrl), ct);
+                    await _mail.SendAsync(OutageOpened.Build(s.SubscriberEmail, owner.OwnerName, title, OutageStatuses.Investigating, outage.StartedAt.ToString("u"), unsubUrl), ct);
                 }
             }
         }

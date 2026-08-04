@@ -46,8 +46,8 @@ public sealed class MaintenanceWindow
 /// <summary><c>Bump:Api:Subscribers</c>.</summary>
 public sealed class SubscribersSettings
 {
-    /// <summary>Cap on confirmed subscribers per tenant board.</summary>
-    public int MaxPerTenant { get; set; } = 10_000;
+    /// <summary>Cap on confirmed subscribers per owner board.</summary>
+    public int MaxPerOwner { get; set; } = 10_000;
 }
 
 /// <summary><c>Bump:Worker:Alerts</c>.</summary>

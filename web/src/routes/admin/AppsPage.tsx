@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 
 interface AppRecord {
   appKey: number;
-  appSlug: string;
+  appHandle: string;
   appName: string;
   version: string;
   createdAt: string;
@@ -54,7 +54,7 @@ export function AppsPage() {
             <CardContent className="flex items-center justify-between p-3">
               <div>
                 <div className="font-medium">{a.appName}</div>
-                <div className="text-muted-foreground text-xs">{a.appSlug}</div>
+                <div className="text-muted-foreground text-xs">{a.appHandle}</div>
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-sm">{a.version}</span>
@@ -94,7 +94,7 @@ interface EditAppDialogProps {
 }
 
 function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
-  const [slug, setSlug] = useState("");
+  const [handle, setHandle] = useState("");
   const [name, setName] = useState("");
   const [major, setMajor] = useState(0);
   const [minor, setMinor] = useState(0);
@@ -104,7 +104,7 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
   useEffect(() => {
     if (app) {
       const [ma, mi, pa] = parseVersion(app.version);
-      setSlug(app.appSlug);
+      setHandle(app.appHandle);
       setName(app.appName);
       setMajor(ma);
       setMinor(mi);
@@ -116,9 +116,9 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
   const save = useMutation({
     mutationFn: () => {
       if (!app) throw new Error("no app");
-      return api<AppRecord>(`/api/admin/apps/${encodeURIComponent(app.appSlug)}`, {
+      return api<AppRecord>(`/api/admin/apps/${encodeURIComponent(app.appHandle)}`, {
         method: "PATCH",
-        body: JSON.stringify({ slug, name, major, minor, patch }),
+        body: JSON.stringify({ handle, name, major, minor, patch }),
       });
     },
     onSuccess: () => onSaved(),
@@ -143,7 +143,7 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
         <DialogHeader>
           <DialogTitle>Edit app</DialogTitle>
           <DialogDescription>
-            Changing the slug renames the app's URL. Existing SDK clients pinned to the old slug
+            Changing the handle renames the app's URL. Existing SDK clients pinned to the old handle
             will need to be updated.
           </DialogDescription>
         </DialogHeader>
@@ -157,11 +157,11 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
           }}
         >
           <div className="space-y-1">
-            <Label htmlFor="edit-app-slug">Slug</Label>
+            <Label htmlFor="edit-app-handle">Handle</Label>
             <Input
-              id="edit-app-slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              id="edit-app-handle"
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
               autoComplete="off"
               required
             />

@@ -47,8 +47,8 @@ public record ProblemReportPayload
         if (Environment.Length > Limits.EnvironmentMaxLength)
             return TooLong("Environment", Limits.EnvironmentMaxLength);
 
-        var slugErr = AppSlugRules.ValidateSlug(Application, "Application");
-        if (slugErr is not null) return slugErr;
+        var handleErr = AppHandleRules.ValidateHandle(Application, "Application");
+        if (handleErr is not null) return handleErr;
 
         if (Exception is not null)
         {
@@ -96,7 +96,7 @@ public record ProblemReportRecord
     public string? Instance { get; init; }
     public string? Extensions { get; init; }
 
-    public string AppSlug { get; init; } = "";
+    public string AppHandle { get; init; } = "";
     public string AppName { get; init; } = "";
     public string AppVersion { get; init; } = "";
 
@@ -113,7 +113,7 @@ public record ProblemReportRecord
 public class ProblemReportFilter
 {
     public string? Environment { get; set; }
-    public string? AppSlug { get; set; }
+    public string? AppHandle { get; set; }
     public string? Fingerprint { get; set; }
     public DateTime? From { get; set; }
     public DateTime? To { get; set; }

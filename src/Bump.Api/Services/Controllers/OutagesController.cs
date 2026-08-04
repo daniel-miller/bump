@@ -58,7 +58,7 @@ public sealed class OutagesController : ControllerBase
             var svc = await _services.GetByIdAsync(sid, ct);
             if (svc is not null)
             {
-                service = new { id = svc.ServiceId, slug = svc.ServiceSlug, name = svc.ServiceName, url = svc.ServiceUrl };
+                service = new { id = svc.ServiceId, handle = svc.ServiceHandle, name = svc.ServiceName, url = svc.ServiceUrl };
             }
         }
         return Ok(new { outage, updates, service });

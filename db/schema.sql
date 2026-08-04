@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
+\restrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -26,9 +26,9 @@ SET row_security = off;
 CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
 
 
-\unrestrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
+\unrestrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
 \connect bump
-\restrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
+\restrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -214,7 +214,7 @@ CREATE TABLE public.announcement (
     announcement_title character varying(200) NOT NULL,
     announcement_type character varying(16) DEFAULT 'info'::character varying NOT NULL,
     announcement_content text NOT NULL,
-    tenant_key integer,
+    owner_key integer,
     notify_subscribers boolean DEFAULT true NOT NULL,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -222,7 +222,7 @@ CREATE TABLE public.announcement (
     publish_at timestamp with time zone NOT NULL,
     auto_hide_at timestamp with time zone,
     dispatched_at timestamp with time zone,
-    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('maintenance'::character varying)::text])))
+    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'maintenance'::character varying])::text[])))
 );
 
 
@@ -252,7 +252,7 @@ ALTER SEQUENCE public.announcement_announcement_key_seq OWNED BY public.announce
 
 CREATE TABLE public.app (
     app_key integer NOT NULL,
-    app_slug character varying(50) NOT NULL,
+    app_handle character varying(50) NOT NULL,
     app_name character varying(200) NOT NULL,
     app_description character varying(500),
     version_major integer DEFAULT 0 NOT NULL,
@@ -289,13 +289,15 @@ ALTER SEQUENCE public.app_app_key_seq OWNED BY public.app.app_key;
 
 CREATE TABLE public.environment (
     environment_key integer NOT NULL,
-    environment_slug character varying(60) NOT NULL,
+    environment_number smallint,
+    environment_handle character varying(60) NOT NULL,
     environment_name character varying(100) NOT NULL,
     environment_description character varying(500),
     environment_aliases text[] DEFAULT ARRAY[]::text[] NOT NULL,
+    is_special_purpose boolean DEFAULT false NOT NULL,
+    is_derived_from_live boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone,
-    is_special_purpose boolean DEFAULT false NOT NULL
+    updated_at timestamp with time zone
 );
 
 
@@ -372,15 +374,15 @@ CREATE TABLE public.outage (
     started_at timestamp with time zone DEFAULT now() NOT NULL,
     resolved_at timestamp with time zone,
     updated_at timestamp with time zone,
-    CONSTRAINT incident_incident_status_check CHECK (((outage_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
+    CONSTRAINT outage_outage_status_check CHECK (((outage_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
 );
 
 
 --
--- Name: incident_incident_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: outage_outage_key_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.incident_incident_key_seq
+CREATE SEQUENCE public.outage_outage_key_seq
     AS integer
     START WITH 1
     INCREMENT BY 1
@@ -390,10 +392,10 @@ CREATE SEQUENCE public.incident_incident_key_seq
 
 
 --
--- Name: incident_incident_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: outage_outage_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.incident_incident_key_seq OWNED BY public.outage.outage_key;
+ALTER SEQUENCE public.outage_outage_key_seq OWNED BY public.outage.outage_key;
 
 
 --
@@ -408,15 +410,15 @@ CREATE TABLE public.outage_update (
     published boolean DEFAULT true NOT NULL,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT incident_update_update_status_check CHECK (((update_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
+    CONSTRAINT outage_update_update_status_check CHECK (((update_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
 );
 
 
 --
--- Name: incident_update_update_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: outage_update_update_key_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.incident_update_update_key_seq
+CREATE SEQUENCE public.outage_update_update_key_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -425,10 +427,47 @@ CREATE SEQUENCE public.incident_update_update_key_seq
 
 
 --
--- Name: incident_update_update_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: outage_update_update_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.incident_update_update_key_seq OWNED BY public.outage_update.update_key;
+ALTER SEQUENCE public.outage_update_update_key_seq OWNED BY public.outage_update.update_key;
+
+
+--
+-- Name: owner; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.owner (
+    owner_key integer NOT NULL,
+    owner_number smallint,
+    owner_handle character varying(60) NOT NULL,
+    owner_name character varying(100) NOT NULL,
+    owner_description character varying(500),
+    owner_host character varying(255),
+    owner_theme jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone
+);
+
+
+--
+-- Name: owner_owner_key_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.owner_owner_key_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: owner_owner_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.owner_owner_key_seq OWNED BY public.owner.owner_key;
 
 
 --
@@ -513,7 +552,8 @@ ALTER SEQUENCE public.problem_problem_key_seq OWNED BY public.problem.problem_ke
 
 CREATE TABLE public.server (
     server_key integer NOT NULL,
-    server_slug character varying(60) NOT NULL,
+    server_number smallint,
+    server_handle character varying(60) NOT NULL,
     server_name character varying(100) NOT NULL,
     server_description character varying(500),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -547,16 +587,16 @@ ALTER SEQUENCE public.server_server_key_seq OWNED BY public.server.server_key;
 
 CREATE TABLE public.service (
     service_key integer NOT NULL,
-    service_slug character varying(60) NOT NULL,
+    service_handle character varying(60) NOT NULL,
     service_name character varying(100) NOT NULL,
     service_url character varying(2048) NOT NULL,
     service_paused boolean DEFAULT false NOT NULL,
-    tenant_key integer NOT NULL,
+    is_private boolean DEFAULT false NOT NULL,
+    owner_key integer NOT NULL,
     environment_key integer NOT NULL,
-    app_key integer NOT NULL,
+    app_key integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone,
-    is_private boolean DEFAULT false NOT NULL
+    updated_at timestamp with time zone
 );
 
 
@@ -615,7 +655,7 @@ CREATE TABLE public.service_state (
 CREATE TABLE public.subscriber (
     subscriber_key integer NOT NULL,
     subscriber_email character varying(254) NOT NULL,
-    tenant_key integer NOT NULL,
+    owner_key integer NOT NULL,
     confirm_token bytea NOT NULL,
     unsubscribe_token bytea NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -641,40 +681,6 @@ CREATE SEQUENCE public.subscriber_subscriber_key_seq
 --
 
 ALTER SEQUENCE public.subscriber_subscriber_key_seq OWNED BY public.subscriber.subscriber_key;
-
-
---
--- Name: tenant; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.tenant (
-    tenant_key integer NOT NULL,
-    tenant_slug character varying(60) NOT NULL,
-    tenant_name character varying(100) NOT NULL,
-    tenant_description character varying(500),
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone
-);
-
-
---
--- Name: tenant_tenant_key_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.tenant_tenant_key_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: tenant_tenant_key_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.tenant_tenant_key_seq OWNED BY public.tenant.tenant_key;
 
 
 --
@@ -730,14 +736,21 @@ ALTER TABLE ONLY public.idempotency ALTER COLUMN idempotency_key SET DEFAULT nex
 -- Name: outage outage_key; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.outage ALTER COLUMN outage_key SET DEFAULT nextval('public.incident_incident_key_seq'::regclass);
+ALTER TABLE ONLY public.outage ALTER COLUMN outage_key SET DEFAULT nextval('public.outage_outage_key_seq'::regclass);
 
 
 --
 -- Name: outage_update update_key; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.outage_update ALTER COLUMN update_key SET DEFAULT nextval('public.incident_update_update_key_seq'::regclass);
+ALTER TABLE ONLY public.outage_update ALTER COLUMN update_key SET DEFAULT nextval('public.outage_update_update_key_seq'::regclass);
+
+
+--
+-- Name: owner owner_key; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.owner ALTER COLUMN owner_key SET DEFAULT nextval('public.owner_owner_key_seq'::regclass);
 
 
 --
@@ -773,13 +786,6 @@ ALTER TABLE ONLY public.service ALTER COLUMN service_key SET DEFAULT nextval('pu
 --
 
 ALTER TABLE ONLY public.subscriber ALTER COLUMN subscriber_key SET DEFAULT nextval('public.subscriber_subscriber_key_seq'::regclass);
-
-
---
--- Name: tenant tenant_key; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.tenant ALTER COLUMN tenant_key SET DEFAULT nextval('public.tenant_tenant_key_seq'::regclass);
 
 
 --
@@ -863,19 +869,27 @@ ALTER TABLE ONLY public.idempotency
 
 
 --
--- Name: outage incident_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: outage outage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.outage
-    ADD CONSTRAINT incident_pkey PRIMARY KEY (outage_key);
+    ADD CONSTRAINT outage_pkey PRIMARY KEY (outage_key);
 
 
 --
--- Name: outage_update incident_update_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: outage_update outage_update_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.outage_update
-    ADD CONSTRAINT incident_update_pkey PRIMARY KEY (update_key);
+    ADD CONSTRAINT outage_update_pkey PRIMARY KEY (update_key);
+
+
+--
+-- Name: owner owner_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.owner
+    ADD CONSTRAINT owner_pkey PRIMARY KEY (owner_key);
 
 
 --
@@ -935,14 +949,6 @@ ALTER TABLE ONLY public.subscriber
 
 
 --
--- Name: tenant tenant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.tenant
-    ADD CONSTRAINT tenant_pkey PRIMARY KEY (tenant_key);
-
-
---
 -- Name: ix_account_email; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -999,6 +1005,13 @@ CREATE UNIQUE INDEX ix_account_session_token ON public.account_session USING btr
 
 
 --
+-- Name: ix_announcement_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_announcement_owner ON public.announcement USING btree (owner_key);
+
+
+--
 -- Name: ix_announcement_pending; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1013,24 +1026,24 @@ CREATE INDEX ix_announcement_publish_at ON public.announcement USING btree (publ
 
 
 --
--- Name: ix_announcement_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_app_handle; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_announcement_tenant ON public.announcement USING btree (tenant_key);
-
-
---
--- Name: ix_app_slug; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ix_app_slug ON public.app USING btree (app_slug);
+CREATE UNIQUE INDEX ix_app_handle ON public.app USING btree (app_handle);
 
 
 --
--- Name: ix_environment_slug; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_environment_handle; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_environment_slug ON public.environment USING btree (environment_slug);
+CREATE UNIQUE INDEX ix_environment_handle ON public.environment USING btree (environment_handle);
+
+
+--
+-- Name: ix_environment_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_environment_number ON public.environment USING btree (environment_number);
 
 
 --
@@ -1083,6 +1096,27 @@ CREATE INDEX ix_outage_update_outage ON public.outage_update USING btree (outage
 
 
 --
+-- Name: ix_owner_handle; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_owner_handle ON public.owner USING btree (owner_handle);
+
+
+--
+-- Name: ix_owner_host; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_owner_host ON public.owner USING btree (lower((owner_host)::text));
+
+
+--
+-- Name: ix_owner_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_owner_number ON public.owner USING btree (owner_number);
+
+
+--
 -- Name: ix_probe_event_service_checked; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1132,10 +1166,17 @@ CREATE INDEX ix_problem_unresolved ON public.problem USING btree (reported_at DE
 
 
 --
--- Name: ix_server_slug; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_server_handle; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_server_slug ON public.server USING btree (server_slug);
+CREATE UNIQUE INDEX ix_server_handle ON public.server USING btree (server_handle);
+
+
+--
+-- Name: ix_server_number; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_server_number ON public.server USING btree (server_number);
 
 
 --
@@ -1167,17 +1208,17 @@ CREATE INDEX ix_service_env ON public.service USING btree (environment_key);
 
 
 --
--- Name: ix_service_slug; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_service_handle; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_service_slug ON public.service USING btree (service_slug);
+CREATE UNIQUE INDEX ix_service_handle ON public.service USING btree (service_handle);
 
 
 --
--- Name: ix_service_tenant; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_service_owner; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_service_tenant ON public.service USING btree (tenant_key);
+CREATE INDEX ix_service_owner ON public.service USING btree (owner_key);
 
 
 --
@@ -1191,14 +1232,14 @@ CREATE UNIQUE INDEX ix_subscriber_confirm_tok ON public.subscriber USING btree (
 -- Name: ix_subscriber_confirmed; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_subscriber_confirmed ON public.subscriber USING btree (tenant_key) WHERE (confirmed_at IS NOT NULL);
+CREATE INDEX ix_subscriber_confirmed ON public.subscriber USING btree (owner_key) WHERE (confirmed_at IS NOT NULL);
 
 
 --
--- Name: ix_subscriber_tenant_email; Type: INDEX; Schema: public; Owner: -
+-- Name: ix_subscriber_owner_email; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_subscriber_tenant_email ON public.subscriber USING btree (tenant_key, lower((subscriber_email)::text));
+CREATE UNIQUE INDEX ix_subscriber_owner_email ON public.subscriber USING btree (owner_key, lower((subscriber_email)::text));
 
 
 --
@@ -1206,13 +1247,6 @@ CREATE UNIQUE INDEX ix_subscriber_tenant_email ON public.subscriber USING btree 
 --
 
 CREATE UNIQUE INDEX ix_subscriber_unsub_tok ON public.subscriber USING btree (unsubscribe_token);
-
-
---
--- Name: ix_tenant_slug; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX ix_tenant_slug ON public.tenant USING btree (tenant_slug);
 
 
 --
@@ -1256,43 +1290,43 @@ ALTER TABLE ONLY public.announcement
 
 
 --
--- Name: announcement announcement_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: announcement announcement_owner_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.announcement
-    ADD CONSTRAINT announcement_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
+    ADD CONSTRAINT announcement_owner_key_fkey FOREIGN KEY (owner_key) REFERENCES public.owner(owner_key) ON DELETE CASCADE;
 
 
 --
--- Name: outage incident_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.outage
-    ADD CONSTRAINT incident_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
-
-
---
--- Name: outage incident_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: outage outage_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.outage
-    ADD CONSTRAINT incident_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE SET NULL;
+    ADD CONSTRAINT outage_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
 
 
 --
--- Name: outage_update incident_update_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: outage outage_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.outage
+    ADD CONSTRAINT outage_service_key_fkey FOREIGN KEY (service_key) REFERENCES public.service(service_key) ON DELETE SET NULL;
+
+
+--
+-- Name: outage_update outage_update_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.outage_update
-    ADD CONSTRAINT incident_update_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
+    ADD CONSTRAINT outage_update_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.account(account_id) ON DELETE SET NULL;
 
 
 --
--- Name: outage_update incident_update_incident_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: outage_update outage_update_outage_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.outage_update
-    ADD CONSTRAINT incident_update_incident_key_fkey FOREIGN KEY (outage_key) REFERENCES public.outage(outage_key) ON DELETE CASCADE;
+    ADD CONSTRAINT outage_update_outage_key_fkey FOREIGN KEY (outage_key) REFERENCES public.outage(outage_key) ON DELETE CASCADE;
 
 
 --
@@ -1324,7 +1358,7 @@ ALTER TABLE ONLY public.problem
 --
 
 ALTER TABLE ONLY public.service
-    ADD CONSTRAINT service_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE CASCADE;
+    ADD CONSTRAINT service_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE SET NULL;
 
 
 --
@@ -1344,6 +1378,14 @@ ALTER TABLE ONLY public.service
 
 
 --
+-- Name: service service_owner_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.service
+    ADD CONSTRAINT service_owner_key_fkey FOREIGN KEY (owner_key) REFERENCES public.owner(owner_key) ON DELETE CASCADE;
+
+
+--
 -- Name: service_state service_state_service_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1352,24 +1394,16 @@ ALTER TABLE ONLY public.service_state
 
 
 --
--- Name: service service_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.service
-    ADD CONSTRAINT service_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
-
-
---
--- Name: subscriber subscriber_tenant_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: subscriber subscriber_owner_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.subscriber
-    ADD CONSTRAINT subscriber_tenant_key_fkey FOREIGN KEY (tenant_key) REFERENCES public.tenant(tenant_key) ON DELETE CASCADE;
+    ADD CONSTRAINT subscriber_owner_key_fkey FOREIGN KEY (owner_key) REFERENCES public.owner(owner_key) ON DELETE CASCADE;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict SLGyii5vTnczWhdpElpBMy1EOfvumcLWHiSattJgueE0ACWDT5RgsSIgMCRhQOr
+\unrestrict FPUgJE3OLQzhrclgnZxhfvhiICBLXcNEMegtFLl4Xe0eugbjT3nllB4DcmG9jea
 

@@ -14,14 +14,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 
 const navItems = [
-  { to: "/admin/dashboard", label: "Dashboard" },
-  { to: "/admin/problems", label: "Problems" },
-  { to: "/admin/services", label: "Services" },
-  { to: "/admin/outages", label: "Outages" },
-  { to: "/admin/announcements", label: "Announcements" },
-  { to: "/admin/apps", label: "Apps" },
-  { to: "/admin/environments", label: "Environments" },
-  { to: "/admin/tenants", label: "Tenants" },
+  { to: "/dashboard", label: "Dashboard" },
+  { to: "/problems", label: "Problems" },
+  { to: "/services", label: "Services" },
+  { to: "/outages", label: "Outages" },
+  { to: "/announcements", label: "Announcements" },
+  { to: "/apps", label: "Apps" },
+  { to: "/environments", label: "Environments" },
+  { to: "/owners", label: "Owners" },
 ];
 
 function UserMenu({
@@ -64,13 +64,13 @@ function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <Link to="/admin/account">
+          <Link to="/account">
             <i className="fa-sharp fa-regular fa-circle-user fa-fw" aria-hidden="true" />
             <span className="flex-1">Account</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/admin/security">
+          <Link to="/security">
             <i className="fa-sharp fa-regular fa-shield-check fa-fw" aria-hidden="true" />
             <span className="flex-1">Security</span>
           </Link>
@@ -122,7 +122,7 @@ function HelpMenu() {
           </a>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/admin/about">
+          <Link to="/about">
             <i className="fa-sharp fa-regular fa-circle-info fa-fw" aria-hidden="true" />
             <span className="flex-1">About</span>
           </Link>
@@ -149,7 +149,7 @@ export function AppShell() {
 
       <aside aria-label="Sidebar" className="bg-card border-border flex w-56 flex-col border-r">
         <div className="border-border flex h-12 shrink-0 items-center border-b px-4">
-          <Link to="/admin/dashboard" className="text-xl font-bold tracking-tight">
+          <Link to="/dashboard" className="text-xl font-bold tracking-tight">
             Bump
           </Link>
         </div>

@@ -110,7 +110,7 @@ try
 
     builder.Services.AddSingleton<ServiceRepository>();
     builder.Services.AddSingleton<OutageRepository>();
-    builder.Services.AddSingleton<BoardRepository>();
+    builder.Services.AddSingleton<OwnerRepository>();
     builder.Services.AddSingleton<AnnouncementRepository>();
     builder.Services.AddSingleton<SubscriberRepository>();
 

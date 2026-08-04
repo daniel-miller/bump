@@ -66,7 +66,7 @@ ORDER BY 1, 2, 3, 4;
 "@
 if ($LASTEXITCODE -ne 0) { throw "psql exited with code $LASTEXITCODE (foreign keys)" }
 
-# public is the default schema, so its tables stay bare (e.g. tenant) to keep
+# public is the default schema, so its tables stay bare (e.g. owner) to keep
 # single-schema diagrams unchanged; anything else is qualified and quoted
 # ("security.account"), since a dotted id is not a bare DOT identifier.
 function Format-Node {

@@ -61,7 +61,7 @@ body,
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
-  /* --app-font-sans is set at runtime by tenant themes (lib/theme.ts);
+  /* --app-font-sans is set at runtime by owner themes (lib/theme.ts);
      absent a theme the Inter stack applies. */
   font-family: var(
     --app-font-sans,

@@ -11,10 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface ServiceRow {
-  slug: string;
+  handle: string;
   name: string;
   url: string;
-  tenant: string;
+  owner: string;
   environment: string;
   paused: boolean;
   isPrivate: boolean;
@@ -26,7 +26,7 @@ interface ServiceRow {
 }
 
 // Allow lowercase a-z, 0-9, hyphens, underscores. Strips everything else.
-function slugifyTag(input: string): string {
+function sanitizeTag(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9_-]/g, "");
 }
 
@@ -40,10 +40,10 @@ export function ServicesListPage() {
   const [query, setQuery] = useState("");
   const [showPrivate, setShowPrivate] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [slug, setSlug] = useState("");
+  const [handle, setHandle] = useState("");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [tenant, setTenant] = useState("");
+  const [owner, setOwner] = useState("");
   const [environment, setEnvironment] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -51,14 +51,14 @@ export function ServicesListPage() {
     mutationFn: () =>
       api("/api/admin/services", {
         method: "POST",
-        body: JSON.stringify({ slug, name, url, tenant, environment }),
+        body: JSON.stringify({ handle, name, url, owner, environment }),
       }),
     onSuccess: async () => {
       setShowNew(false);
-      setSlug("");
+      setHandle("");
       setName("");
       setUrl("");
-      setTenant("");
+      setOwner("");
       setEnvironment("");
       setError(null);
       await qc.invalidateQueries({ queryKey: ["services"] });
@@ -73,10 +73,10 @@ export function ServicesListPage() {
       ? visible
       : visible.filter(
           (m) =>
-            m.slug.toLowerCase().includes(q) ||
+            m.handle.toLowerCase().includes(q) ||
             m.name.toLowerCase().includes(q) ||
             m.url.toLowerCase().includes(q) ||
-            m.tenant.toLowerCase().includes(q) ||
+            m.owner.toLowerCase().includes(q) ||
             m.environment.toLowerCase().includes(q),
         );
 
@@ -87,7 +87,7 @@ export function ServicesListPage() {
         <div className="flex items-center gap-2">
           <Input
             type="search"
-            placeholder="Search slug, name, URL, tenant, environment"
+            placeholder="Search handle, name, URL, owner, environment"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-72"
@@ -113,12 +113,12 @@ export function ServicesListPage() {
           <CardContent className="space-y-3 p-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="slug">Slug</Label>
+                <Label htmlFor="handle">Handle</Label>
                 <Input
-                  id="slug"
+                  id="handle"
                   placeholder="my-service"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">
@@ -140,12 +140,12 @@ export function ServicesListPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="tenant">Tenant</Label>
+                <Label htmlFor="owner">Owner</Label>
                 <Input
-                  id="tenant"
+                  id="owner"
                   placeholder="e.g. acme-corp"
-                  value={tenant}
-                  onChange={(e) => setTenant(slugifyTag(e.target.value))}
+                  value={owner}
+                  onChange={(e) => setOwner(sanitizeTag(e.target.value))}
                 />
               </div>
               <div className="space-y-1.5">
@@ -154,7 +154,7 @@ export function ServicesListPage() {
                   id="environment"
                   placeholder="e.g. production"
                   value={environment}
-                  onChange={(e) => setEnvironment(slugifyTag(e.target.value))}
+                  onChange={(e) => setEnvironment(sanitizeTag(e.target.value))}
                 />
               </div>
             </div>
@@ -175,13 +175,13 @@ export function ServicesListPage() {
 
       <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
         {filtered.map((m) => (
-          <Link to={`/admin/services/${m.slug}`} key={m.slug} className="block">
+          <Link to={`/services/${m.handle}`} key={m.handle} className="block">
             <ServiceCard
               interactive
               service={{
                 name: m.name,
                 url: m.url,
-                tenant: m.tenant,
+                owner: m.owner,
                 environment: m.environment,
                 paused: m.paused,
                 status: m.lastStatus,

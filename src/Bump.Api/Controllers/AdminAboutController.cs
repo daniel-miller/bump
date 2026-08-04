@@ -35,7 +35,7 @@ public sealed class AdminAboutController : ControllerBase
     [ProducesResponseType(typeof(AboutResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
-        var bump = await _apps.GetBySlugAsync("bump");
+        var bump = await _apps.GetByHandleAsync("bump");
         var assembly = typeof(AdminAboutController).Assembly;
         var assemblyName = assembly.GetName();
         var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
@@ -92,7 +92,7 @@ public sealed class AdminAboutController : ControllerBase
                 (SELECT count(*) FROM app)                                                            AS Apps,
                 (SELECT count(*) FROM environment)                                                    AS Environments,
                 (SELECT count(*) FROM environment WHERE is_special_purpose)                           AS SpecialEnvironments,
-                (SELECT count(*) FROM tenant)                                                         AS Tenants,
+                (SELECT count(*) FROM owner)                                                          AS Owners,
                 (SELECT count(*) FROM service)                                                        AS Services,
                 (SELECT count(*) FROM service WHERE service_paused)                                   AS ServicesPaused,
                 (SELECT count(*) FROM outage WHERE resolved_at IS NULL)                               AS OpenOutages,
@@ -124,7 +124,7 @@ public sealed class AdminAboutController : ControllerBase
             Apps: counts.Apps,
             Environments: counts.Environments,
             SpecialEnvironments: counts.SpecialEnvironments,
-            Tenants: counts.Tenants,
+            Owners: counts.Owners,
             Services: counts.Services,
             ServicesPaused: counts.ServicesPaused,
             OpenOutages: counts.OpenOutages,
@@ -179,7 +179,7 @@ public sealed class AdminAboutController : ControllerBase
         public long Apps { get; set; }
         public long Environments { get; set; }
         public long SpecialEnvironments { get; set; }
-        public long Tenants { get; set; }
+        public long Owners { get; set; }
         public long Services { get; set; }
         public long ServicesPaused { get; set; }
         public long OpenOutages { get; set; }
@@ -242,7 +242,7 @@ public sealed record RegistryInfo(
     long Apps,
     long Environments,
     long SpecialEnvironments,
-    long Tenants,
+    long Owners,
     long Services,
     long ServicesPaused,
     long OpenOutages,

@@ -24,7 +24,7 @@ public static class Limits
 
     // ---- Field character lengths ------------------------------------------
 
-    public const int SlugMaxLength    = 50;
+    public const int HandleMaxLength    = 50;
     public const int AppNameMaxLength = 200;
 
     public const int EnvironmentMaxLength = 100;

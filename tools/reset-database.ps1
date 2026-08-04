@@ -14,6 +14,8 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dbDir = Join-Path $repoRoot 'db\migrations'
+$seedCanon = Join-Path $repoRoot 'db\seed-canon.sql'
+$seedTheme = Join-Path $repoRoot 'db\seed-openscorm-theme.sql'
 $reseed = Join-Path $repoRoot 'db\seed-work.sql'
 
 $env:PGPASSWORD = $Password
@@ -96,6 +98,14 @@ foreach ($m in $migrations) {
 }
 
 Write-Host ""
+Write-Host "Seeding canon rosters from db\seed-canon.sql..." -ForegroundColor Cyan
+Invoke-PsqlFile -DbName $Database -File $seedCanon
+
+if (Test-Path $seedTheme) {
+    Write-Host "Seeding OpenSCORM board theme..." -ForegroundColor Cyan
+    Invoke-PsqlFile -DbName $Database -File $seedTheme
+}
+
 if (Test-Path $reseed) {
     Write-Host "Reseeding from db\seed-work.sql..." -ForegroundColor Cyan
     Invoke-PsqlFile -DbName $Database -File $reseed

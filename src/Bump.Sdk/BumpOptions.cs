@@ -31,10 +31,10 @@ public class BumpOptions
     public string Environment { get; set; } = "live";
 
     /// <summary>
-    /// Slug of the bump-managed app this client corresponds to. Required so
+    /// Handle of the bump-managed app this client corresponds to. Required so
     /// every problem report can be joined to a row in the <c>app</c> table.
     /// </summary>
-    public string AppSlug { get; set; } = "";
+    public string AppHandle { get; set; } = "";
 
     /// <summary>
     /// Base URL prepended to each report's <c>type</c> field, e.g.
@@ -48,7 +48,7 @@ public class BumpOptions
     /// path separator.
     /// <para>
     /// Per consumer, not shared. The URL space belongs to the app doing the reporting - it is
-    /// where <em>that app's</em> error documentation lives - so it sits beside <see cref="AppSlug"/>
+    /// where <em>that app's</em> error documentation lives - so it sits beside <see cref="AppHandle"/>
     /// as a project-local value. There is no server-side origin for it to be sourced from.
     /// </para>
     /// <para>

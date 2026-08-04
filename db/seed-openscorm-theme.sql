@@ -1,4 +1,4 @@
--- Seed the OpenSCORM tenant theme for status.openscorm.com.
+-- Seed the OpenSCORM owner theme for status.openscorm.com.
 -- Token values come from the OpenSCORM design system (tokens/colors.css):
 -- green #16a34a is the only accent (CTA fill deepens to #15803d for AA),
 -- mint #6ee7a3 replaces it for text accents on the dark navy surface,
@@ -8,8 +8,8 @@
 -- needs a middle severity between operational green and outage red, and
 -- every status cue here is also carried by a text label.
 
-UPDATE tenant
-   SET tenant_theme = '{
+UPDATE owner
+   SET owner_theme = '{
          "font": "inter",
          "logo": "/themes/openscorm/logo-mark.svg",
          "favicon": "/themes/openscorm/favicon-32.png",
@@ -44,4 +44,4 @@ UPDATE tenant
          }
        }'::jsonb,
        updated_at = now()
- WHERE lower(tenant_host) = 'status.openscorm.com';
+ WHERE lower(owner_host) = 'status.openscorm.com';

@@ -27,12 +27,12 @@ const announcementStyles = {
   },
 } as const;
 
-export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?: string } = {}) {
-  // Slug comes from the route param (/tenants/:slug) or as a prop when the
-  // HostGate resolves a custom hostname to a tenant at the site root.
-  const { slug: slugParam } = useParams<{ slug: string }>();
-  const slug = slugProp ?? slugParam;
-  const { data, isLoading, error } = useStatus(slug);
+export function BoardPage({ handle: handleProp, logoUrl }: { handle?: string; logoUrl?: string } = {}) {
+  // Handle comes from the route param (/boards/:handle) or as a prop when the
+  // HostGate resolves a custom hostname to an owner at the site root.
+  const { handle: handleParam } = useParams<{ handle: string }>();
+  const handle = handleProp ?? handleParam;
+  const { data, isLoading, error } = useStatus(handle);
 
   if (isLoading) return <div className="text-muted-foreground p-8">Loading...</div>;
   if (error || !data)
@@ -52,7 +52,7 @@ export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {logoUrl && <img src={logoUrl} alt="" className="h-8 w-8" />}
-          <h1 className="text-2xl font-semibold">{data.board?.name ?? "Status"}</h1>
+          <h1 className="text-2xl font-semibold">{data.owner?.name ?? "Status"}</h1>
         </div>
         <div className="flex items-center gap-2">
           <StatusDot status={data.overall} size={14} />
@@ -115,11 +115,11 @@ export function BoardPage({ slug: slugProp, logoUrl }: { slug?: string; logoUrl?
       <section className="space-y-3">
         {data.services.map((m) => (
           <ServiceCard
-            key={m.slug}
+            key={m.handle}
             service={{
               name: m.name,
               url: m.url,
-              tenant: m.tenant,
+              owner: m.owner,
               environment: m.environment,
               paused: m.paused,
               status: m.status,

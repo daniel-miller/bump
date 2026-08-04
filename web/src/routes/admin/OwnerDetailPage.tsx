@@ -10,13 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
 
-interface BoardDetail {
-  board: {
-    boardId: number;
-    boardSlug: string;
-    boardName: string;
-    boardHost: string | null;
-    boardTheme: string | null;
+interface OwnerDetail {
+  owner: {
+    ownerId: number;
+    ownerNumber: number | null;
+    ownerHandle: string;
+    ownerName: string;
+    ownerDescription: string | null;
+    ownerHost: string | null;
+    ownerTheme: string | null;
   };
   serviceIds: number[];
 }
@@ -32,18 +34,18 @@ function prettyTheme(json: string | null): string {
 }
 interface ServiceRow {
   serviceId: number;
-  slug: string;
+  handle: string;
   name: string;
   url: string;
 }
 
-export function BoardDetailPage() {
-  const { slug = "" } = useParams<{ slug: string }>();
+export function OwnerDetailPage() {
+  const { handle = "" } = useParams<{ handle: string }>();
   const qc = useQueryClient();
   const nav = useNavigate();
-  const { data } = useQuery<BoardDetail>({
-    queryKey: ["boards", slug],
-    queryFn: () => api<BoardDetail>(`/api/admin/tenants/${slug}`),
+  const { data } = useQuery<OwnerDetail>({
+    queryKey: ["owners", handle],
+    queryFn: () => api<OwnerDetail>(`/api/admin/owners/${handle}`),
   });
   const { data: services = [] } = useQuery<ServiceRow[]>({
     queryKey: ["services"],
@@ -62,10 +64,10 @@ export function BoardDetailPage() {
     if (data) {
       setSelected(data.serviceIds);
       setInitialSelected(data.serviceIds);
-      setHost(data.board.boardHost ?? "");
-      setInitialHost(data.board.boardHost ?? "");
-      setTheme(prettyTheme(data.board.boardTheme));
-      setInitialTheme(prettyTheme(data.board.boardTheme));
+      setHost(data.owner.ownerHost ?? "");
+      setInitialHost(data.owner.ownerHost ?? "");
+      setTheme(prettyTheme(data.owner.ownerTheme));
+      setInitialTheme(prettyTheme(data.owner.ownerTheme));
     }
   }, [data]);
 
@@ -75,41 +77,41 @@ export function BoardDetailPage() {
 
   const save = useMutation({
     mutationFn: () =>
-      api(`/api/admin/tenants/${slug}`, {
+      api(`/api/admin/owners/${handle}`, {
         method: "PATCH",
         body: JSON.stringify({ serviceIds: selected }),
       }),
     onSuccess: async () => {
       setInitialSelected(selected);
-      await qc.invalidateQueries({ queryKey: ["boards", slug] });
+      await qc.invalidateQueries({ queryKey: ["owners", handle] });
     },
   });
 
   const hostDirty = host.trim().toLowerCase() !== initialHost;
   const saveHost = useMutation({
     mutationFn: () =>
-      api(`/api/admin/tenants/${slug}`, {
+      api(`/api/admin/owners/${handle}`, {
         method: "PATCH",
         // Empty string clears the hostname; the API lowercases and validates.
         body: JSON.stringify({ host: host.trim() }),
       }),
     onSuccess: async () => {
       setInitialHost(host.trim().toLowerCase());
-      await qc.invalidateQueries({ queryKey: ["boards", slug] });
+      await qc.invalidateQueries({ queryKey: ["owners", handle] });
     },
   });
 
   const themeDirty = theme.trim() !== initialTheme.trim();
   const saveTheme = useMutation({
     mutationFn: (body: unknown) =>
-      api(`/api/admin/tenants/${slug}/theme`, {
+      api(`/api/admin/owners/${handle}/theme`, {
         method: "PUT",
         body: JSON.stringify(body),
       }),
     onSuccess: async () => {
       setInitialTheme(theme.trim() === "" ? "" : prettyTheme(theme));
       setTheme((t) => (t.trim() === "" ? "" : prettyTheme(t)));
-      await qc.invalidateQueries({ queryKey: ["boards", slug] });
+      await qc.invalidateQueries({ queryKey: ["owners", handle] });
     },
   });
 
@@ -136,10 +138,10 @@ export function BoardDetailPage() {
   }
 
   const remove = useMutation({
-    mutationFn: () => api(`/api/admin/tenants/${slug}`, { method: "DELETE" }),
+    mutationFn: () => api(`/api/admin/owners/${handle}`, { method: "DELETE" }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["boards"] });
-      nav("/admin/tenants");
+      await qc.invalidateQueries({ queryKey: ["owners"] });
+      nav("/owners");
     },
   });
 
@@ -148,20 +150,30 @@ export function BoardDetailPage() {
     <div className="max-w-3xl space-y-4 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">{data.board.boardName}</h1>
+          <div className="flex items-baseline gap-2">
+            {data.owner.ownerNumber !== null && (
+              <span className="text-muted-foreground font-mono text-lg">
+                {String(data.owner.ownerNumber).padStart(2, "0")}
+              </span>
+            )}
+            <h1 className="text-2xl font-semibold">{data.owner.ownerName}</h1>
+          </div>
+          {data.owner.ownerDescription && (
+            <p className="text-muted-foreground text-sm">{data.owner.ownerDescription}</p>
+          )}
           <a
-            href={`/tenants/${data.board.boardSlug}`}
+            href={`/boards/${data.owner.ownerHandle}`}
             target="_blank"
             rel="noreferrer"
             className="text-primary text-sm hover:underline"
           >
-            /tenants/{data.board.boardSlug}
+            /boards/{data.owner.ownerHandle}
           </a>
         </div>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Services on this tenant</CardTitle>
+          <CardTitle className="text-sm">Services on this board</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {services.map((m) => {
@@ -204,8 +216,8 @@ export function BoardDetailPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-muted-foreground text-sm">
-            Serve this tenant's status board at its own hostname instead of /tenants/
-            {data.board.boardSlug}. Point a CNAME at this server, then enter the bare hostname here.
+            Serve this owner's status board at its own hostname instead of /boards/
+            {data.owner.ownerHandle}. Point a CNAME at this server, then enter the bare hostname here.
             Leave empty to disable.
           </p>
           <Input
@@ -283,15 +295,15 @@ export function BoardDetailPage() {
 
       <DangerZone>
         <DangerZoneItem
-          title="Delete tenant"
-          description="Permanently delete this tenant. The public status page will stop working."
+          title="Delete owner"
+          description="Permanently delete this owner. The public status page will stop working."
           action={
             <Button
               variant="destructive"
               onClick={() => setConfirmOpen(true)}
               disabled={remove.isPending}
             >
-              Delete tenant
+              Delete owner
             </Button>
           }
         />
@@ -300,9 +312,9 @@ export function BoardDetailPage() {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Delete tenant?"
-        description={`"${data.board.boardName}" will be removed permanently. This cannot be undone.`}
-        confirmLabel="Delete tenant"
+        title="Delete owner?"
+        description={`"${data.owner.ownerName}" will be removed permanently. This cannot be undone.`}
+        confirmLabel="Delete owner"
         variant="danger"
         disabled={remove.isPending}
         onConfirm={() => {

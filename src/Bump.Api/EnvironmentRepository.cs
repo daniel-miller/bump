@@ -7,7 +7,8 @@ public sealed class EnvironmentRepository(NpgsqlDataSource dataSource)
 {
     private const string Cols = """
         SELECT environment_key         AS EnvironmentKey,
-               environment_slug        AS EnvironmentSlug,
+               environment_number      AS EnvironmentNumber,
+               environment_handle        AS EnvironmentHandle,
                environment_name        AS EnvironmentName,
                environment_description AS EnvironmentDescription,
                environment_aliases     AS EnvironmentAliases,
@@ -21,7 +22,7 @@ public sealed class EnvironmentRepository(NpgsqlDataSource dataSource)
     public async Task<IReadOnlyList<EnvironmentRecord>> GetAllAsync()
     {
         await using var conn = await dataSource.OpenConnectionAsync();
-        var rows = await conn.QueryAsync<EnvironmentRecord>(Cols + " ORDER BY environment_key");
+        var rows = await conn.QueryAsync<EnvironmentRecord>(Cols + " ORDER BY environment_number NULLS LAST, environment_key");
         return rows.AsList();
     }
 }

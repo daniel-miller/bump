@@ -1,11 +1,11 @@
-// Per-tenant theming for custom-hostname status boards. The API returns a
-// token object stored in tenant.tenant_theme; this module turns it into a
+// Per-owner theming for custom-hostname status boards. The API returns a
+// token object stored in owner.owner_theme; this module turns it into a
 // <style> sheet appended after the bundled CSS so its variable values win
 // for both the :root (light) and .dark scopes, keeping the theme toggle
 // working. Values are validated against strict patterns so a bad row in the
 // database cannot inject arbitrary CSS into the page.
 
-export interface TenantTheme {
+export interface OwnerTheme {
   font?: string;
   logo?: string;
   favicon?: string;
@@ -61,7 +61,7 @@ function radiusDeclarations(tokens: Record<string, string> | undefined): string 
     .join(" ");
 }
 
-export function applyTenantTheme(theme: TenantTheme): void {
+export function applyOwnerTheme(theme: OwnerTheme): void {
   const fontStack = theme.font ? FONT_STACKS[theme.font] : undefined;
   const rootDecls = [
     colorDeclarations(theme.light),
@@ -78,7 +78,7 @@ export function applyTenantTheme(theme: TenantTheme): void {
 
   if (css) {
     const style = document.createElement("style");
-    style.dataset.tenantTheme = "";
+    style.dataset.ownerTheme = "";
     style.textContent = css;
     document.head.appendChild(style);
   }

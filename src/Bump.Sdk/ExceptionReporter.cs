@@ -64,7 +64,7 @@ public class ExceptionReporter : IDisposable
             Instance = instance,
             Extensions = extensions,
             Environment = _options.Environment,
-            Application = _options.AppSlug,
+            Application = _options.AppHandle,
             Exception = ExceptionInfo.From(ex),
             UserId = user?.Id,
             UserEmail = user?.Email

@@ -22,6 +22,7 @@ digraph bump_schema {
     idempotency;
     outage;
     outage_update;
+    owner;
     probe_event;
     problem;
     server;
@@ -29,14 +30,13 @@ digraph bump_schema {
     service_daily;
     service_state;
     subscriber;
-    tenant;
 
     account_email_change -> account [arrowtail=crow, arrowhead=tee];
     account_password_change -> account [arrowtail=crow, arrowhead=tee];
     account_recovery -> account [arrowtail=crow, arrowhead=tee];
     account_session -> account [arrowtail=crow, arrowhead=tee];
     announcement -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
-    announcement -> tenant [arrowtail=crow, arrowhead=tee];
+    announcement -> owner [arrowtail=crow, arrowhead=tee];
     outage -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
     outage -> service [arrowtail=crow, arrowhead=tee label="SET NULL"];
     outage_update -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
@@ -44,10 +44,10 @@ digraph bump_schema {
     probe_event -> service [arrowtail=crow, arrowhead=tee];
     problem -> app [arrowtail=crow, arrowhead=tee];
     problem -> environment [arrowtail=crow, arrowhead=tee];
-    service -> app [arrowtail=crow, arrowhead=tee];
+    service -> app [arrowtail=crow, arrowhead=tee label="SET NULL"];
     service -> environment [arrowtail=crow, arrowhead=tee];
-    service -> tenant [arrowtail=crow, arrowhead=tee];
+    service -> owner [arrowtail=crow, arrowhead=tee];
     service_daily -> service [arrowtail=crow, arrowhead=tee];
     service_state -> service [arrowtail=crow, arrowhead=tee];
-    subscriber -> tenant [arrowtail=crow, arrowhead=tee];
+    subscriber -> owner [arrowtail=crow, arrowhead=tee];
 }

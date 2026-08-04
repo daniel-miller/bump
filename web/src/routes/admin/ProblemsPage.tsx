@@ -25,7 +25,7 @@ interface ProblemRow {
   detail: string | null;
   instance: string | null;
   environment: string;
-  appSlug: string;
+  appHandle: string;
   exception: ExceptionInfo | null;
   userEmail: string | null;
 }
@@ -80,7 +80,7 @@ export function ProblemsPage() {
           const exceptionType = p.exception?.type;
           const innerCount = p.exception?.innerExceptions?.length ?? 0;
           return (
-            <Link to={`/admin/problems/${p.problemKey}`} key={p.problemKey} className="block">
+            <Link to={`/problems/${p.problemKey}`} key={p.problemKey} className="block">
               <Card className="hover:border-primary transition-colors">
                 <CardContent className="space-y-1 p-3">
                   <div className="flex items-start justify-between gap-3">
@@ -105,7 +105,7 @@ export function ProblemsPage() {
                       )}
                       <div className="text-muted-foreground flex flex-wrap gap-x-2 text-xs">
                         <span className="font-mono">
-                          {p.appSlug}/{p.environment}
+                          {p.appHandle}/{p.environment}
                         </span>
                         {p.instance && <span className="truncate">{p.instance}</span>}
                         <span className="font-mono opacity-60">{p.fingerprint}</span>

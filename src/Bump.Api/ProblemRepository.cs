@@ -30,14 +30,14 @@ public class ProblemRepository
         // service row required. Each must exist on its own; missing either
         // surfaces as a 422 instead of letting a NOT NULL violation explode
         // as a 500.
-        // Environment lookup accepts the canonical slug *or* any alias listed
+        // Environment lookup accepts the canonical handle *or* any alias listed
         // in environment_aliases so clients can keep sending "production",
         // "qa", "local", etc. without us forcing the canonical name on them.
         const string resolveSql = """
             SELECT
-                (SELECT app_key         FROM app         WHERE app_slug         = @app_slug),
+                (SELECT app_key         FROM app         WHERE app_handle         = @app_handle),
                 (SELECT environment_key FROM environment
-                  WHERE environment_slug = @environment
+                  WHERE environment_handle = @environment
                      OR @environment = ANY(environment_aliases)
                   LIMIT 1)
             """;
@@ -46,7 +46,7 @@ public class ProblemRepository
         int environmentKey;
         await using (var resolveCmd = new NpgsqlCommand(resolveSql, conn))
         {
-            resolveCmd.Parameters.AddWithValue("app_slug", payload.Application);
+            resolveCmd.Parameters.AddWithValue("app_handle", payload.Application);
             resolveCmd.Parameters.AddWithValue("environment", EnvironmentTokens.Resolve(payload.Environment));
             await using var reader = await resolveCmd.ExecuteReaderAsync();
             await reader.ReadAsync();
@@ -92,11 +92,11 @@ public class ProblemRepository
 
     public sealed class UnknownAppException : Exception
     {
-        public string AppSlug { get; }
-        public UnknownAppException(string appSlug)
-            : base($"No app registered with slug '{appSlug}'.")
+        public string AppHandle { get; }
+        public UnknownAppException(string appHandle)
+            : base($"No app registered with handle '{appHandle}'.")
         {
-            AppSlug = appSlug;
+            AppHandle = appHandle;
         }
     }
 
@@ -104,7 +104,7 @@ public class ProblemRepository
     {
         public string Environment { get; }
         public UnknownEnvironmentException(string environment)
-            : base($"No environment registered with slug '{environment}'.")
+            : base($"No environment registered with handle '{environment}'.")
         {
             Environment = environment;
         }
@@ -117,14 +117,14 @@ public class ProblemRepository
 
         if (filter.Environment != null)
         {
-            conditions.Add("(e.environment_slug = @environment OR @environment = ANY(e.environment_aliases))");
+            conditions.Add("(e.environment_handle = @environment OR @environment = ANY(e.environment_aliases))");
             parameters.Add(new NpgsqlParameter("environment", EnvironmentTokens.Resolve(filter.Environment)));
         }
 
-        if (filter.AppSlug != null)
+        if (filter.AppHandle != null)
         {
-            conditions.Add("a.app_slug = @app_slug");
-            parameters.Add(new NpgsqlParameter("app_slug", filter.AppSlug));
+            conditions.Add("a.app_handle = @app_handle");
+            parameters.Add(new NpgsqlParameter("app_handle", filter.AppHandle));
         }
 
         if (filter.Fingerprint != null)
@@ -187,8 +187,8 @@ public class ProblemRepository
         p.problem_key, p.problem_fingerprint, p.reported_at, p.dispatched_at, p.resolved_at,
         p.problem_type, p.problem_title, p.problem_status, p.problem_detail,
         p.problem_instance, p.problem_extensions::text,
-        e.environment_slug, e.environment_name, e.environment_description,
-        a.app_slug, a.app_name, a.version_major, a.version_minor, a.version_patch,
+        e.environment_handle, e.environment_name, e.environment_description,
+        a.app_handle, a.app_name, a.version_major, a.version_minor, a.version_patch,
         p.problem_exception::text,
         p.account_id, p.account_email
         """;
@@ -210,7 +210,7 @@ public class ProblemRepository
             Environment            = reader.GetString(11),
             EnvironmentName        = reader.GetString(12),
             EnvironmentDescription = reader.IsDBNull(13) ? null : reader.GetString(13),
-            AppSlug                = reader.GetString(14),
+            AppHandle                = reader.GetString(14),
             AppName                = reader.GetString(15),
             AppVersion             = $"{reader.GetInt32(16)}.{reader.GetInt32(17)}.{reader.GetInt32(18)}",
             Exception              = reader.IsDBNull(19)

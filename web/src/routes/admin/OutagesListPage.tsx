@@ -25,7 +25,7 @@ export function OutagesListPage() {
       {isLoading && <div className="text-muted-foreground">Loading...</div>}
       <div className="space-y-2">
         {data.map((i) => (
-          <Link to={`/admin/outages/${i.outageId}`} key={i.outageId} className="block">
+          <Link to={`/outages/${i.outageId}`} key={i.outageId} className="block">
             <Card className="hover:border-primary transition-colors">
               <CardContent className="flex items-center justify-between p-4">
                 <div>

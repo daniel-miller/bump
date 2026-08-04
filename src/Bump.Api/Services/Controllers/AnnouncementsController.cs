@@ -17,17 +17,17 @@ public sealed class AnnouncementsController : ControllerBase
 
     public AnnouncementsController(AnnouncementRepository ann) => _ann = ann;
 
-    /// <summary>List announcements, optionally scoped to a single tenant by <c>boardId</c>.</summary>
+    /// <summary>List announcements, optionally scoped to a single owner by <c>ownerId</c>.</summary>
     [HttpGet(Name = "listAnnouncements")]
-    public async Task<IActionResult> List([FromQuery] int? boardId, CancellationToken ct)
+    public async Task<IActionResult> List([FromQuery] int? ownerId, CancellationToken ct)
     {
-        var rows = await _ann.ListAsync(boardId, ct);
+        var rows = await _ann.ListAsync(ownerId, ct);
         return Ok(rows);
     }
 
-    public sealed record CreateRequest(int? BoardId, string Title, string Type, string Content, DateTimeOffset PublishAt, DateTimeOffset? AutoHideAt, bool NotifySubscribers = true);
+    public sealed record CreateRequest(int? OwnerId, string Title, string Type, string Content, DateTimeOffset PublishAt, DateTimeOffset? AutoHideAt, bool NotifySubscribers = true);
 
-    /// <summary>Schedule a new announcement. <c>type</c> must be one of <c>info</c>, <c>warning</c>, or <c>maintenance</c>. If <c>boardId</c> is null the announcement is global.</summary>
+    /// <summary>Schedule a new announcement. <c>type</c> must be one of <c>info</c>, <c>warning</c>, or <c>maintenance</c>. If <c>ownerId</c> is null the announcement is global.</summary>
     /// <remarks>Honors <c>Idempotency-Key</c>. When <c>NotifySubscribers</c> is true a notification is queued at <c>PublishAt</c>.</remarks>
     [HttpPost(Name = "createAnnouncement")]
     [Idempotent]
@@ -36,7 +36,7 @@ public sealed class AnnouncementsController : ControllerBase
     {
         var err = Validate(req.Title, req.Type, req.Content);
         if (err is not null) return err.AsAction();
-        var a = await _ann.CreateAsync(req.BoardId, req.Title, req.Type, req.Content, req.PublishAt.ToUniversalTime(), req.AutoHideAt?.ToUniversalTime(), req.NotifySubscribers, CurrentUserId(), ct);
+        var a = await _ann.CreateAsync(req.OwnerId, req.Title, req.Type, req.Content, req.PublishAt.ToUniversalTime(), req.AutoHideAt?.ToUniversalTime(), req.NotifySubscribers, CurrentUserId(), ct);
         return Created($"/api/admin/announcements/{a.AnnouncementId}", a);
     }
 

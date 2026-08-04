@@ -9,8 +9,8 @@ Two integration paths are supported:
 
 ## Prerequisites
 
-- The consuming project must be registered in Bump. Log in to the admin UI, register the app under **Apps**, and note its slug. The slug is required at runtime - reports for an unregistered slug are rejected with 422.
-- The environment slug you plan to report against must exist under **Environments**, or be listed among an existing environment's aliases (`live`, `production`, `prod`, `qa`, etc. all commonly alias to a single canonical row).
+- The consuming project must be registered in Bump. Log in to the admin UI, register the app under **Apps**, and note its handle. The handle is required at runtime - reports for an unregistered handle are rejected with 422.
+- The environment handle you plan to report against must exist under **Environments**, or be listed among an existing environment's aliases (`live`, `production`, `prod`, `qa`, etc. all commonly alias to a single canonical row).
 - Access to the shared Octopus library variable set **Bump** (the API endpoint, the Problems bearer key, and the Apps bearer key used by the optional version-bump step). If your project isn't already using it: **Project variables** > **Library Variable Sets** > **Include** > pick **Bump**.
 
 ## Add the SDK
@@ -32,14 +32,14 @@ The SDK binds a `BumpOptions` record. Consuming projects put the following keys 
 | `Bump:Enabled`            | Whether problem reports are sent. Defaults to `true`. Set `false` to turn reporting off.  | Project-local; usually only set in local dev.           |
 | `Bump:Api:Hosting:BaseUrl` | Base URL of the Bump API.                                                                 | Library set `Bump:Api:Hosting:BaseUrl`                  |
 | `Bump:Api:Hosting:ClientSecret` | Bearer key for `POST /api/problems`. Same value across every consumer.              | Library set `Bump:Api:Hosting:ClientSecret`             |
-| `Bump:AppSlug`            | Slug of the registered Bump app this consumer corresponds to. Unique per consumer.        | Project-local variable in the consumer.                 |
-| `Bump:Environment`        | Environment slug reported with every problem. Usually the deploy environment name.        | Project-local, typically `#{Octopus.Environment.Name}`. |
+| `Bump:AppHandle`            | Handle of the registered Bump app this consumer corresponds to. Unique per consumer.        | Project-local variable in the consumer.                 |
+| `Bump:Environment`        | Environment handle reported with every problem. Usually the deploy environment name.        | Project-local, typically `#{Octopus.Environment.Name}`. |
 | `Bump:ProblemTypeBaseUrl` | Optional base URL for RFC 9457 `type`. Turns bare exception type names into URLs.         | **Project-local** — the URL space belongs to the consumer. |
 | `Bump:DefaultStatus`      | HTTP status code reported with every problem unless overridden per call. Defaults to 500. | Omit unless you need to override.                       |
 
 The section name is `Bump`, and it is not a free choice. Every app that reports to Bump deploys from the same Octopus server and draws on the same library variable set, so the config path and the variable path have to be the same string. Bump itself is not one of those consumers - it does not report its own exceptions through the SDK - but it reads `Bump:Api:Hosting:ClientSecret` from that same path to validate the reports it receives, so the rule binds it too. Name the section anything else and you are maintaining a second set of Octopus variables that differ from the first only by prefix, for no gain. Do not rename it to `BumpSdk` to match the package id: `Bump.Sdk` is the assembly, `Bump` is the configuration section, and they are deliberately different.
 
-The `Api:Hosting:*` values live in the shared library set so a rotation touches one place. The `AppSlug`, `Environment`, and `ProblemTypeBaseUrl` are project-local because they differ per consumer and per deploy.
+The `Api:Hosting:*` values live in the shared library set so a rotation touches one place. The `AppHandle`, `Environment`, and `ProblemTypeBaseUrl` are project-local because they differ per consumer and per deploy.
 
 Note that the consumer key and the library variable are now the same string, not a mapping. `Bump:Api:Hosting:ClientSecret` is also the key Bump itself reads to *validate* the bearer token on `POST /api/problems` (`ProblemsAuthFilter`), so one variable holds one secret and both sides of the exchange name it identically. Bump's server-side config carries the same path.
 
@@ -57,16 +57,16 @@ Note that the consumer key and the library variable are now the same string, not
         "ClientSecret": "#{Bump:Api:Hosting:ClientSecret}"
       }
     },
-    "AppSlug":           "openscorm",
+    "AppHandle":           "openscorm",
     "Environment":       "#{Octopus.Environment.Name}",
     "ProblemTypeBaseUrl": "https://openscorm.com/errors/"
   }
 }
 ```
 
-The `#{...}` tokens are resolved during deploy by Octopus. The `AppSlug` value is the slug you registered in the Bump admin UI. In non-Octopus environments (local dev, CI), substitute literal values or set `Enabled` to `false`.
+The `#{...}` tokens are resolved during deploy by Octopus. The `AppHandle` value is the handle you registered in the Bump admin UI. In non-Octopus environments (local dev, CI), substitute literal values or set `Enabled` to `false`.
 
-Because the section and the variables share the `Bump` path, either substitution mechanism works: `#{...}` tokens in the committed file, or Octopus JSON Config Vars matching `Bump:AppSlug` straight onto the JSON path. That equivalence is the practical reason the names have to line up.
+Because the section and the variables share the `Bump` path, either substitution mechanism works: `#{...}` tokens in the committed file, or Octopus JSON Config Vars matching `Bump:AppHandle` straight onto the JSON path. That equivalence is the practical reason the names have to line up.
 
 ## Turning reporting off
 
@@ -90,9 +90,9 @@ if (bumpOptions.Enabled)
         throw new InvalidOperationException(
             "Bump:Enabled is true but Bump:Api:Hosting:ClientSecret is empty. Reports would be rejected with 401.");
 
-    if (string.IsNullOrWhiteSpace(bumpOptions.AppSlug))
+    if (string.IsNullOrWhiteSpace(bumpOptions.AppHandle))
         throw new InvalidOperationException(
-            "Bump:Enabled is true but Bump:AppSlug is empty. Reports would be rejected with 422.");
+            "Bump:Enabled is true but Bump:AppHandle is empty. Reports would be rejected with 422.");
 }
 ```
 
@@ -163,7 +163,7 @@ To have Bump's About page reflect the deployed version of each consumer, add a P
 
 ```powershell
 Invoke-RestMethod -Method Post `
-  -Uri "#{Bump:Api:Hosting:BaseUrl}/api/apps/#{Bump:AppSlug}/version/bumps" `
+  -Uri "#{Bump:Api:Hosting:BaseUrl}/api/apps/#{Bump:AppHandle}/version/bumps" `
   -Headers @{ Authorization = "Bearer #{Bump:Api:Security:Apps:ClientSecret}" } `
   -ContentType "application/json" `
   -Body '{"level":"patch"}'
@@ -188,8 +188,8 @@ After deploying the consumer with the new configuration:
 | Symptom                                                          | Likely cause                                                                                              | Fix                                                                                             |
 | :--------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------- |
 | Consumer logs `Bump rejected problem report: 401`                | `Bump:Api:Hosting:ClientSecret` is empty, wrong, or was rotated in Bump without redeploying the consumer.                | Redeploy the consumer so the current library-set value takes effect.                            |
-| Consumer logs `422 Unknown app`                                  | The `AppSlug` value doesn't match a row in Bump's `app` table.                                            | Register the app in the Bump admin UI, or fix the `AppSlug` variable in the consumer project.   |
-| Consumer logs `422 Unknown environment`                          | The `Environment` value isn't a canonical environment slug and isn't in any environment's aliases.        | Add the value as an alias in the Bump admin UI, or change the consumer's variable to match.     |
+| Consumer logs `422 Unknown app`                                  | The `AppHandle` value doesn't match a row in Bump's `app` table.                                            | Register the app in the Bump admin UI, or fix the `AppHandle` variable in the consumer project.   |
+| Consumer logs `422 Unknown environment`                          | The `Environment` value isn't a canonical environment handle and isn't in any environment's aliases.        | Add the value as an alias in the Bump admin UI, or change the consumer's variable to match.     |
 | Consumer logs a warning about DNS or timeout                     | `Bump:Api:Hosting:BaseUrl` is wrong, or the Bump API isn't reachable from the consumer host.                      | Check the resolved value; confirm firewall or proxy rules allow outbound to the Bump host.      |
 | Reports never appear despite no errors in the consumer log       | You captured explicitly but forgot to `await` `CaptureAsync`, or the process exited before the POST fired. | Await the call, or hand the reporter to a background service that outlives the immediate scope. |
 

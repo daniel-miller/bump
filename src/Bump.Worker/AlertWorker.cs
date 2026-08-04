@@ -57,9 +57,9 @@ public class AlertWorker : BackgroundService
     {
         const string sql = """
             SELECT p.problem_fingerprint,
-                   e.environment_slug,
+                   e.environment_handle,
                    e.environment_name,
-                   a.app_slug,
+                   a.app_handle,
                    a.app_name,
                    p.problem_type,
                    p.problem_title,
@@ -70,7 +70,7 @@ public class AlertWorker : BackgroundService
             JOIN app         a ON a.app_key         = p.app_key
             JOIN environment e ON e.environment_key = p.environment_key
             WHERE p.dispatched_at IS NULL
-            GROUP BY p.problem_fingerprint, e.environment_slug, e.environment_name, a.app_slug, a.app_name, p.problem_type, p.problem_title
+            GROUP BY p.problem_fingerprint, e.environment_handle, e.environment_name, a.app_handle, a.app_name, p.problem_type, p.problem_title
             """;
 
         await using var conn = new NpgsqlConnection(_connectionString);
@@ -86,7 +86,7 @@ public class AlertWorker : BackgroundService
                 Fingerprint:       reader.GetString(0),
                 Environment:       reader.GetString(1),
                 EnvironmentName:   reader.GetString(2),
-                AppSlug:           reader.GetString(3),
+                AppHandle:           reader.GetString(3),
                 AppName:           reader.GetString(4),
                 Type:              reader.GetString(5),
                 Title:             reader.GetString(6),
@@ -101,7 +101,7 @@ public class AlertWorker : BackgroundService
             await _mail.SendAsync(ProblemDigest.Build(_alertRecipient, alert, _publicBaseUrl), ct);
             await MarkDispatchedAsync(conn, alert.Fingerprint, ct);
             _logger.LogInformation("Alerted on {Fingerprint} ({Type} in {App}/{Env})",
-                alert.Fingerprint, alert.Type, alert.AppSlug, alert.Environment);
+                alert.Fingerprint, alert.Type, alert.AppHandle, alert.Environment);
         }
     }
 

@@ -8,10 +8,10 @@ namespace Bump.Api.Services;
 public sealed class Service
 {
     public int ServiceId { get; set; }
-    public string ServiceSlug { get; set; } = "";
+    public string ServiceHandle { get; set; } = "";
     public string ServiceName { get; set; } = "";
     public string ServiceUrl { get; set; } = "";
-    public string ServiceTenant { get; set; } = "";
+    public string ServiceOwner { get; set; } = "";
     public string ServiceEnvironment { get; set; } = "";
     public bool ServicePaused { get; set; }
     public bool IsPrivate { get; set; }
@@ -36,30 +36,30 @@ public sealed class ServiceState
     }
 }
 
-public static class ServiceSlugRules
+public static class ServiceHandleRules
 {
-    private static readonly Regex SlugPattern = new(@"^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.Compiled);
-    // Tenant/environment slugs: allow both '-' and '_' as separators.
-    private static readonly Regex TagSlugPattern = new(@"^[a-z0-9]+([-_][a-z0-9]+)*$", RegexOptions.Compiled);
+    private static readonly Regex HandlePattern = new(@"^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.Compiled);
+    // Owner/environment handles: allow both '-' and '_' as separators.
+    private static readonly Regex TagHandlePattern = new(@"^[a-z0-9]+([-_][a-z0-9]+)*$", RegexOptions.Compiled);
 
-    public static IResult? ValidateSlug(string? slug)
+    public static IResult? ValidateHandle(string? handle)
     {
-        if (string.IsNullOrWhiteSpace(slug))
-            return JsonResults.UnprocessableEntity("Invalid slug", "Slug is required.");
-        if (slug.Length > 60)
-            return JsonResults.UnprocessableEntity("Invalid slug", "Slug must be 60 characters or fewer.");
-        if (!SlugPattern.IsMatch(slug))
-            return JsonResults.UnprocessableEntity("Invalid slug", "Slug must contain only lowercase letters, digits, and single hyphens.");
+        if (string.IsNullOrWhiteSpace(handle))
+            return JsonResults.UnprocessableEntity("Invalid handle", "Handle is required.");
+        if (handle.Length > 60)
+            return JsonResults.UnprocessableEntity("Invalid handle", "Handle must be 60 characters or fewer.");
+        if (!HandlePattern.IsMatch(handle))
+            return JsonResults.UnprocessableEntity("Invalid handle", "Handle must contain only lowercase letters, digits, and single hyphens.");
         return null;
     }
 
-    public static IResult? ValidateTagSlug(string? value, string fieldName)
+    public static IResult? ValidateTagHandle(string? value, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
             return JsonResults.UnprocessableEntity($"Invalid {fieldName}", $"{fieldName} is required.");
         if (value.Length > 60)
             return JsonResults.UnprocessableEntity($"Invalid {fieldName}", $"{fieldName} must be 60 characters or fewer.");
-        if (!TagSlugPattern.IsMatch(value))
+        if (!TagHandlePattern.IsMatch(value))
             return JsonResults.UnprocessableEntity($"Invalid {fieldName}", $"{fieldName} must contain only lowercase letters, digits, hyphens, and underscores.");
         return null;
     }
@@ -69,17 +69,17 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
 {
     private const string Cols = """
         SELECT s.service_key      AS ServiceId,
-               s.service_slug     AS ServiceSlug,
+               s.service_handle     AS ServiceHandle,
                s.service_name     AS ServiceName,
                s.service_url      AS ServiceUrl,
-               t.tenant_slug      AS ServiceTenant,
-               e.environment_slug AS ServiceEnvironment,
+               o.owner_handle       AS ServiceOwner,
+               e.environment_handle AS ServiceEnvironment,
                s.service_paused   AS ServicePaused,
                s.is_private       AS IsPrivate,
                s.created_at       AS CreatedAt,
                s.updated_at       AS UpdatedAt
           FROM service s
-          JOIN tenant      t ON t.tenant_key      = s.tenant_key
+          JOIN owner       o ON o.owner_key       = s.owner_key
           JOIN environment e ON e.environment_key = s.environment_key
         """;
 
@@ -90,10 +90,10 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return rows.AsList();
     }
 
-    public async Task<Service?> GetBySlugAsync(string slug, CancellationToken ct = default)
+    public async Task<Service?> GetByHandleAsync(string handle, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
-        return await conn.QuerySingleOrDefaultAsync<Service>(Cols + " WHERE s.service_slug = @S", new { S = slug });
+        return await conn.QuerySingleOrDefaultAsync<Service>(Cols + " WHERE s.service_handle = @S", new { S = handle });
     }
 
     public async Task<Service?> GetByIdAsync(int id, CancellationToken ct = default)
@@ -109,43 +109,42 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return rows.AsList();
     }
 
-    public async Task<Service> CreateAsync(string slug, string name, string url, string tenant, string environment, CancellationToken ct = default)
+    public async Task<Service> CreateAsync(string handle, string name, string url, string owner, string environment, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
-        // app_key defaults to the self-registered "bump" app since the legacy
-        // create-service surface did not carry an app identifier.
+        // app_key stays NULL: the admin create-service surface registers a URL
+        // to probe, and version reporting attaches an app later (if ever).
         var service = await conn.QuerySingleAsync<Service>(
             """
             WITH ins AS (
-                INSERT INTO service (service_slug, service_name, service_url, tenant_key, environment_key, app_key)
+                INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key)
                 VALUES (
-                    @Slug, @Name, @Url,
-                    (SELECT tenant_key      FROM tenant      WHERE tenant_slug      = @Tenant),
+                    @Handle, @Name, @Url,
+                    (SELECT owner_key       FROM owner       WHERE owner_handle       = @Owner),
                     (SELECT environment_key FROM environment
-                      WHERE environment_slug = @Environment
+                      WHERE environment_handle = @Environment
                          OR @Environment = ANY(environment_aliases)
-                      LIMIT 1),
-                    (SELECT app_key         FROM app         WHERE app_slug         = 'bump')
+                      LIMIT 1)
                 )
-                RETURNING service_key, service_slug, service_name, service_url,
-                          tenant_key, environment_key, service_paused, is_private, created_at, updated_at
+                RETURNING service_key, service_handle, service_name, service_url,
+                          owner_key, environment_key, service_paused, is_private, created_at, updated_at
             )
             SELECT i.service_key      AS ServiceId,
-                   i.service_slug     AS ServiceSlug,
+                   i.service_handle     AS ServiceHandle,
                    i.service_name     AS ServiceName,
                    i.service_url      AS ServiceUrl,
-                   t.tenant_slug      AS ServiceTenant,
-                   e.environment_slug AS ServiceEnvironment,
+                   o.owner_handle       AS ServiceOwner,
+                   e.environment_handle AS ServiceEnvironment,
                    i.service_paused   AS ServicePaused,
                    i.is_private       AS IsPrivate,
                    i.created_at       AS CreatedAt,
                    i.updated_at       AS UpdatedAt
               FROM ins i
-              JOIN tenant      t ON t.tenant_key      = i.tenant_key
+              JOIN owner       o ON o.owner_key       = i.owner_key
               JOIN environment e ON e.environment_key = i.environment_key
             """,
-            new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = EnvironmentTokens.Resolve(environment) }, tx);
+            new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment) }, tx);
 
         // Pre-fill the history with operational so the UI bar isn't blank.
         var history = JsonConvert.SerializeObject(Enumerable.Repeat(ServiceStatuses.Operational, 60));
@@ -157,7 +156,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return service;
     }
 
-    public async Task UpdateAsync(string slug, string name, string url, string tenant, string environment, bool isPrivate, CancellationToken ct = default)
+    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, bool isPrivate, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
@@ -165,37 +164,37 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
             UPDATE service
                SET service_name    = @Name,
                    service_url     = @Url,
-                   tenant_key      = (SELECT tenant_key      FROM tenant      WHERE tenant_slug      = @Tenant),
+                   owner_key       = (SELECT owner_key       FROM owner       WHERE owner_handle       = @Owner),
                    environment_key = (SELECT environment_key FROM environment
-                                       WHERE environment_slug = @Environment
+                                       WHERE environment_handle = @Environment
                                           OR @Environment = ANY(environment_aliases)
                                        LIMIT 1),
                    is_private      = @IsPrivate,
                    updated_at      = now()
-             WHERE service_slug = @Slug
-            """, new { Slug = slug, Name = name, Url = url, Tenant = tenant, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate });
+             WHERE service_handle = @Handle
+            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate });
     }
 
-    public async Task SetPrivateAsync(string slug, bool isPrivate, CancellationToken ct = default)
+    public async Task SetPrivateAsync(string handle, bool isPrivate, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
-            "UPDATE service SET is_private = @P, updated_at = now() WHERE service_slug = @S",
-            new { S = slug, P = isPrivate });
+            "UPDATE service SET is_private = @P, updated_at = now() WHERE service_handle = @S",
+            new { S = handle, P = isPrivate });
     }
 
-    public async Task SetPausedAsync(string slug, bool paused, CancellationToken ct = default)
+    public async Task SetPausedAsync(string handle, bool paused, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
-            "UPDATE service SET service_paused = @P, updated_at = now() WHERE service_slug = @S",
-            new { S = slug, P = paused });
+            "UPDATE service SET service_paused = @P, updated_at = now() WHERE service_handle = @S",
+            new { S = handle, P = paused });
     }
 
-    public async Task<bool> DeleteAsync(string slug, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(string handle, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
-        var rows = await conn.ExecuteAsync("DELETE FROM service WHERE service_slug = @S", new { S = slug });
+        var rows = await conn.ExecuteAsync("DELETE FROM service WHERE service_handle = @S", new { S = handle });
         return rows > 0;
     }
 
@@ -336,7 +335,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return rows.AsList();
     }
 
-    public async Task<IReadOnlyList<DailyRow>> GetDailyForBoardAsync(IEnumerable<int> serviceIds, int days, string ianaTz, CancellationToken ct = default)
+    public async Task<IReadOnlyList<DailyRow>> GetDailyForServicesAsync(IEnumerable<int> serviceIds, int days, string ianaTz, CancellationToken ct = default)
     {
         var ids = serviceIds.ToArray();
         if (ids.Length == 0) return Array.Empty<DailyRow>();

@@ -1,4 +1,4 @@
-// Canonical color legend for environment categories. Mapped by slug or alias
+// Canonical color legend for environment categories. Mapped by handle or alias
 // so admin pages, status boards, and service rows all paint the same swatch
 // for the same environment.
 
@@ -20,10 +20,10 @@ const SANDBOX_TAGS = new Set(["sandbox", "stage", "staging"]);
 const PRODUCTION_TAGS = new Set(["production", "prod", "live"]);
 
 export function categorizeEnvironment(
-  slug: string,
+  handle: string,
   aliases: readonly string[] = [],
 ): EnvironmentCategory {
-  const tags = [slug, ...aliases].map((t) => t.toLowerCase());
+  const tags = [handle, ...aliases].map((t) => t.toLowerCase());
   for (const t of tags) {
     if (LOCAL_TAGS.has(t)) return "local";
     if (DEVELOPMENT_TAGS.has(t)) return "development";
@@ -33,6 +33,6 @@ export function categorizeEnvironment(
   return "other";
 }
 
-export function environmentColor(slug: string, aliases: readonly string[] = []): string {
-  return ENVIRONMENT_COLORS[categorizeEnvironment(slug, aliases)];
+export function environmentColor(handle: string, aliases: readonly string[] = []): string {
+  return ENVIRONMENT_COLORS[categorizeEnvironment(handle, aliases)];
 }

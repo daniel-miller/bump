@@ -24,13 +24,13 @@ public sealed class AdminAppsController : ControllerBase
         return JsonResults.Ok(records.Select(AppResponse.From), ignoreNulls: true).AsAction();
     }
 
-    /// <summary>Update an app's slug, name, and version. Session+admin authenticated.</summary>
-    [HttpPatch("{slug}", Name = "adminUpdateApp")]
+    /// <summary>Update an app's handle, name, and version. Session+admin authenticated.</summary>
+    [HttpPatch("{handle}", Name = "adminUpdateApp")]
     [ProducesResponseType(typeof(AppResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Update(string slug, [FromBody] UpdateAppRequest request)
+    public async Task<IActionResult> Update(string handle, [FromBody] UpdateAppRequest request)
     {
         var validationError = request.Validate();
         if (validationError is not null) return validationError.AsAction();
@@ -38,17 +38,17 @@ public sealed class AdminAppsController : ControllerBase
         try
         {
             var record = await _repo.UpdateAsync(
-                slug, request.Slug, request.Name,
+                handle, request.Handle, request.Name,
                 request.Major, request.Minor, request.Patch);
             return record is null
-                ? JsonResults.NotFound("App not found", $"No app with slug '{slug}'.").AsAction()
+                ? JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction()
                 : JsonResults.Ok(AppResponse.From(record), ignoreNulls: true).AsAction();
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
             return JsonResults.Conflict(
-                title: "Slug already in use",
-                detail: $"An app with slug '{request.Slug}' already exists.").AsAction();
+                title: "Handle already in use",
+                detail: $"An app with handle '{request.Handle}' already exists.").AsAction();
         }
     }
 }

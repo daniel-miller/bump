@@ -20,7 +20,7 @@ public sealed class ServicesController : ControllerBase
     }
 
     public sealed record ServiceDto(
-        int ServiceId, string Slug, string Name, string Url, string Tenant, string Environment, bool Paused, bool IsPrivate,
+        int ServiceId, string Handle, string Name, string Url, string Owner, string Environment, bool Paused, bool IsPrivate,
         string LastStatus, int LatencyMs, decimal Uptime,
         IReadOnlyList<string> History, DateTimeOffset? LastCheckAt, DateTimeOffset? LastOutageAt,
         DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
@@ -36,7 +36,7 @@ public sealed class ServicesController : ControllerBase
         {
             states.TryGetValue(m.ServiceId, out var s);
             return new ServiceDto(
-                m.ServiceId, m.ServiceSlug, m.ServiceName, m.ServiceUrl, m.ServiceTenant, m.ServiceEnvironment, m.ServicePaused, m.IsPrivate,
+                m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServicePaused, m.IsPrivate,
                 s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
                 s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
                 m.CreatedAt, m.UpdatedAt);
@@ -44,7 +44,7 @@ public sealed class ServicesController : ControllerBase
         return Ok(dto);
     }
 
-    public sealed record CreateServiceRequest(string Slug, string Name, string Url, string Tenant, string Environment);
+    public sealed record CreateServiceRequest(string Handle, string Name, string Url, string Owner, string Environment);
 
     /// <summary>Register a new service to monitor. The URL must resolve to a non-private address (RFC1918, link-local, and loopback are rejected).</summary>
     /// <remarks>Honors <c>Idempotency-Key</c>.</remarks>
@@ -53,8 +53,8 @@ public sealed class ServicesController : ControllerBase
     [RequestSizeLimit(4 * 1024)]
     public async Task<IActionResult> Create([FromBody] CreateServiceRequest req, CancellationToken ct)
     {
-        var slugErr = ServiceSlugRules.ValidateSlug(req.Slug);
-        if (slugErr is not null) return slugErr.AsAction();
+        var handleErr = ServiceHandleRules.ValidateHandle(req.Handle);
+        if (handleErr is not null) return handleErr.AsAction();
         if (string.IsNullOrWhiteSpace(req.Name) || req.Name.Length > 100)
         {
             return JsonResults.UnprocessableEntity("Invalid name", "Name is required and must be 100 characters or fewer.").AsAction();
@@ -63,49 +63,49 @@ public sealed class ServicesController : ControllerBase
         {
             return JsonResults.UnprocessableEntity("Invalid URL", urlErr!).AsAction();
         }
-        var tenantErr = ServiceSlugRules.ValidateTagSlug(req.Tenant, "tenant");
-        if (tenantErr is not null) return tenantErr.AsAction();
-        var envErr = ServiceSlugRules.ValidateTagSlug(req.Environment, "environment");
+        var ownerErr = ServiceHandleRules.ValidateTagHandle(req.Owner, "owner");
+        if (ownerErr is not null) return ownerErr.AsAction();
+        var envErr = ServiceHandleRules.ValidateTagHandle(req.Environment, "environment");
         if (envErr is not null) return envErr.AsAction();
 
         try
         {
-            var m = await _services.CreateAsync(req.Slug, req.Name, req.Url, req.Tenant, req.Environment, ct);
-            return Created($"/api/admin/services/{m.ServiceSlug}", new { slug = m.ServiceSlug });
+            var m = await _services.CreateAsync(req.Handle, req.Name, req.Url, req.Owner, req.Environment, ct);
+            return Created($"/api/admin/services/{m.ServiceHandle}", new { handle = m.ServiceHandle });
         }
         catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
         {
-            return JsonResults.Conflict("Slug already exists").AsAction();
+            return JsonResults.Conflict("Handle already exists").AsAction();
         }
     }
 
     /// <summary>Fetch a single service with its current state.</summary>
-    [HttpGet("{slug}", Name = "getService")]
-    public async Task<IActionResult> Get(string slug, CancellationToken ct)
+    [HttpGet("{handle}", Name = "getService")]
+    public async Task<IActionResult> Get(string handle, CancellationToken ct)
     {
-        var m = await _services.GetBySlugAsync(slug, ct);
+        var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
         var s = await _services.GetStateAsync(m.ServiceId, ct);
         return Ok(new ServiceDto(
-            m.ServiceId, m.ServiceSlug, m.ServiceName, m.ServiceUrl, m.ServiceTenant, m.ServiceEnvironment, m.ServicePaused, m.IsPrivate,
+            m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServicePaused, m.IsPrivate,
             s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
             s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
             m.CreatedAt, m.UpdatedAt));
     }
 
-    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Tenant, string? Environment, bool? IsPrivate);
+    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, bool? IsPrivate);
 
     /// <summary>Update service metadata. Omitted fields are left unchanged.</summary>
-    [HttpPatch("{slug}", Name = "updateService")]
+    [HttpPatch("{handle}", Name = "updateService")]
     [RequestSizeLimit(4 * 1024)]
-    public async Task<IActionResult> Update(string slug, [FromBody] UpdateServiceRequest req, CancellationToken ct)
+    public async Task<IActionResult> Update(string handle, [FromBody] UpdateServiceRequest req, CancellationToken ct)
     {
-        var m = await _services.GetBySlugAsync(slug, ct);
+        var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
 
         var name = req.Name ?? m.ServiceName;
         var url = req.Url ?? m.ServiceUrl;
-        var tenant = req.Tenant ?? m.ServiceTenant;
+        var owner = req.Owner ?? m.ServiceOwner;
         var environment = req.Environment ?? m.ServiceEnvironment;
         var isPrivate = req.IsPrivate ?? m.IsPrivate;
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
@@ -116,48 +116,48 @@ public sealed class ServicesController : ControllerBase
         {
             return JsonResults.UnprocessableEntity("Invalid URL", urlErr!).AsAction();
         }
-        var tenantErr = ServiceSlugRules.ValidateTagSlug(tenant, "tenant");
-        if (tenantErr is not null) return tenantErr.AsAction();
-        var envErr = ServiceSlugRules.ValidateTagSlug(environment, "environment");
+        var ownerErr = ServiceHandleRules.ValidateTagHandle(owner, "owner");
+        if (ownerErr is not null) return ownerErr.AsAction();
+        var envErr = ServiceHandleRules.ValidateTagHandle(environment, "environment");
         if (envErr is not null) return envErr.AsAction();
 
-        await _services.UpdateAsync(slug, name, url, tenant, environment, isPrivate, ct);
+        await _services.UpdateAsync(handle, name, url, owner, environment, isPrivate, ct);
         return NoContent();
     }
 
     /// <summary>Permanently delete a service.</summary>
-    [HttpDelete("{slug}", Name = "deleteService")]
-    public async Task<IActionResult> Delete(string slug, CancellationToken ct)
+    [HttpDelete("{handle}", Name = "deleteService")]
+    public async Task<IActionResult> Delete(string handle, CancellationToken ct)
     {
-        var ok = await _services.DeleteAsync(slug, ct);
+        var ok = await _services.DeleteAsync(handle, ct);
         return ok ? NoContent() : NotFound();
     }
 
     /// <summary>Pause probes for this service. New probes will not run until resumed.</summary>
     /// <remarks>Honors <c>Idempotency-Key</c>.</remarks>
-    [HttpPost("{slug}/pause", Name = "pauseService")]
+    [HttpPost("{handle}/pause", Name = "pauseService")]
     [Idempotent]
-    public async Task<IActionResult> Pause(string slug, CancellationToken ct)
+    public async Task<IActionResult> Pause(string handle, CancellationToken ct)
     {
-        await _services.SetPausedAsync(slug, true, ct);
+        await _services.SetPausedAsync(handle, true, ct);
         return NoContent();
     }
 
     /// <summary>Resume probes for a previously paused service.</summary>
     /// <remarks>Honors <c>Idempotency-Key</c>.</remarks>
-    [HttpPost("{slug}/resume", Name = "resumeService")]
+    [HttpPost("{handle}/resume", Name = "resumeService")]
     [Idempotent]
-    public async Task<IActionResult> Resume(string slug, CancellationToken ct)
+    public async Task<IActionResult> Resume(string handle, CancellationToken ct)
     {
-        await _services.SetPausedAsync(slug, false, ct);
+        await _services.SetPausedAsync(handle, false, ct);
         return NoContent();
     }
 
     /// <summary>Daily uptime percentages for charting. <c>range</c> may be <c>24h</c>, <c>7d</c> (default), or <c>30d</c>.</summary>
-    [HttpGet("{slug}/uptime", Name = "getServiceUptime")]
-    public async Task<IActionResult> Uptime(string slug, [FromQuery] string range = "7d", CancellationToken ct = default)
+    [HttpGet("{handle}/uptime", Name = "getServiceUptime")]
+    public async Task<IActionResult> Uptime(string handle, [FromQuery] string range = "7d", CancellationToken ct = default)
     {
-        var m = await _services.GetBySlugAsync(slug, ct);
+        var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
         int days = ParseRange(range);
         var tz = await _tz.ResolveAsync(HttpContext.User, ct);
@@ -172,10 +172,10 @@ public sealed class ServicesController : ControllerBase
     }
 
     /// <summary>Daily average latency in milliseconds for charting. <c>range</c> may be <c>24h</c>, <c>7d</c> (default), or <c>30d</c>.</summary>
-    [HttpGet("{slug}/latency", Name = "getServiceLatency")]
-    public async Task<IActionResult> Latency(string slug, [FromQuery] string range = "7d", CancellationToken ct = default)
+    [HttpGet("{handle}/latency", Name = "getServiceLatency")]
+    public async Task<IActionResult> Latency(string handle, [FromQuery] string range = "7d", CancellationToken ct = default)
     {
-        var m = await _services.GetBySlugAsync(slug, ct);
+        var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
         int days = ParseRange(range);
         var tz = await _tz.ResolveAsync(HttpContext.User, ct);

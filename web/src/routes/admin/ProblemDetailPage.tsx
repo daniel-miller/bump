@@ -33,7 +33,7 @@ interface ProblemRecord {
   detail: string | null;
   instance: string | null;
   extensions: string | null;
-  appSlug: string;
+  appHandle: string;
   appName: string;
   appVersion: string;
   environment: string;
@@ -327,7 +327,7 @@ export function ProblemDetailPage() {
                 try {
                   await api<void>(`/api/problems/${data.problemKey}`, { method: "DELETE" });
                   await qc.invalidateQueries({ queryKey: ["problems"] });
-                  navigate("/admin/problems");
+                  navigate("/problems");
                 } catch (e) {
                   setDeleteError((e as Error).message || "Delete failed.");
                   setDeleting(false);
@@ -367,7 +367,7 @@ export function ProblemDetailPage() {
         <ContextRow
           label="App"
           parts={[
-            { mono: true, text: data.appSlug },
+            { mono: true, text: data.appHandle },
             { text: data.appName },
             { mono: true, text: `v${data.appVersion}` },
           ]}

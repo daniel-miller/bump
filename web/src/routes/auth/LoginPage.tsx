@@ -27,7 +27,7 @@ export function LoginPage() {
         body: JSON.stringify({ email, password, totp: totp || undefined }),
       });
       await qc.invalidateQueries({ queryKey: ["auth", "me"] });
-      nav("/admin/dashboard");
+      nav("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
         const p = err.problem as { title?: string; detail?: string } | undefined;

@@ -6,7 +6,7 @@ namespace Bump.Api.Services;
 public sealed class Announcement
 {
     public int AnnouncementId { get; set; }
-    public int? BoardId { get; set; }
+    public int? OwnerId { get; set; }
     public string AnnouncementTitle { get; set; } = "";
     public string AnnouncementType { get; set; } = "info";
     public string AnnouncementContent { get; set; } = "";
@@ -22,8 +22,8 @@ public sealed class Announcement
 public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
 {
     private const string Cols = """
-        SELECT announcement_key      AS AnnouncementId,
-               tenant_key             AS BoardId,
+        SELECT announcement_key     AS AnnouncementId,
+               owner_key            AS OwnerId,
                announcement_title   AS AnnouncementTitle,
                announcement_type    AS AnnouncementType,
                announcement_content AS AnnouncementContent,
@@ -37,13 +37,13 @@ public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
           FROM announcement
         """;
 
-    public async Task<IReadOnlyList<Announcement>> ListAsync(int? boardId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Announcement>> ListAsync(int? ownerId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
-        if (boardId is int b)
+        if (ownerId is int b)
         {
             var rows = await conn.QueryAsync<Announcement>(
-                Cols + " WHERE tenant_key = @B OR tenant_key IS NULL ORDER BY publish_at DESC",
+                Cols + " WHERE owner_key = @B OR owner_key IS NULL ORDER BY publish_at DESC",
                 new { B = b });
             return rows.AsList();
         }
@@ -54,13 +54,13 @@ public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
         }
     }
 
-    public async Task<IReadOnlyList<Announcement>> ListVisibleAsync(int? boardId, DateTimeOffset now, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Announcement>> ListVisibleAsync(int? ownerId, DateTimeOffset now, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
-        if (boardId is int b)
+        if (ownerId is int b)
         {
             var rows = await conn.QueryAsync<Announcement>(
-                Cols + " WHERE (tenant_key = @B OR tenant_key IS NULL)"
+                Cols + " WHERE (owner_key = @B OR owner_key IS NULL)"
                      + " AND publish_at <= @Now"
                      + " AND (auto_hide_at IS NULL OR auto_hide_at > @Now)"
                      + " ORDER BY publish_at DESC",
@@ -70,7 +70,7 @@ public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
         else
         {
             var rows = await conn.QueryAsync<Announcement>(
-                Cols + " WHERE tenant_key IS NULL"
+                Cols + " WHERE owner_key IS NULL"
                      + " AND publish_at <= @Now"
                      + " AND (auto_hide_at IS NULL OR auto_hide_at > @Now)"
                      + " ORDER BY publish_at DESC",
@@ -85,15 +85,15 @@ public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
         return await conn.QuerySingleOrDefaultAsync<Announcement>(Cols + " WHERE announcement_key = @I", new { I = id });
     }
 
-    public async Task<Announcement> CreateAsync(int? boardId, string title, string type, string content, DateTimeOffset publishAt, DateTimeOffset? autoHideAt, bool notifySubscribers, Guid? createdBy, CancellationToken ct = default)
+    public async Task<Announcement> CreateAsync(int? ownerId, string title, string type, string content, DateTimeOffset publishAt, DateTimeOffset? autoHideAt, bool notifySubscribers, Guid? createdBy, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         return await conn.QuerySingleAsync<Announcement>(
             """
-            INSERT INTO announcement (tenant_key, announcement_title, announcement_type, announcement_content, publish_at, auto_hide_at, notify_subscribers, created_by)
+            INSERT INTO announcement (owner_key, announcement_title, announcement_type, announcement_content, publish_at, auto_hide_at, notify_subscribers, created_by)
             VALUES (@B, @T, @Y, @C, @P, @H, @N, @U)
-            RETURNING announcement_key      AS AnnouncementId,
-                      tenant_key             AS BoardId,
+            RETURNING announcement_key     AS AnnouncementId,
+                      owner_key            AS OwnerId,
                       announcement_title   AS AnnouncementTitle,
                       announcement_type    AS AnnouncementType,
                       announcement_content AS AnnouncementContent,
@@ -105,7 +105,7 @@ public sealed class AnnouncementRepository(NpgsqlDataSource dataSource)
                       created_at           AS CreatedAt,
                       updated_at           AS UpdatedAt
             """,
-            new { B = boardId, T = title, Y = type, C = content, P = publishAt, H = autoHideAt, N = notifySubscribers, U = createdBy });
+            new { B = ownerId, T = title, Y = type, C = content, P = publishAt, H = autoHideAt, N = notifySubscribers, U = createdBy });
     }
 
     public async Task UpdateAsync(int id, string title, string type, string content, DateTimeOffset publishAt, DateTimeOffset? autoHideAt, bool notifySubscribers, CancellationToken ct = default)

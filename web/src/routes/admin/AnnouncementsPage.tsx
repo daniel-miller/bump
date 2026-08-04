@@ -19,7 +19,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Row {
   announcementId: number;
-  boardId: number | null;
+  ownerId: number | null;
   announcementTitle: string;
   announcementType: string;
   announcementContent: string;

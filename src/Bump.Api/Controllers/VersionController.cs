@@ -20,7 +20,7 @@ public sealed class VersionController : ControllerBase
     [ProducesResponseType(typeof(ApiVersionResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get()
     {
-        var bump = await _apps.GetBySlugAsync("bump");
+        var bump = await _apps.GetByHandleAsync("bump");
         var major = bump?.VersionMajor ?? 0;
         var minor = bump?.VersionMinor ?? 0;
         var patch = bump?.VersionPatch ?? 0;

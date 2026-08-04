@@ -7,7 +7,7 @@ import type { ServiceStatus } from "@/lib/types";
 export interface ServiceCardData {
   name: string;
   url?: string;
-  tenant?: string;
+  owner?: string;
   environment?: string;
   paused: boolean;
   status: ServiceStatus;
@@ -24,8 +24,8 @@ export function ServiceCard({
   interactive?: boolean;
 }) {
   const tag =
-    service.tenant || service.environment
-      ? `${service.tenant ?? ""}/${service.environment ?? ""}`
+    service.owner || service.environment
+      ? `${service.owner ?? ""}/${service.environment ?? ""}`
       : null;
   return (
     <Card className={interactive ? "hover:border-primary transition-colors" : undefined}>

@@ -1,5 +1,5 @@
--- 050: Announcements (planned maintenance, info banners). tenant_key NULL =
--- cross-tenant / global announcement.
+-- 050: Announcements (planned maintenance, info banners). owner_key NULL =
+-- cross-owner / global announcement.
 
 CREATE TABLE IF NOT EXISTS announcement
 (
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS announcement
         CHECK (announcement_type IN ('info','warning','maintenance')),
     announcement_content   text          NOT NULL,
 
-    tenant_key             int           REFERENCES tenant(tenant_key) ON DELETE CASCADE,
+    owner_key              int           REFERENCES owner(owner_key) ON DELETE CASCADE,
 
     notify_subscribers     boolean       NOT NULL DEFAULT true,
 
@@ -22,6 +22,6 @@ CREATE TABLE IF NOT EXISTS announcement
     dispatched_at          timestamptz
 );
 
-CREATE INDEX IF NOT EXISTS ix_announcement_tenant     ON announcement (tenant_key);
+CREATE INDEX IF NOT EXISTS ix_announcement_owner      ON announcement (owner_key);
 CREATE INDEX IF NOT EXISTS ix_announcement_publish_at ON announcement (publish_at);
 CREATE INDEX IF NOT EXISTS ix_announcement_pending    ON announcement (publish_at) WHERE dispatched_at IS NULL;

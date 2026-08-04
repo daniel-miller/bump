@@ -60,7 +60,7 @@ public sealed class ProblemsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ProblemReportRecord>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Query(
         [FromQuery] string? environment,
-        [FromQuery] string? appSlug,
+        [FromQuery] string? appHandle,
         [FromQuery] string? fingerprint,
         [FromQuery] DateTime? from,
         [FromQuery] DateTime? to,
@@ -71,7 +71,7 @@ public sealed class ProblemsController : ControllerBase
         var filter = new ProblemReportFilter
         {
             Environment = environment,
-            AppSlug = appSlug,
+            AppHandle = appHandle,
             Fingerprint = fingerprint,
             From = from,
             To = to,

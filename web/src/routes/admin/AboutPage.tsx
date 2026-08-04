@@ -46,7 +46,7 @@ interface RegistryInfo {
   apps: number;
   environments: number;
   specialEnvironments: number;
-  tenants: number;
+  owners: number;
   services: number;
   servicesPaused: number;
   openOutages: number;
@@ -220,7 +220,7 @@ export function AboutPage() {
               registry.specialEnvironments > 0 ? `${registry.environments}` : registry.environments
             }
           />
-          <Stat label="Tenants" value={registry.tenants} />
+          <Stat label="Owners" value={registry.owners} />
           <Stat
             label="Services"
             value={

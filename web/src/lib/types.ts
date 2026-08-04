@@ -8,9 +8,9 @@ export interface Kpi {
 }
 
 export interface ServicePayload {
-  slug: string;
+  handle: string;
   name: string;
-  tenant: string;
+  owner: string;
   environment: string;
   url: string;
   paused: boolean;
@@ -23,7 +23,7 @@ export interface ServicePayload {
 
 export interface OutagePayload {
   id: number;
-  serviceSlug: string | null;
+  serviceHandle: string | null;
   title: string;
   status: "investigating" | "identified" | "monitoring" | "resolved";
   startedAt: string;
@@ -31,8 +31,8 @@ export interface OutagePayload {
   updates: { ts: string; msg: string; status: string }[];
 }
 
-export interface BoardSummary {
-  slug: string;
+export interface OwnerSummary {
+  handle: string;
   name: string;
 }
 
@@ -48,7 +48,7 @@ export interface AnnouncementPayload {
 export interface StatusResponse {
   overall: ServiceStatus;
   updatedAt: string;
-  board: BoardSummary | null;
+  owner: OwnerSummary | null;
   kpis: { operational: Kpi; uptime: Kpi; latency: Kpi; outages: Kpi; problems: Kpi };
   trend: {
     date: string;
@@ -61,7 +61,7 @@ export interface StatusResponse {
   problemsTrend: { date: string; label: string; count: number }[];
   services: ServicePayload[];
   outages: OutagePayload[];
-  boards: BoardSummary[];
+  owners: OwnerSummary[];
   announcements: AnnouncementPayload[];
 }
 

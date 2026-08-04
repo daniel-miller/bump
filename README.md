@@ -1,13 +1,13 @@
 # Bump
 
-A status-page and observability platform built around a versioned-app registry. Bump tracks app versions, ingests RFC 7807 problem reports from client applications, probes services for uptime and latency, and publishes per-tenant public status pages with outages, announcements, and email subscribers.
+A status-page and observability platform built around a versioned-app registry. Bump tracks app versions, ingests RFC 7807 problem reports from client applications, probes services for uptime and latency, and publishes per-owner public status pages with outages, announcements, and email subscribers. Owners, environments, and servers mirror the infrastructure rosters in `daniel-miller/infra/README.md`.
 
 - **App version management.** Register an app, read its current version, and atomically bump major, minor, or patch.
 - **Problem reporting.** Ingest RFC 7807 problem reports from clients, store them, and email periodic digests.
 - **Uptime monitoring.** Probe HTTP services on a fixed interval, record per-bar uptime and latency, and roll up daily summaries.
-- **Outages and announcements.** Publish outage timelines and scheduled announcements, scoped globally or per tenant.
-- **Public status pages.** Compose per-tenant or global status, served by a bundled React SPA.
-- **Subscribers.** Confirmed-opt-in email subscribers per tenant, with per-board caps and one-click unsubscribe.
+- **Outages and announcements.** Publish outage timelines and scheduled announcements, scoped globally or per owner.
+- **Public status pages.** Compose per-owner or global status, served by a bundled React SPA.
+- **Subscribers.** Confirmed-opt-in email subscribers per owner, with per-board caps and one-click unsubscribe.
 - **Accounts.** Cookie-session login with CSRF, password reset, email change, and TOTP MFA + recovery codes.
 
 Built on .NET 10 (ASP.NET Core MVC), Dapper, Npgsql, Newtonsoft.Json, Serilog, and Mailgun. Frontend is React + Vite + Tailwind, bundled into the API's `wwwroot` at publish time.
@@ -84,7 +84,7 @@ Both bearer keys ship empty in `config/appsettings.json` and the API refuses to 
   }
   ```
 
-- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/tenants`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Api:Security:Jwt:Key`; cookie domain/SameSite/Secure in `Bump:Api:Security:Cookie`.
+- **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and admin surfaces under `/api/admin/**` (`/api/admin/owners`, `/api/admin/services`, `/api/admin/outages`, `/api/admin/announcements`, `/api/admin/apps`). Established via `POST /api/auth/login`. State-changing requests must include `X-Bump-Csrf` matching the `bump_csrf` cookie. JWT signing key in `Bump:Api:Security:Jwt:Key`; cookie domain/SameSite/Secure in `Bump:Api:Security:Cookie`.
 
 Public surfaces (`/api/health`, `/api/status/**`, `/api/subscribers/confirm`, `/api/subscribers/unsubscribe`, `/swagger`) require no auth.
 
@@ -125,17 +125,17 @@ All routes are prefixed with `/api`. Full request/response shapes are in Swagger
 | :----- | :--------------------------------- | :----------------------------------------------------------------------------------------- |
 | POST   | `/api/apps`                        | Create an app. Optional `version` (e.g. `"0.0.4"`); defaults to `0.0.1`.                   |
 | GET    | `/api/apps`                        | List all apps.                                                                             |
-| GET    | `/api/apps/{slug}`                 | Get one app.                                                                               |
-| DELETE | `/api/apps/{slug}`                 | Delete an app.                                                                             |
-| GET    | `/api/apps/{slug}/version`         | Get the current version string.                                                            |
-| PATCH  | `/api/apps/{slug}/version`         | Set any subset of `major`, `minor`, `patch` to absolute values; unspecified parts unchanged. |
-| POST   | `/api/apps/{slug}/version/bumps`   | Body `{ "component": "major"\|"minor"\|"patch" }`. Creates the app if missing.             |
+| GET    | `/api/apps/{handle}`                 | Get one app.                                                                               |
+| DELETE | `/api/apps/{handle}`                 | Delete an app.                                                                             |
+| GET    | `/api/apps/{handle}/version`         | Get the current version string.                                                            |
+| PATCH  | `/api/apps/{handle}/version`         | Set any subset of `major`, `minor`, `patch` to absolute values; unspecified parts unchanged. |
+| POST   | `/api/apps/{handle}/version/bumps`   | Body `{ "component": "major"\|"minor"\|"patch" }`. Creates the app if missing.             |
 
 ### Problem reports — `/api/problems`
 
 | Method | Route                  | Auth              | Description                                                                                  |
 | :----- | :--------------------- | :---------------- | :------------------------------------------------------------------------------------------- |
-| POST   | `/api/problems`        | Problems bearer   | Ingest a problem report. Optional `appSlug` links the report to a Bump-managed app.          |
+| POST   | `/api/problems`        | Problems bearer   | Ingest a problem report. Optional `appHandle` links the report to a Bump-managed app.          |
 | GET    | `/api/problems`        | Session           | Query stored reports. Filters: `environment`, `application`, `fingerprint`, `from`, `to`, `limit`, `offset`. |
 | GET    | `/api/problems/{id}`   | Session           | Get one stored report.                                                                       |
 
@@ -156,8 +156,8 @@ Profile read/update, email change with confirmation, password change, and TOTP M
 
 | Group               | Routes                                                                                                  |
 | :------------------ | :------------------------------------------------------------------------------------------------------ |
-| Tenants             | `GET/POST /api/admin/tenants`, `GET/PATCH/DELETE /api/admin/tenants/{slug}`, `GET/DELETE .../subscribers`. (Public `POST /api/tenants/{slug}/subscribers` is the subscribe-form endpoint.) |
-| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{slug}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. |
+| Owners              | `GET/POST /api/admin/owners`, `GET/PATCH/DELETE /api/admin/owners/{handle}`, `GET/DELETE .../subscribers`. (Public `POST /api/owners/{handle}/subscribers` is the subscribe-form endpoint.) |
+| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. |
 | Outages             | `GET/POST /api/admin/outages`, `GET/PATCH /api/admin/outages/{id}`, `POST .../updates`, `POST .../resolve`. |
 | Announcements       | `GET/POST /api/admin/announcements`, `PATCH/DELETE /api/admin/announcements/{id}`.                      |
 | Apps (read-only)    | `GET /api/admin/apps` — admin-UI listing; bearer-keyed mutations live at `/api/apps`.                   |
@@ -166,16 +166,16 @@ Profile read/update, email change with confirmation, password change, and TOTP M
 
 | Method | Route                                            | Description                                  |
 | :----- | :----------------------------------------------- | :------------------------------------------- |
-| GET    | `/api/status`                                    | Global status (cross-tenant rollup).         |
-| GET    | `/api/status/tenants/{slug}`                     | Per-tenant status (services, outages).       |
+| GET    | `/api/status`                                    | Global status (cross-owner rollup).          |
+| GET    | `/api/status/owners/{handle}`                      | Per-owner status (services, outages).        |
 | GET    | `/api/status/global/announcements`               | Active global announcements.                 |
-| GET    | `/api/status/tenants/{slug}/announcements`       | Active per-tenant announcements.             |
+| GET    | `/api/status/owners/{handle}/announcements`        | Active per-owner announcements.              |
 
 ### Subscribers — `/api/subscribers` (no auth, double-opt-in)
 
 | Method | Route                          | Description                                          |
 | :----- | :----------------------------- | :--------------------------------------------------- |
-| POST   | `/api/tenants/{slug}/subscribers` | Subscribe to a tenant board (sends confirmation).  |
+| POST   | `/api/owners/{handle}/subscribers` | Subscribe to an owner board (sends confirmation).   |
 | GET    | `/api/subscribers/confirm`     | Confirm a subscription via the emailed token.        |
 | POST   | `/api/subscribers/unsubscribe` | Unsubscribe via the emailed one-click token.         |
 
@@ -193,7 +193,7 @@ All non-2xx responses use [RFC 7807](https://datatracker.ietf.org/doc/html/rfc78
 {
   "title": "App not found",
   "status": 404,
-  "detail": "No app with slug 'does-not-exist'."
+  "detail": "No app with handle 'does-not-exist'."
 }
 ```
 
@@ -217,17 +217,17 @@ POST endpoints accept an optional `Idempotency-Key` header. Resending the same k
 Idempotency applies to:
 
 - `POST /api/apps`
-- `POST /api/apps/{slug}/version/bumps`
+- `POST /api/apps/{handle}/version/bumps`
 - `POST /api/problems`
 - `POST /api/admin/outages`, `POST /api/admin/outages/{id}/updates`, `POST /api/admin/outages/{id}/resolve`
 - `POST /api/admin/announcements`
-- `POST /api/tenants/{slug}/subscribers`
+- `POST /api/owners/{handle}/subscribers`
 
 ## Input limits
 
 - Request body: 4 KB for app endpoints, 64 KB for problem reports.
 - String fields are capped to match the column widths in `db/migrations/*.sql`. Out-of-range input returns `422 Unprocessable Entity`.
-- Slugs: lowercase letters, digits, single hyphens; start and end with a letter or digit; max 50 characters.
+- Handles: lowercase letters, digits, single hyphens; start and end with a letter or digit; max 50 characters.
 
 ## SSRF protection (monitor probes)
 
@@ -285,7 +285,7 @@ API only:
 | `Bump:Api:Security:Cookie:*`                  | Session cookie domain, SameSite, Secure.                               |
 | `Bump:Api:Security:Tokens:*`                  | Password-reset and email-change link lifetimes, in hours.              |
 | `Bump:Api:RateLimits:*`                       | `PermitLimit` and `WindowMinutes` per policy: `Apps`, `Problems`, `Auth`, `AuthLogin`, `Subscribe`, `Status`. Both must be greater than zero. |
-| `Bump:Api:Subscribers:MaxPerTenant`           | Cap on confirmed subscribers per tenant.                               |
+| `Bump:Api:Subscribers:MaxPerOwner`            | Cap on confirmed subscribers per owner.                                |
 
 Worker only:
 

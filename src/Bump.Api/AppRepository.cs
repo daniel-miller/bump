@@ -7,7 +7,7 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
 {
     private const string Cols = """
         SELECT app_key       AS AppKey,
-               app_slug      AS AppSlug,
+               app_handle      AS AppHandle,
                app_name      AS AppName,
                version_major AS VersionMajor,
                version_minor AS VersionMinor,
@@ -19,7 +19,7 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
 
     private const string Returning = """
         RETURNING app_key       AS AppKey,
-                  app_slug      AS AppSlug,
+                  app_handle      AS AppHandle,
                   app_name      AS AppName,
                   version_major AS VersionMajor,
                   version_minor AS VersionMinor,
@@ -31,55 +31,55 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
     public async Task<IReadOnlyList<App>> GetAllAsync()
     {
         await using var conn = await dataSource.OpenConnectionAsync();
-        var rows = await conn.QueryAsync<App>(Cols + " ORDER BY app_slug");
+        var rows = await conn.QueryAsync<App>(Cols + " ORDER BY app_handle");
         return rows.AsList();
     }
 
-    public async Task<App?> GetBySlugAsync(string slug)
+    public async Task<App?> GetByHandleAsync(string handle)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleOrDefaultAsync<App>(
-            Cols + " WHERE app_slug = @Slug",
-            new { Slug = slug });
+            Cols + " WHERE app_handle = @Handle",
+            new { Handle = handle });
     }
 
-    public async Task<bool> DeleteBySlugAsync(string slug)
+    public async Task<bool> DeleteByHandleAsync(string handle)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         var rows = await conn.ExecuteAsync(
-            "DELETE FROM app WHERE app_slug = @Slug",
-            new { Slug = slug });
+            "DELETE FROM app WHERE app_handle = @Handle",
+            new { Handle = handle });
         return rows > 0;
     }
 
-    public async Task<App> CreateAsync(string slug, string name, int major, int minor, int patch)
+    public async Task<App> CreateAsync(string handle, string name, int major, int minor, int patch)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleAsync<App>(
             $"""
-            INSERT INTO app (app_slug, app_name,
+            INSERT INTO app (app_handle, app_name,
                              version_major, version_minor, version_patch)
-            VALUES (@Slug, @Name,
+            VALUES (@Handle, @Name,
                     @Major, @Minor, @Patch)
             {Returning}
             """,
-            new { Slug = slug, Name = name, Major = major, Minor = minor, Patch = patch });
+            new { Handle = handle, Name = name, Major = major, Minor = minor, Patch = patch });
     }
 
     /// <summary>
-    /// Insert-or-update an app by slug. Used for self-registration on API startup.
+    /// Insert-or-update an app by handle. Used for self-registration on API startup.
     /// Version is seeded on first insert only; subsequent boots leave it alone so
     /// PATCH/bump updates are not clobbered.
     /// </summary>
-    public async Task<App> UpsertAsync(string slug, string name, int major, int minor, int patch)
+    public async Task<App> UpsertAsync(string handle, string name, int major, int minor, int patch)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleAsync<App>(
             $"""
-            INSERT INTO app (app_slug, app_name,
+            INSERT INTO app (app_handle, app_name,
                              version_major, version_minor, version_patch)
-            VALUES (@Slug, @Name, @Major, @Minor, @Patch)
-            ON CONFLICT (app_slug) DO UPDATE
+            VALUES (@Handle, @Name, @Major, @Minor, @Patch)
+            ON CONFLICT (app_handle) DO UPDATE
                SET app_name   = EXCLUDED.app_name,
                    updated_at = CASE
                                   WHEN app.app_name IS DISTINCT FROM EXCLUDED.app_name THEN now()
@@ -87,30 +87,30 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
                                 END
             {Returning}
             """,
-            new { Slug = slug, Name = name, Major = major, Minor = minor, Patch = patch });
+            new { Handle = handle, Name = name, Major = major, Minor = minor, Patch = patch });
     }
 
     public async Task<App?> UpdateAsync(
-        string currentSlug, string newSlug, string name,
+        string currentHandle, string newHandle, string name,
         int major, int minor, int patch)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleOrDefaultAsync<App>(
             $"""
             UPDATE app
-               SET app_slug      = @NewSlug,
+               SET app_handle      = @NewHandle,
                    app_name      = @Name,
                    version_major = @Major,
                    version_minor = @Minor,
                    version_patch = @Patch,
                    updated_at    = now()
-             WHERE app_slug      = @CurrentSlug
+             WHERE app_handle      = @CurrentHandle
             {Returning}
             """,
             new
             {
-                CurrentSlug = currentSlug,
-                NewSlug = newSlug,
+                CurrentHandle = currentHandle,
+                NewHandle = newHandle,
                 Name = name,
                 Major = major,
                 Minor = minor,
@@ -118,7 +118,7 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
             });
     }
 
-    public async Task<App?> SetVersionAsync(string slug, int? major, int? minor, int? patch)
+    public async Task<App?> SetVersionAsync(string handle, int? major, int? minor, int? patch)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleOrDefaultAsync<App>(
@@ -128,60 +128,60 @@ public sealed class AppRepository(NpgsqlDataSource dataSource)
                    version_minor = COALESCE(@Minor, version_minor),
                    version_patch = COALESCE(@Patch, version_patch),
                    updated_at    = now()
-             WHERE app_slug      = @Slug
+             WHERE app_handle      = @Handle
             {Returning}
             """,
-            new { Slug = slug, Major = major, Minor = minor, Patch = patch });
+            new { Handle = handle, Major = major, Minor = minor, Patch = patch });
     }
 
-    public async Task<App> IncrementMajorAsync(string slug)
+    public async Task<App> IncrementMajorAsync(string handle)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleAsync<App>(
             $"""
-            INSERT INTO app (app_slug, app_name,
+            INSERT INTO app (app_handle, app_name,
                              version_major, version_minor, version_patch)
-            VALUES (@Slug, @Slug, 1, 0, 0)
-            ON CONFLICT (app_slug) DO UPDATE
+            VALUES (@Handle, @Handle, 1, 0, 0)
+            ON CONFLICT (app_handle) DO UPDATE
                SET version_major = app.version_major + 1,
                    version_minor = 0,
                    version_patch = 0,
                    updated_at    = now()
             {Returning}
             """,
-            new { Slug = slug });
+            new { Handle = handle });
     }
 
-    public async Task<App> IncrementMinorAsync(string slug)
+    public async Task<App> IncrementMinorAsync(string handle)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleAsync<App>(
             $"""
-            INSERT INTO app (app_slug, app_name,
+            INSERT INTO app (app_handle, app_name,
                              version_major, version_minor, version_patch)
-            VALUES (@Slug, @Slug, 0, 1, 0)
-            ON CONFLICT (app_slug) DO UPDATE
+            VALUES (@Handle, @Handle, 0, 1, 0)
+            ON CONFLICT (app_handle) DO UPDATE
                SET version_minor = app.version_minor + 1,
                    version_patch = 0,
                    updated_at    = now()
             {Returning}
             """,
-            new { Slug = slug });
+            new { Handle = handle });
     }
 
-    public async Task<App> IncrementPatchAsync(string slug)
+    public async Task<App> IncrementPatchAsync(string handle)
     {
         await using var conn = await dataSource.OpenConnectionAsync();
         return await conn.QuerySingleAsync<App>(
             $"""
-            INSERT INTO app (app_slug, app_name,
+            INSERT INTO app (app_handle, app_name,
                              version_major, version_minor, version_patch)
-            VALUES (@Slug, @Slug, 0, 0, 1)
-            ON CONFLICT (app_slug) DO UPDATE
+            VALUES (@Handle, @Handle, 0, 0, 1)
+            ON CONFLICT (app_handle) DO UPDATE
                SET version_patch = app.version_patch + 1,
                    updated_at    = now()
             {Returning}
             """,
-            new { Slug = slug });
+            new { Handle = handle });
     }
 }

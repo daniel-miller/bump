@@ -53,7 +53,7 @@ export function ConfirmEmailChangePage() {
           <h1 className="text-2xl font-semibold">Email updated</h1>
           <p className="text-muted-foreground">Your account email has been changed.</p>
           <p>
-            <Link to="/admin/account" className="underline">
+            <Link to="/account" className="underline">
               Back to account
             </Link>
           </p>

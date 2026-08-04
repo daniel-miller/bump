@@ -24,15 +24,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
 
-function slugifyTag(input: string): string {
+function sanitizeTag(input: string): string {
   return input.toLowerCase().replace(/[^a-z0-9_-]/g, "");
 }
 
 interface ServiceDetail {
-  slug: string;
+  handle: string;
   name: string;
   url: string;
-  tenant: string;
+  owner: string;
   environment: string;
   paused: boolean;
   isPrivate: boolean;
@@ -68,12 +68,12 @@ const STATUS_COLORS: Record<ServiceStatus, string> = {
 } as Record<ServiceStatus, string>;
 
 export function ServiceDetailPage() {
-  const { slug = "" } = useParams<{ slug: string }>();
+  const { handle = "" } = useParams<{ handle: string }>();
   const qc = useQueryClient();
   const nav = useNavigate();
   const { data: m } = useQuery<ServiceDetail>({
-    queryKey: ["services", slug],
-    queryFn: () => api<ServiceDetail>(`/api/admin/services/${slug}`),
+    queryKey: ["services", handle],
+    queryFn: () => api<ServiceDetail>(`/api/admin/services/${handle}`),
     refetchInterval: 10_000,
   });
 
@@ -84,64 +84,64 @@ export function ServiceDetailPage() {
     return () => window.clearInterval(id);
   }, []);
   const { data: ts } = useQuery<LatencyResponse>({
-    queryKey: ["services", slug, "latency", "7d"],
-    queryFn: () => api<LatencyResponse>(`/api/admin/services/${slug}/latency?range=7d`),
-    enabled: !!slug,
+    queryKey: ["services", handle, "latency", "7d"],
+    queryFn: () => api<LatencyResponse>(`/api/admin/services/${handle}/latency?range=7d`),
+    enabled: !!handle,
   });
   const { data: ts24 } = useQuery<UptimeResponse>({
-    queryKey: ["services", slug, "uptime", "24h"],
-    queryFn: () => api<UptimeResponse>(`/api/admin/services/${slug}/uptime?range=24h`),
-    enabled: !!slug,
+    queryKey: ["services", handle, "uptime", "24h"],
+    queryFn: () => api<UptimeResponse>(`/api/admin/services/${handle}/uptime?range=24h`),
+    enabled: !!handle,
   });
 
   const remove = useMutation({
-    mutationFn: () => api(`/api/admin/services/${slug}`, { method: "DELETE" }),
+    mutationFn: () => api(`/api/admin/services/${handle}`, { method: "DELETE" }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["services"] });
-      nav("/admin/services");
+      nav("/services");
     },
   });
 
   const pause = useMutation({
-    mutationFn: () => api(`/api/admin/services/${slug}/pause`, { method: "POST" }),
+    mutationFn: () => api(`/api/admin/services/${handle}/pause`, { method: "POST" }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["services", slug] });
+      await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
   const resume = useMutation({
-    mutationFn: () => api(`/api/admin/services/${slug}/resume`, { method: "POST" }),
+    mutationFn: () => api(`/api/admin/services/${handle}/resume`, { method: "POST" }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["services", slug] });
+      await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
   const setPrivate = useMutation({
     mutationFn: (isPrivate: boolean) =>
-      api(`/api/admin/services/${slug}`, {
+      api(`/api/admin/services/${handle}`, {
         method: "PATCH",
         body: JSON.stringify({ isPrivate }),
       }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["services", slug] });
+      await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
   });
 
   const [editing, setEditing] = useState(false);
-  const [edit, setEdit] = useState({ name: "", url: "", tenant: "", environment: "" });
+  const [edit, setEdit] = useState({ name: "", url: "", owner: "", environment: "" });
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const save = useMutation({
     mutationFn: () =>
-      api(`/api/admin/services/${slug}`, { method: "PATCH", body: JSON.stringify(edit) }),
+      api(`/api/admin/services/${handle}`, { method: "PATCH", body: JSON.stringify(edit) }),
     onSuccess: async () => {
       setEditing(false);
       setEditError(null);
-      await qc.invalidateQueries({ queryKey: ["services", slug] });
+      await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
     onError: (err: Error) => setEditError(err.message),
@@ -149,7 +149,7 @@ export function ServiceDetailPage() {
 
   function startEdit() {
     if (!m) return;
-    setEdit({ name: m.name, url: m.url, tenant: m.tenant, environment: m.environment });
+    setEdit({ name: m.name, url: m.url, owner: m.owner, environment: m.environment });
     setEditError(null);
     setEditing(true);
   }
@@ -205,7 +205,7 @@ export function ServiceDetailPage() {
             </a>
           </div>
           <div className="text-muted-foreground mt-0.5 text-xs">
-            {m.tenant} / {m.environment}
+            {m.owner} / {m.environment}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -265,11 +265,11 @@ export function ServiceDetailPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit-tenant">Tenant</Label>
+                <Label htmlFor="edit-owner">Owner</Label>
                 <Input
-                  id="edit-tenant"
-                  value={edit.tenant}
-                  onChange={(e) => setEdit({ ...edit, tenant: slugifyTag(e.target.value) })}
+                  id="edit-owner"
+                  value={edit.owner}
+                  onChange={(e) => setEdit({ ...edit, owner: sanitizeTag(e.target.value) })}
                 />
               </div>
               <div className="space-y-1.5">
@@ -277,12 +277,12 @@ export function ServiceDetailPage() {
                 <Input
                   id="edit-environment"
                   value={edit.environment}
-                  onChange={(e) => setEdit({ ...edit, environment: slugifyTag(e.target.value) })}
+                  onChange={(e) => setEdit({ ...edit, environment: sanitizeTag(e.target.value) })}
                 />
               </div>
             </div>
             <div className="text-muted-foreground text-xs">
-              Slug <code className="font-mono">{m.slug}</code> cannot be changed.
+              Handle <code className="font-mono">{m.handle}</code> cannot be changed.
             </div>
             {editError && <div className="text-danger text-sm">{editError}</div>}
             <div className="flex justify-end gap-2">

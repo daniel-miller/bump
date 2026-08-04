@@ -5,7 +5,7 @@ namespace Bump.Api;
 public sealed class App
 {
     public int AppKey { get; set; }
-    public string AppSlug { get; set; } = string.Empty;
+    public string AppHandle { get; set; } = string.Empty;
     public string AppName { get; set; } = string.Empty;
     public int VersionMajor { get; set; }
     public int VersionMinor { get; set; }
@@ -16,32 +16,32 @@ public sealed class App
     public string Version => $"{VersionMajor}.{VersionMinor}.{VersionPatch}";
 }
 
-public static class AppSlugRules
+public static class AppHandleRules
 {
     // Lowercase letters, digits, and single hyphens; must start and end
     // with a letter or digit. Keeps URLs clean and safely routable.
-    private static readonly Regex SlugPattern = new(
+    private static readonly Regex HandlePattern = new(
         @"^[a-z0-9]+(-[a-z0-9]+)*$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
-    public static IResult? ValidateSlug(string? slug, string fieldName = "Slug")
+    public static IResult? ValidateHandle(string? handle, string fieldName = "Handle")
     {
-        if (string.IsNullOrWhiteSpace(slug))
+        if (string.IsNullOrWhiteSpace(handle))
         {
             return JsonResults.UnprocessableEntity(
-                title: "Invalid slug",
+                title: "Invalid handle",
                 detail: $"{fieldName} is required.");
         }
-        if (slug.Length > Limits.SlugMaxLength)
+        if (handle.Length > Limits.HandleMaxLength)
         {
             return JsonResults.UnprocessableEntity(
-                title: "Invalid slug",
-                detail: $"{fieldName} must be {Limits.SlugMaxLength} characters or fewer.");
+                title: "Invalid handle",
+                detail: $"{fieldName} must be {Limits.HandleMaxLength} characters or fewer.");
         }
-        if (!SlugPattern.IsMatch(slug))
+        if (!HandlePattern.IsMatch(handle))
         {
             return JsonResults.UnprocessableEntity(
-                title: "Invalid slug",
+                title: "Invalid handle",
                 detail: $"{fieldName} must contain only lowercase letters, digits, and single hyphens.");
         }
         return null;
@@ -49,15 +49,15 @@ public static class AppSlugRules
 }
 
 public sealed record CreateAppRequest(
-    string Slug,
+    string Handle,
     string Name,
     string? Version = null
 )
 {
     public IResult? Validate()
     {
-        var slugErr = AppSlugRules.ValidateSlug(Slug);
-        if (slugErr is not null) return slugErr;
+        var handleErr = AppHandleRules.ValidateHandle(Handle);
+        if (handleErr is not null) return handleErr;
 
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -102,7 +102,7 @@ public sealed record CreateAppRequest(
 
 public sealed record AppResponse(
     int AppKey,
-    string AppSlug,
+    string AppHandle,
     string AppName,
     string Version,
     DateTimeOffset CreatedAt,
@@ -111,7 +111,7 @@ public sealed record AppResponse(
 {
     public static AppResponse From(App a) => new(
         a.AppKey,
-        a.AppSlug,
+        a.AppHandle,
         a.AppName,
         a.Version,
         a.CreatedAt,
@@ -124,7 +124,7 @@ public sealed record VersionResponse(string Version);
 public sealed record SetVersionRequest(int? Major, int? Minor, int? Patch);
 
 public sealed record UpdateAppRequest(
-    string Slug,
+    string Handle,
     string Name,
     int Major,
     int Minor,
@@ -133,8 +133,8 @@ public sealed record UpdateAppRequest(
 {
     public IResult? Validate()
     {
-        var slugErr = AppSlugRules.ValidateSlug(Slug);
-        if (slugErr is not null) return slugErr;
+        var handleErr = AppHandleRules.ValidateHandle(Handle);
+        if (handleErr is not null) return handleErr;
 
         if (string.IsNullOrWhiteSpace(Name))
         {

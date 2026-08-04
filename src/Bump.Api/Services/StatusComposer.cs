@@ -11,46 +11,46 @@ public sealed class StatusComposer
 {
     private readonly ServiceRepository _services;
     private readonly OutageRepository _outages;
-    private readonly BoardRepository _boards;
+    private readonly OwnerRepository _owners;
     private readonly AnnouncementRepository _announcements;
     private readonly ProblemRepository _problems;
 
-    public StatusComposer(ServiceRepository services, OutageRepository outages, BoardRepository boards, AnnouncementRepository announcements, ProblemRepository problems)
+    public StatusComposer(ServiceRepository services, OutageRepository outages, OwnerRepository owners, AnnouncementRepository announcements, ProblemRepository problems)
     {
         _services = services;
         _outages = outages;
-        _boards = boards;
+        _owners = owners;
         _announcements = announcements;
         _problems = problems;
     }
 
-    public async Task<object> ComposeAsync(string? boardSlug, bool excludePaused, string ianaTz, CancellationToken ct = default)
+    public async Task<object> ComposeAsync(string? ownerHandle, bool excludePaused, string ianaTz, CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
         var tz = TimeZoneInfo.FindSystemTimeZoneById(ianaTz);
         var todayLocal = TimeZoneInfo.ConvertTimeFromUtc(now.UtcDateTime, tz).Date;
 
-        Board? board = boardSlug is null ? null : await _boards.GetBySlugAsync(boardSlug, ct);
+        Owner? owner = ownerHandle is null ? null : await _owners.GetByHandleAsync(ownerHandle, ct);
         var allServices = await _services.ListAsync(ct);
-        var allBoards = await _boards.ListAsync(ct);
+        var allOwners = await _owners.ListAsync(ct);
 
         IReadOnlyList<Service> scopedServices = allServices;
-        if (board is not null)
+        if (owner is not null)
         {
-            var ids = (await _boards.GetServiceIdsAsync(board.BoardId, ct)).ToHashSet();
+            var ids = (await _owners.GetServiceIdsAsync(owner.OwnerId, ct)).ToHashSet();
             scopedServices = allServices.Where(m => ids.Contains(m.ServiceId)).ToList();
         }
 
         var serviceIds = scopedServices.Select(m => m.ServiceId).ToList();
         var states = await _services.GetStatesAsync(serviceIds, ct);
         var openOutages = await _outages.ListOpenForServicesAsync(serviceIds, ct);
-        var dailies = await _services.GetDailyForBoardAsync(serviceIds, 14, ianaTz, ct);
+        var dailies = await _services.GetDailyForServicesAsync(serviceIds, 14, ianaTz, ct);
         var outageDayCounts = await _outages.CountByDayForServicesAsync(serviceIds, 14, ianaTz, ct);
-        // No board scope = global admin view. Count all unresolved problems
+        // No owner scope = global admin view. Count all unresolved problems
         // so unmonitored (app, environment) pairs still surface in the KPI.
-        // With a board scope, stay tied to the board's services so the count
+        // With an owner scope, stay tied to the owner's services so the count
         // matches the listed services.
-        var activeProblems = board is null
+        var activeProblems = owner is null
             ? await _problems.CountAllActiveAsync(TimeSpan.FromHours(24), ct)
             : await _problems.CountActiveAsync(serviceIds, TimeSpan.FromHours(24), ct);
         var problemDayCounts = await _problems.CountByDayAsync(14, ianaTz, ct);
@@ -65,9 +65,9 @@ public sealed class StatusComposer
                 var history = s?.History ?? Enumerable.Repeat(ServiceStatuses.Operational, 60).ToList();
                 return new
                 {
-                    slug = m.ServiceSlug,
+                    handle = m.ServiceHandle,
                     name = m.ServiceName,
-                    tenant = m.ServiceTenant,
+                    owner = m.ServiceOwner,
                     environment = m.ServiceEnvironment,
                     url = m.ServiceUrl,
                     paused = m.ServicePaused,
@@ -145,7 +145,7 @@ public sealed class StatusComposer
         var outagesOut = openOutages.Select(i => new
         {
             id = i.OutageId,
-            serviceSlug = i.ServiceId is int mid ? scopedServices.FirstOrDefault(m => m.ServiceId == mid)?.ServiceSlug : null,
+            serviceHandle = i.ServiceId is int mid ? scopedServices.FirstOrDefault(m => m.ServiceId == mid)?.ServiceHandle : null,
             title = i.OutageTitle,
             status = i.OutageStatus,
             startedAt = i.StartedAt,
@@ -154,7 +154,7 @@ public sealed class StatusComposer
         }).ToList();
 
         // Announcements visible right now
-        var visibleAnnouncements = await _announcements.ListVisibleAsync(board?.BoardId, now, ct);
+        var visibleAnnouncements = await _announcements.ListVisibleAsync(owner?.OwnerId, now, ct);
         var announcementsOut = visibleAnnouncements.Select(a => new
         {
             id = a.AnnouncementId,
@@ -169,13 +169,13 @@ public sealed class StatusComposer
         {
             overall,
             updatedAt = now,
-            board = board is null ? null : new { slug = board.BoardSlug, name = board.BoardName },
+            owner = owner is null ? null : new { handle = owner.OwnerHandle, name = owner.OwnerName },
             kpis,
             trend,
             problemsTrend,
             services = servicePayload,
             outages = outagesOut,
-            boards = allBoards.Select(b => new { slug = b.BoardSlug, name = b.BoardName }).ToList(),
+            owners = allOwners.Select(o => new { handle = o.OwnerHandle, name = o.OwnerName }).ToList(),
             announcements = announcementsOut
         };
     }

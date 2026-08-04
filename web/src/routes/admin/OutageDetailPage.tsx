@@ -34,7 +34,7 @@ interface OutageDetail {
     rootCause: string | null;
   };
   updates: { updateId: number; statusAtUpdate: string; updateMessage: string; createdAt: string }[];
-  service: { id: number; slug: string; name: string; url: string } | null;
+  service: { id: number; handle: string; name: string; url: string } | null;
 }
 
 export function OutageDetailPage() {
@@ -64,7 +64,7 @@ export function OutageDetailPage() {
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["outages"] });
       await qc.invalidateQueries({ queryKey: ["outages", "all"] });
-      nav("/admin/outages");
+      nav("/outages");
     },
   });
 

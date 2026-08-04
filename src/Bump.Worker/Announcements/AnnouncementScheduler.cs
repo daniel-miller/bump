@@ -11,13 +11,13 @@ namespace Bump.Worker.Announcements;
 /// Ticks every minute. Picks up announcements whose publish_at is past and
 /// dispatched_at is null, claims them with SELECT ... FOR UPDATE SKIP
 /// LOCKED, marks dispatched, and (when notify_subscribers is true) emails
-/// confirmed subscribers of the matching board.
+/// confirmed subscribers of the matching owner.
 /// </summary>
 public sealed class AnnouncementScheduler : BackgroundService
 {
     private readonly ILogger<AnnouncementScheduler> _logger;
     private readonly NpgsqlDataSource _dataSource;
-    private readonly BoardRepository _boards;
+    private readonly OwnerRepository _owners;
     private readonly SubscriberRepository _subscribers;
     private readonly IMailgunClient _mail;
     private readonly TimeSpan _interval;
@@ -29,14 +29,14 @@ public sealed class AnnouncementScheduler : BackgroundService
         IConfiguration config,
         AnnouncementsSettings announcements,
         NpgsqlDataSource dataSource,
-        BoardRepository boards,
+        OwnerRepository owners,
         SubscriberRepository subscribers,
         IMailgunClient mail,
         WorkerStatus status)
     {
         _logger = logger;
         _dataSource = dataSource;
-        _boards = boards;
+        _owners = owners;
         _subscribers = subscribers;
         _mail = mail;
         _status = status;
@@ -69,8 +69,8 @@ public sealed class AnnouncementScheduler : BackgroundService
 
         var due = await conn.QueryAsync<Announcement>(
             """
-            SELECT announcement_key      AS AnnouncementId,
-                   tenant_key             AS BoardId,
+            SELECT announcement_key     AS AnnouncementId,
+                   owner_key            AS OwnerId,
                    announcement_title   AS AnnouncementTitle,
                    announcement_type    AS AnnouncementType,
                    announcement_content AS AnnouncementContent,
@@ -108,16 +108,16 @@ public sealed class AnnouncementScheduler : BackgroundService
         foreach (var a in list)
         {
             if (!a.NotifySubscribers) continue;
-            var boardIds = a.BoardId is int bid ? new[] { bid } : (await _boards.ListAsync(ct)).Select(b => b.BoardId).ToArray();
-            foreach (var boardId in boardIds)
+            var ownerIds = a.OwnerId is int oid ? new[] { oid } : (await _owners.ListAsync(ct)).Select(o => o.OwnerId).ToArray();
+            foreach (var ownerId in ownerIds)
             {
-                var board = await _boards.GetByIdAsync(boardId, ct);
-                if (board is null) continue;
-                var subs = await _subscribers.ListConfirmedAsync(boardId, ct);
+                var owner = await _owners.GetByIdAsync(ownerId, ct);
+                if (owner is null) continue;
+                var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
                 foreach (var s in subs)
                 {
                     var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={Convert.ToBase64String(s.UnsubscribeToken).Replace('+', '-').Replace('/', '_').TrimEnd('=')}";
-                    await _mail.SendAsync(AnnouncementPublished.Build(s.SubscriberEmail, board.BoardName, a.AnnouncementTitle, a.AnnouncementContent, unsubUrl), ct);
+                    await _mail.SendAsync(AnnouncementPublished.Build(s.SubscriberEmail, owner.OwnerName, a.AnnouncementTitle, a.AnnouncementContent, unsubUrl), ct);
                 }
             }
         }

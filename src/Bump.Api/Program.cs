@@ -174,7 +174,7 @@ namespace Bump.Api
             builder.Services.AddSingleton<EmailChangeTokenRepository>();
             builder.Services.AddSingleton<ServiceRepository>();
             builder.Services.AddSingleton<OutageRepository>();
-            builder.Services.AddSingleton<BoardRepository>();
+            builder.Services.AddSingleton<OwnerRepository>();
             builder.Services.AddSingleton<AnnouncementRepository>();
             builder.Services.AddSingleton<SubscriberRepository>();
             builder.Services.AddSingleton<StatusComposer>();
@@ -289,7 +289,7 @@ namespace Bump.Api
                 })
                 .AddNewtonsoftJson(options =>
                 {
-                    // CamelCase on the wire so the React SPA reads `slug`/`history`
+                    // CamelCase on the wire so the React SPA reads `handle`/`history`
                     // etc. directly. Newtonsoft's deserialize is case-insensitive,
                     // so PascalCase requests from existing SDK consumers still bind.
                     options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
@@ -370,15 +370,18 @@ namespace Bump.Api
                 // version is visible alongside other deployed services.
                 var apps = scope.ServiceProvider.GetRequiredService<AppRepository>();
                 apps.UpsertAsync(
-                    slug: "bump",
+                    handle: "bump",
                     name: "Bump",
                     major: 0, minor: 0, patch: 1).GetAwaiter().GetResult();
 
                 // Push the deployed version from config to the DB row so
                 // the About page reflects what is actually running. Config
-                // is the source of truth; the upsert above only seeds.
+                // is the source of truth when a deploy stamped it; 0.0.0 is
+                // the unset placeholder (local dev, unstamped build) and must
+                // not clobber the seeded or live-captured version.
                 if (TryParseSemver(release.Version,
-                        out var maj, out var min, out var pat))
+                        out var maj, out var min, out var pat)
+                    && (maj, min, pat) != (0, 0, 0))
                 {
                     apps.SetVersionAsync("bump", maj, min, pat).GetAwaiter().GetResult();
                 }

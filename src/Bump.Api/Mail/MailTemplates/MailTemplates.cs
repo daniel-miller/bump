@@ -202,7 +202,7 @@ public static class ProblemDigest
         string Fingerprint,
         string Type,
         string Title,
-        string AppSlug,
+        string AppHandle,
         string AppName,
         string Environment,
         string EnvironmentName,
@@ -215,7 +215,7 @@ public static class ProblemDigest
         var trimmedBase = (publicBaseUrl ?? "").TrimEnd('/');
         var detailUrl = string.IsNullOrEmpty(trimmedBase)
             ? null
-            : $"{trimmedBase}/admin/problems/{e.LatestProblemKey}";
+            : $"{trimmedBase}/problems/{e.LatestProblemKey}";
 
         var intro = $"An unexpected problem occurred in the {e.AppName} application running in the {e.EnvironmentName} environment. See below for a summary.";
 
@@ -225,7 +225,7 @@ public static class ProblemDigest
 
                 Type: {e.Type}
                 Title: {e.Title}
-                App: {e.AppSlug}
+                App: {e.AppHandle}
                 Environment: {e.Environment}
                 Occurrences: {e.Occurrences}
                 Last seen: {e.LastSeen:u}
@@ -238,7 +238,7 @@ public static class ProblemDigest
 
                 Type: {e.Type}
                 Title: {e.Title}
-                App: {e.AppSlug}
+                App: {e.AppHandle}
                 Environment: {e.Environment}
                 Occurrences: {e.Occurrences}
                 Last seen: {e.LastSeen:u}
@@ -258,7 +258,7 @@ public static class ProblemDigest
             <table style="border-collapse:collapse;font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:14px">
               {Row("Type",        e.Type)}
               {Row("Title",       e.Title)}
-              {Row("App",         e.AppSlug)}
+              {Row("App",         e.AppHandle)}
               {Row("Environment", e.Environment)}
               {Row("Occurrences", e.Occurrences.ToString())}
               {Row("Last seen",   e.LastSeen.ToString("u"))}
@@ -269,7 +269,7 @@ public static class ProblemDigest
         return new MailMessage
         {
             To = new[] { toEmail },
-            Subject = $"[Bump] {e.Type} in {e.AppSlug} ({e.Environment})",
+            Subject = $"[Bump] {e.Type} in {e.AppHandle} ({e.Environment})",
             Text = text,
             Html = html,
             Tags = new[] { "problem", "digest" }

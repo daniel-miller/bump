@@ -15,12 +15,6 @@ interface EnvironmentRecord {
   updatedAt: string | null;
 }
 
-function isLocalhost() {
-  if (typeof window === "undefined") return false;
-  const h = window.location.hostname;
-  return h === "localhost" || h === "127.0.0.1";
-}
-
 function EnvCard({ env }: { env: EnvironmentRecord }) {
   return (
     <div className="border-border bg-card text-card-foreground rounded border">
@@ -68,10 +62,10 @@ export function EnvironmentsPage() {
     queryFn: () => api<EnvironmentRecord[]>("/api/admin/environments"),
   });
 
-  const showWork = isLocalhost();
-  const lifecycle = data.filter(
-    (e) => !e.isSpecialPurpose && (e.environmentHandle !== "work" || showWork),
-  );
+  // Work is listed everywhere, not just on a localhost origin: this page is
+  // the full roster documentation, and hiding a lifecycle stage made the
+  // roster look shorter than it is.
+  const lifecycle = data.filter((e) => !e.isSpecialPurpose);
   const derived = data.filter((e) => e.isSpecialPurpose && e.isDerivedFromLive);
   const independent = data.filter((e) => e.isSpecialPurpose && !e.isDerivedFromLive);
 

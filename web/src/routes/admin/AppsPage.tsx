@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface AppRecord {
   appKey: number;
@@ -77,6 +78,14 @@ export function AppsPage() {
           setEditing(null);
           await qc.invalidateQueries({ queryKey: ["admin", "apps"] });
         }}
+        onDeleted={async () => {
+          setEditing(null);
+          await qc.invalidateQueries({ queryKey: ["admin", "apps"] });
+          // Deleting an app cascades its problem reports and detaches its
+          // services, so the lists that join on it are stale too.
+          await qc.invalidateQueries({ queryKey: ["problems"] });
+          await qc.invalidateQueries({ queryKey: ["services"] });
+        }}
       />
     </div>
   );
@@ -91,15 +100,17 @@ interface EditAppDialogProps {
   app: AppRecord | null;
   onClose: () => void;
   onSaved: () => void;
+  onDeleted: () => void;
 }
 
-function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
+function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps) {
   const [handle, setHandle] = useState("");
   const [name, setName] = useState("");
   const [major, setMajor] = useState(0);
   const [minor, setMinor] = useState(0);
   const [patch, setPatch] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (app) {
@@ -110,8 +121,18 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
       setMinor(mi);
       setPatch(pa);
       setError(null);
+      setConfirmOpen(false);
     }
   }, [app]);
+
+  const showError = (err: unknown) => {
+    if (err instanceof ApiError) {
+      const problem = err.problem as ProblemDetail | undefined;
+      setError(problem?.detail ?? problem?.title ?? err.message);
+    } else {
+      setError((err as Error).message);
+    }
+  };
 
   const save = useMutation({
     mutationFn: () => {
@@ -122,105 +143,139 @@ function EditAppDialog({ app, onClose, onSaved }: EditAppDialogProps) {
       });
     },
     onSuccess: () => onSaved(),
-    onError: (err) => {
-      if (err instanceof ApiError) {
-        const problem = err.problem as ProblemDetail | undefined;
-        setError(problem?.detail ?? problem?.title ?? err.message);
-      } else {
-        setError((err as Error).message);
-      }
-    },
+    onError: showError,
   });
 
+  // Deletes the persisted handle, not the edited one: an unsaved rename in the
+  // form must not decide which row goes away.
+  const remove = useMutation({
+    mutationFn: () => {
+      if (!app) throw new Error("no app");
+      return api<void>(`/api/admin/apps/${encodeURIComponent(app.appHandle)}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => onDeleted(),
+    onError: showError,
+  });
+
+  const busy = save.isPending || remove.isPending;
+
   return (
-    <Dialog
-      open={app !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit app</DialogTitle>
-          <DialogDescription>
-            Changing the handle renames the app's URL. Existing SDK clients pinned to the old handle
-            will need to be updated.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={app !== null}
+        onOpenChange={(open) => {
+          if (!open && !confirmOpen) onClose();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit app</DialogTitle>
+            <DialogDescription>
+              Changing the handle renames the app's URL. Existing SDK clients pinned to the old
+              handle will need to be updated.
+            </DialogDescription>
+          </DialogHeader>
 
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setError(null);
-            save.mutate();
-          }}
-        >
-          <div className="space-y-1">
-            <Label htmlFor="edit-app-handle">Handle</Label>
-            <Input
-              id="edit-app-handle"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="edit-app-name">Name</Label>
-            <Input
-              id="edit-app-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoComplete="off"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError(null);
+              save.mutate();
+            }}
+          >
             <div className="space-y-1">
-              <Label htmlFor="edit-app-major">Major</Label>
+              <Label htmlFor="edit-app-handle">Handle</Label>
               <Input
-                id="edit-app-major"
-                type="number"
-                min={0}
-                value={major}
-                onChange={(e) => setMajor(parseInt(e.target.value, 10) || 0)}
+                id="edit-app-handle"
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                autoComplete="off"
+                required
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="edit-app-minor">Minor</Label>
+              <Label htmlFor="edit-app-name">Name</Label>
               <Input
-                id="edit-app-minor"
-                type="number"
-                min={0}
-                value={minor}
-                onChange={(e) => setMinor(parseInt(e.target.value, 10) || 0)}
+                id="edit-app-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="off"
+                required
               />
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="edit-app-patch">Patch</Label>
-              <Input
-                id="edit-app-patch"
-                type="number"
-                min={0}
-                value={patch}
-                onChange={(e) => setPatch(parseInt(e.target.value, 10) || 0)}
-              />
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="edit-app-major">Major</Label>
+                <Input
+                  id="edit-app-major"
+                  type="number"
+                  min={0}
+                  value={major}
+                  onChange={(e) => setMajor(parseInt(e.target.value, 10) || 0)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-app-minor">Minor</Label>
+                <Input
+                  id="edit-app-minor"
+                  type="number"
+                  min={0}
+                  value={minor}
+                  onChange={(e) => setMinor(parseInt(e.target.value, 10) || 0)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="edit-app-patch">Patch</Label>
+                <Input
+                  id="edit-app-patch"
+                  type="number"
+                  min={0}
+                  value={patch}
+                  onChange={(e) => setPatch(parseInt(e.target.value, 10) || 0)}
+                />
+              </div>
             </div>
-          </div>
 
-          {error && <div className="text-danger text-sm">{error}</div>}
+            {error && <div className="text-danger text-sm">{error}</div>}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={save.isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? "Saving..." : "Save changes"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => setConfirmOpen(true)}
+                disabled={busy}
+              >
+                {remove.isPending ? "Deleting..." : "Delete app"}
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={busy}>
+                {save.isPending ? "Saving..." : "Save changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete app?"
+        description={`"${app?.appName ?? ""}" will be removed permanently, along with every problem report filed against it. Services keep running but lose their app link. This cannot be undone.`}
+        confirmLabel="Delete app"
+        variant="danger"
+        disabled={remove.isPending}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          setError(null);
+          remove.mutate();
+        }}
+      />
+    </>
   );
 }

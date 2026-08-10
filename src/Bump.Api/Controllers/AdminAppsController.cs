@@ -51,4 +51,20 @@ public sealed class AdminAppsController : ControllerBase
                 detail: $"An app with handle '{request.Handle}' already exists.").AsAction();
         }
     }
+
+    /// <summary>
+    /// Permanently delete an app. Problem reports filed against it cascade away with it;
+    /// services keep running and have their app link cleared. Session+admin authenticated;
+    /// mirrors the bearer-keyed <c>DELETE /api/apps/{handle}</c>.
+    /// </summary>
+    [HttpDelete("{handle}", Name = "adminDeleteApp")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(string handle)
+    {
+        var deleted = await _repo.DeleteByHandleAsync(handle);
+        return deleted
+            ? NoContent()
+            : JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction();
+    }
 }

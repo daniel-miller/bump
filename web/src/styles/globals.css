@@ -29,6 +29,14 @@
 
   --radius-card: 0.75rem;
   --radius-badge: 0.375rem;
+
+  /* Live's roster color, hueless on purpose: production is the ordinary place
+     to be, and the lifecycle ramp spends its color saying "you are not in
+     production". A fixed near-black would disappear against a dark card, so the
+     token inverts by theme instead. Lighter than the gray the derived and
+     independent environments share, so live still reads apart from them.
+     Canon: daniel-miller/infra/README.md, "Environment colors". */
+  --color-env-live: oklch(0.32 0.02 265);
 }
 
 .dark {
@@ -50,6 +58,8 @@
   --color-success: oklch(0.75 0.17 152);
   --color-warning: oklch(0.83 0.17 82);
   --color-danger: oklch(0.68 0.22 27);
+
+  --color-env-live: oklch(0.75 0.015 265);
 }
 
 html,

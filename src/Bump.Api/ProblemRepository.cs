@@ -267,6 +267,25 @@ public class ProblemRepository
         return rows > 0;
     }
 
+    /// <summary>
+    /// Delete every problem whose key is in <paramref name="problemKeys"/> and
+    /// return the number of rows actually removed. One statement, so the batch
+    /// is atomic — no half-deleted selection to reconcile in the caller.
+    /// Keys that no longer exist are simply not counted.
+    /// </summary>
+    public async Task<int> DeleteManyAsync(IReadOnlyCollection<long> problemKeys, CancellationToken ct = default)
+    {
+        if (problemKeys.Count == 0) return 0;
+
+        const string sql = "DELETE FROM problem WHERE problem_key = ANY(@keys)";
+
+        await using var conn = await _dataSource.OpenConnectionAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("keys", problemKeys.ToArray());
+
+        return await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     public sealed class ActiveCounts
     {
         public int Total { get; set; }

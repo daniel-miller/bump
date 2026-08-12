@@ -41,4 +41,13 @@ public static class Limits
 
     /// <summary>Max serialized size of the Extensions bag.</summary>
     public const int ExtensionsJsonMaxLength = 16_000;
+
+    // ---- Collection sizes -------------------------------------------------
+
+    /// <summary>
+    /// Max problem keys accepted in one bulk-delete request. Matches the
+    /// 500-row cap on <c>GET /api/problems</c>, so a caller can never select
+    /// more rows on one page than it can delete in one call.
+    /// </summary>
+    public const int ProblemBulkDeleteMaxKeys = 500;
 }

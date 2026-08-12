@@ -8,6 +8,13 @@ namespace Bump.Api;
 public sealed record ProblemCreatedResponse(long Id);
 
 /// <summary>
+/// Response body for <c>POST /api/problems/delete</c>. <c>Deleted</c> is the
+/// number of rows actually removed, which is lower than the number of keys
+/// submitted when some were already gone.
+/// </summary>
+public sealed record ProblemsDeletedResponse(int Deleted);
+
+/// <summary>
 /// Response body for <c>GET /api/health</c>. Values are always the string
 /// literals <c>"healthy"</c> or <c>"unhealthy"</c>.
 /// </summary>

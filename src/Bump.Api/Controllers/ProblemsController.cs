@@ -139,6 +139,25 @@ public sealed class ProblemsController : ControllerBase
             : JsonResults.NotFound("Problem not found", $"No problem with id '{id}'.").AsAction();
     }
 
+    /// <summary>Permanently delete a batch of stored problem reports by id. Cap is 500 keys per request.</summary>
+    /// <remarks>
+    /// POST rather than DELETE-with-body, since intermediaries are free to strip a body from a DELETE.
+    /// The whole batch is deleted in one statement. Keys that no longer exist are ignored, so a
+    /// double-submit still returns 200 with a lower <c>deleted</c> count rather than a 404.
+    /// Authenticated via either the Problems Bearer key or session cookie (admin).
+    /// </remarks>
+    [HttpPost("delete", Name = "deleteProblems")]
+    [RequestSizeLimit(Limits.ProblemBodyBytes)]
+    [ProducesResponseType(typeof(ProblemsDeletedResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeleteMany([FromBody] ProblemBulkDeleteRequest request)
+    {
+        var validationError = request.Validate();
+        if (validationError is not null) return validationError.AsAction();
+
+        var deleted = await _repo.DeleteManyAsync(request.ProblemKeys, HttpContext.RequestAborted);
+        return JsonResults.Ok(new ProblemsDeletedResponse(deleted)).AsAction();
+    }
+
     private static bool WantsMarkdown(Microsoft.Extensions.Primitives.StringValues accept)
     {
         foreach (var value in accept)

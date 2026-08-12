@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { formatAbsolute } from "@/lib/dates";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface ExceptionInfo {
   type?: string;
@@ -38,7 +40,11 @@ function statusTone(status: number | null): string {
 }
 
 export function ProblemsPage() {
+  const qc = useQueryClient();
   const [includeResolved, setIncludeResolved] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const {
     data = [],
     isLoading,
@@ -46,6 +52,40 @@ export function ProblemsPage() {
   } = useQuery<ProblemRow[]>({
     queryKey: ["problems", { includeResolved }],
     queryFn: () => api<ProblemRow[]>(`/api/problems?includeResolved=${includeResolved}`),
+  });
+
+  // Only rows currently on screen count as selected. Toggling "show resolved"
+  // can hide a row the user had ticked, and deleting something they can no
+  // longer see would be a nasty surprise.
+  const selectedKeys = data.filter((p) => selected.has(p.problemKey)).map((p) => p.problemKey);
+  const allSelected = data.length > 0 && selectedKeys.length === data.length;
+
+  function toggleRow(problemKey: number, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(problemKey);
+      else next.delete(problemKey);
+      return next;
+    });
+  }
+
+  function toggleAll(checked: boolean) {
+    setSelected(checked ? new Set(data.map((p) => p.problemKey)) : new Set());
+  }
+
+  const remove = useMutation({
+    mutationFn: (problemKeys: number[]) =>
+      api<{ deleted: number }>("/api/problems/delete", {
+        method: "POST",
+        body: JSON.stringify({ problemKeys }),
+      }),
+    onSuccess: async () => {
+      setConfirmOpen(false);
+      setSelected(new Set());
+      setDeleteError(null);
+      await qc.invalidateQueries({ queryKey: ["problems"] });
+    },
+    onError: (err: Error) => setDeleteError(err.message || "Delete failed."),
   });
 
   return (
@@ -75,51 +115,102 @@ export function ProblemsPage() {
         </div>
       )}
 
+      {data.length > 0 && (
+        <div className="flex items-center justify-between gap-3 border-b pb-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
+            <Checkbox
+              checked={allSelected ? true : selectedKeys.length > 0 ? "indeterminate" : false}
+              onCheckedChange={(v) => toggleAll(v === true)}
+              aria-label="Select all problems"
+            />
+            {selectedKeys.length > 0 ? `${selectedKeys.length} selected` : "Select all"}
+          </label>
+          {selectedKeys.length > 0 && (
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={remove.isPending}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmOpen(true);
+              }}
+            >
+              <i className="fa-sharp fa-regular fa-trash-can" aria-hidden="true" />
+              Delete selected
+            </Button>
+          )}
+        </div>
+      )}
+
+      {deleteError && <div className="text-danger text-sm">{deleteError}</div>}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (remove.isPending) return;
+          setConfirmOpen(open);
+        }}
+        title={`Delete ${selectedKeys.length} problem${selectedKeys.length === 1 ? "" : "s"}?`}
+        description="This permanently deletes the selected problem records. This can't be undone."
+        confirmLabel={remove.isPending ? "Deleting..." : "Delete"}
+        variant="danger"
+        disabled={remove.isPending}
+        onConfirm={() => remove.mutate(selectedKeys)}
+      />
+
       <div className="space-y-2">
         {data.map((p) => {
           const exceptionType = p.exception?.type;
           const innerCount = p.exception?.innerExceptions?.length ?? 0;
           return (
-            <Link to={`/problems/${p.problemKey}`} key={p.problemKey} className="block">
-              <Card className="hover:border-primary transition-colors">
-                <CardContent className="space-y-1 p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {p.status !== null && (
-                          <span
-                            className={`rounded-md px-1.5 py-0.5 font-mono text-xs ${statusTone(p.status)}`}
-                          >
-                            {p.status}
-                          </span>
-                        )}
-                        <span className="truncate font-medium">
-                          {p.title || p.type || "(untitled)"}
+            <Card key={p.problemKey} className="hover:border-primary transition-colors">
+              <CardContent className="flex items-start gap-3 p-3">
+                <Checkbox
+                  className="mt-1"
+                  checked={selected.has(p.problemKey)}
+                  onCheckedChange={(v) => toggleRow(p.problemKey, v === true)}
+                  aria-label={`Select problem ${p.problemKey}`}
+                />
+                <Link
+                  to={`/problems/${p.problemKey}`}
+                  className="flex min-w-0 flex-1 items-start justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {p.status !== null && (
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 font-mono text-xs ${statusTone(p.status)}`}
+                        >
+                          {p.status}
                         </span>
-                      </div>
-                      {exceptionType && (
-                        <div className="text-muted-foreground truncate text-xs">
-                          <span className="font-mono">{exceptionType}</span>
-                          {innerCount > 0 && <span> · {innerCount} inner</span>}
-                        </div>
                       )}
-                      <div className="text-muted-foreground flex flex-wrap gap-x-2 text-xs">
-                        <span className="font-mono">
-                          {p.appHandle}/{p.environment}
-                        </span>
-                        {p.instance && <span className="truncate">{p.instance}</span>}
-                        <span className="font-mono opacity-60">{p.fingerprint}</span>
-                      </div>
+                      <span className="truncate font-medium">
+                        {p.title || p.type || "(untitled)"}
+                      </span>
                     </div>
-                    <div className="text-muted-foreground text-right text-xs whitespace-nowrap">
-                      <div>{formatAbsolute(p.reportedAt)}</div>
-                      {p.resolvedAt && <div className="text-success">Resolved</div>}
-                      {p.userEmail && <div className="opacity-70">{p.userEmail}</div>}
+                    {exceptionType && (
+                      <div className="text-muted-foreground truncate text-xs">
+                        <span className="font-mono">{exceptionType}</span>
+                        {innerCount > 0 && <span> · {innerCount} inner</span>}
+                      </div>
+                    )}
+                    <div className="text-muted-foreground flex flex-wrap gap-x-2 text-xs">
+                      <span className="font-mono">
+                        {p.appHandle}/{p.environment}
+                      </span>
+                      {p.instance && <span className="truncate">{p.instance}</span>}
+                      <span className="font-mono opacity-60">{p.fingerprint}</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
+                  <div className="text-muted-foreground text-right text-xs whitespace-nowrap">
+                    <div>{formatAbsolute(p.reportedAt)}</div>
+                    {p.resolvedAt && <div className="text-success">Resolved</div>}
+                    {p.userEmail && <div className="opacity-70">{p.userEmail}</div>}
+                  </div>
+                </Link>
+              </CardContent>
+            </Card>
           );
         })}
         {!isLoading && data.length === 0 && (

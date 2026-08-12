@@ -137,7 +137,11 @@ All routes are prefixed with `/api`. Full request/response shapes are in Swagger
 | :----- | :--------------------- | :---------------- | :------------------------------------------------------------------------------------------- |
 | POST   | `/api/problems`        | Problems bearer   | Ingest a problem report. Optional `appHandle` links the report to a Bump-managed app.          |
 | GET    | `/api/problems`        | Session           | Query stored reports. Filters: `environment`, `application`, `fingerprint`, `from`, `to`, `limit`, `offset`. |
-| GET    | `/api/problems/{id}`   | Session           | Get one stored report.                                                                       |
+| GET    | `/api/problems/{id}`   | Session           | Get one stored report. `Accept: text/markdown` renders it for pasting into a bug tracker.      |
+| POST   | `/api/problems/{id}/resolve`   | Session   | Mark one report resolved.                                                            |
+| POST   | `/api/problems/{id}/unresolve` | Session   | Clear the resolved flag on one report.                                               |
+| DELETE | `/api/problems/{id}`   | Session           | Permanently delete one report.                                                               |
+| POST   | `/api/problems/delete` | Session           | Body `{ "problemKeys": [1, 2] }`. Permanently delete a batch, 500 keys max, in one statement. Returns `{ "deleted": n }`; keys already gone are not counted. |
 
 ### Auth — `/api/auth`
 

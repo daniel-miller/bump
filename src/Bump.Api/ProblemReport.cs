@@ -121,3 +121,33 @@ public class ProblemReportFilter
     public int Offset { get; set; } = 0;
     public bool IncludeResolved { get; set; } = false;
 }
+
+/// <summary>
+/// Request body for <c>POST /api/problems/delete</c>. Deletion is by explicit
+/// key list rather than by filter: a filter-shaped bulk delete would also
+/// remove rows the caller never saw.
+/// </summary>
+public record ProblemBulkDeleteRequest
+{
+    public long[] ProblemKeys { get; init; } = [];
+
+    /// <summary>
+    /// Shape-level validation. Returns a problem+json error IResult when the
+    /// key list is empty or over the cap; otherwise returns null.
+    /// </summary>
+    public IResult? Validate()
+    {
+        if (ProblemKeys.Length == 0)
+            return JsonResults.BadRequest(
+                title: "Nothing to delete",
+                detail: "ProblemKeys must contain at least one problem key.");
+
+        if (ProblemKeys.Length > Limits.ProblemBulkDeleteMaxKeys)
+            return JsonResults.BadRequest(
+                title: "Too many keys",
+                detail: $"ProblemKeys accepts at most {Limits.ProblemBulkDeleteMaxKeys} keys per request; "
+                    + $"{ProblemKeys.Length} were submitted.");
+
+        return null;
+    }
+}

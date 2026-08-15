@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StatusDot } from "@/components/StatusDot";
 import { HistoryStrip } from "@/components/HistoryStrip";
-import { environmentColor } from "@/lib/environmentColors";
+import { environmentSwatchLabel, environmentSwatchStyle } from "@/lib/environmentColors";
 import type { ServiceStatus } from "@/lib/types";
 
 export interface ServiceCardData {
@@ -48,7 +48,11 @@ export function ServiceCard({
                       <span
                         className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
                         aria-hidden="true"
-                        style={{ backgroundColor: environmentColor(service.environment) }}
+                        // Only a handle here, so the tag heuristic decides. A
+                        // service row on an unrecognized environment now reads
+                        // hollow rather than borrowing the replica gray.
+                        style={environmentSwatchStyle(service.environment)}
+                        title={environmentSwatchLabel(service.environment)}
                       />
                     )}
                     <span className="font-mono">{tag}</span>

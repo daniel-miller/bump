@@ -22,10 +22,10 @@ VALUES
     (3, 'test',  'Test',  'Testing environment for: automated tests, unit tests, integration tests (test); manual quality assurance tests by internal teams (qa); manual user acceptance tests by external teams for customer/user signoff (uat)', ARRAY ['dev','development','qa','test','uat']::text[], false, false),
     (4, 'work',  'Work',  'Local development work environment (internal and private) for rapid iteration and debugging', ARRAY ['local','work']::text[], false, false),
 
-    (5, 'cold',  'Cold',  'Cold storage of live data for archival and data warehousing', ARRAY ['cold']::text[], true, true),
-    (6, 'echo',  'Echo',  'Continuously refreshed duplicate of live, for operator reporting without loading the live database', ARRAY ['echo']::text[], true, true),
+    (5, 'cold',  'Cold',  'Copy of live data that is not kept current: archival, data warehousing, and offline analysis. Cold means stale, not slow - it may be queried freely; it simply is not tracking live', ARRAY ['cold']::text[], true, true),
+    (6, 'echo',  'Echo',  'Hot, continuously refreshed duplicate of live, for disaster recovery and for operator reporting without loading the live database', ARRAY ['echo']::text[], true, true),
 
-    (7, 'demo',  'Demo',  'Demonstration environment shown to prospects and customers, with curated data rather than production data', ARRAY ['demo','preview','promo']::text[], true, false);
+    (7, 'demo',  'Demo',  'Demonstration environment shown to prospects and customers, and the working environment for sales, marketing, and customer support: prospect demos, customer onboarding, and training on how to use the platform. Curated data chosen to look good rather than to match production', ARRAY ['demo','preview','promo']::text[], true, false);
 
 INSERT INTO server (server_number, server_handle, server_name)
 VALUES ( 1, 'a', 'Alpha'),

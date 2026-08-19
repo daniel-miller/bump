@@ -591,7 +591,6 @@ CREATE TABLE public.service (
     service_name character varying(100) NOT NULL,
     service_url character varying(2048) NOT NULL,
     service_paused boolean DEFAULT false NOT NULL,
-    is_private boolean DEFAULT false NOT NULL,
     site_id integer,
     owner_key integer NOT NULL,
     environment_key integer NOT NULL,

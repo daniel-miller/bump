@@ -21,7 +21,7 @@ public sealed class ServicesController : ControllerBase
 
     public sealed record ServiceDto(
         int ServiceId, string Handle, string Name, string Url, string Owner, string Environment, string? App,
-        bool Paused, bool IsPrivate, int? SiteId,
+        bool Paused, int? SiteId,
         string LastStatus, int LatencyMs, decimal Uptime,
         IReadOnlyList<string> History, DateTimeOffset? LastCheckAt, DateTimeOffset? LastOutageAt,
         DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
@@ -38,7 +38,7 @@ public sealed class ServicesController : ControllerBase
             states.TryGetValue(m.ServiceId, out var s);
             return new ServiceDto(
                 m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServiceApp,
-                m.ServicePaused, m.IsPrivate, m.SiteId,
+                m.ServicePaused, m.SiteId,
                 s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
                 s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
                 m.CreatedAt, m.UpdatedAt);
@@ -90,13 +90,13 @@ public sealed class ServicesController : ControllerBase
         var s = await _services.GetStateAsync(m.ServiceId, ct);
         return Ok(new ServiceDto(
             m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServiceApp,
-            m.ServicePaused, m.IsPrivate, m.SiteId,
+            m.ServicePaused, m.SiteId,
             s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
             s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
             m.CreatedAt, m.UpdatedAt));
     }
 
-    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, bool? IsPrivate, int? SiteId);
+    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, int? SiteId);
 
     /// <summary>Update service metadata. Omitted fields are left unchanged.</summary>
     /// <remarks>Send <c>SiteId</c> as <c>0</c> to clear a previously recorded IIS site ID.</remarks>
@@ -111,7 +111,6 @@ public sealed class ServicesController : ControllerBase
         var url = req.Url ?? m.ServiceUrl;
         var owner = req.Owner ?? m.ServiceOwner;
         var environment = req.Environment ?? m.ServiceEnvironment;
-        var isPrivate = req.IsPrivate ?? m.IsPrivate;
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
         {
             return JsonResults.UnprocessableEntity("Invalid name", "Name must be 1-100 characters.").AsAction();
@@ -132,7 +131,7 @@ public sealed class ServicesController : ControllerBase
             return JsonResults.UnprocessableEntity("Invalid site ID", "Site ID must be a five- or six-digit IIS site identifier.").AsAction();
         }
 
-        await _services.UpdateAsync(handle, name, url, owner, environment, isPrivate, siteId, ct);
+        await _services.UpdateAsync(handle, name, url, owner, environment, siteId, ct);
         return NoContent();
     }
 

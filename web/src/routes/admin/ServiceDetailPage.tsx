@@ -17,7 +17,6 @@ import { StatusDot } from "@/components/StatusDot";
 import { HistoryStrip } from "@/components/HistoryStrip";
 import type { ServiceStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,7 +61,6 @@ interface ServiceDetail {
   app: string | null;
   siteId: number | null;
   paused: boolean;
-  isPrivate: boolean;
   lastStatus: ServiceStatus;
   latencyMs: number;
   uptime: number;
@@ -139,18 +137,6 @@ export function ServiceDetailPage() {
 
   const resume = useMutation({
     mutationFn: () => api(`/api/admin/services/${handle}/resume`, { method: "POST" }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["services", handle] });
-      await qc.invalidateQueries({ queryKey: ["services"] });
-    },
-  });
-
-  const setPrivate = useMutation({
-    mutationFn: (isPrivate: boolean) =>
-      api(`/api/admin/services/${handle}`, {
-        method: "PATCH",
-        body: JSON.stringify({ isPrivate }),
-      }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
@@ -270,18 +256,6 @@ export function ServiceDetailPage() {
             {m.latencyMs} ms · {Number(m.uptime).toFixed(2)}%
           </div>
           <div className="flex items-center gap-3">
-            <Label
-              htmlFor="is-private"
-              className="flex cursor-pointer items-center gap-2 text-sm font-normal"
-            >
-              <Checkbox
-                id="is-private"
-                checked={m.isPrivate}
-                disabled={setPrivate.isPending}
-                onCheckedChange={(v) => setPrivate.mutate(v === true)}
-              />
-              Private
-            </Label>
             <Button variant="outline" onClick={startEdit} disabled={editing}>
               Edit
             </Button>

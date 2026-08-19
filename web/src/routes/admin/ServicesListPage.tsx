@@ -5,7 +5,6 @@ import { api } from "@/lib/api";
 import { ServiceCard } from "@/components/ServiceCard";
 import type { ServiceStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +23,6 @@ interface ServiceRow {
   owner: string;
   environment: string;
   paused: boolean;
-  isPrivate: boolean;
   lastStatus: ServiceStatus;
   latencyMs: number;
   uptime: number;
@@ -54,7 +52,6 @@ export function ServicesListPage() {
   });
 
   const [query, setQuery] = useState("");
-  const [showPrivate, setShowPrivate] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [handle, setHandle] = useState("");
   const [name, setName] = useState("");
@@ -96,11 +93,10 @@ export function ServicesListPage() {
   });
 
   const q = query.trim().toLowerCase();
-  const visible = showPrivate ? data : data.filter((m) => !m.isPrivate);
   const filtered =
     q.length === 0
-      ? visible
-      : visible.filter(
+      ? data
+      : data.filter(
           (m) =>
             m.handle.toLowerCase().includes(q) ||
             m.name.toLowerCase().includes(q) ||
@@ -122,17 +118,6 @@ export function ServicesListPage() {
             className="w-72"
             aria-label="Search services"
           />
-          <Label
-            htmlFor="show-private"
-            className="flex cursor-pointer items-center gap-2 text-sm font-normal"
-          >
-            <Checkbox
-              id="show-private"
-              checked={showPrivate}
-              onCheckedChange={(v) => setShowPrivate(v === true)}
-            />
-            Show private
-          </Label>
           <Button onClick={() => setShowNew(true)}>New service</Button>
         </div>
       </div>

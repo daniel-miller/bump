@@ -15,7 +15,6 @@ public sealed class Service
     public string ServiceEnvironment { get; set; } = "";
     public string? ServiceApp { get; set; }
     public bool ServicePaused { get; set; }
-    public bool IsPrivate { get; set; }
     public int? SiteId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
@@ -78,7 +77,6 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                e.environment_handle AS ServiceEnvironment,
                a.app_handle         AS ServiceApp,
                s.service_paused     AS ServicePaused,
-               s.is_private         AS IsPrivate,
                s.site_id            AS SiteId,
                s.created_at         AS CreatedAt,
                s.updated_at         AS UpdatedAt
@@ -136,7 +134,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                       LIMIT 1)
                 )
                 RETURNING service_key, service_handle, service_name, service_url,
-                          owner_key, environment_key, service_paused, is_private, site_id, created_at, updated_at
+                          owner_key, environment_key, service_paused, site_id, created_at, updated_at
             )
             SELECT i.service_key        AS ServiceId,
                    i.service_handle     AS ServiceHandle,
@@ -146,7 +144,6 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    e.environment_handle AS ServiceEnvironment,
                    NULL                 AS ServiceApp,
                    i.service_paused     AS ServicePaused,
-                   i.is_private         AS IsPrivate,
                    i.site_id            AS SiteId,
                    i.created_at         AS CreatedAt,
                    i.updated_at         AS UpdatedAt
@@ -166,7 +163,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return service;
     }
 
-    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, bool isPrivate, int? siteId, CancellationToken ct = default)
+    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, int? siteId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
@@ -179,19 +176,10 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                                        WHERE environment_handle = @Environment
                                           OR @Environment = ANY(environment_aliases)
                                        LIMIT 1),
-                   is_private      = @IsPrivate,
                    site_id         = @SiteId,
                    updated_at      = now()
              WHERE service_handle = @Handle
-            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), IsPrivate = isPrivate, SiteId = siteId });
-    }
-
-    public async Task SetPrivateAsync(string handle, bool isPrivate, CancellationToken ct = default)
-    {
-        await using var conn = await dataSource.OpenConnectionAsync(ct);
-        await conn.ExecuteAsync(
-            "UPDATE service SET is_private = @P, updated_at = now() WHERE service_handle = @S",
-            new { S = handle, P = isPrivate });
+            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), SiteId = siteId });
     }
 
     public async Task SetPausedAsync(string handle, bool paused, CancellationToken ct = default)

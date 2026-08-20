@@ -55,6 +55,21 @@ public sealed class StatusComposer
             : await _problems.CountActiveAsync(serviceIds, TimeSpan.FromHours(24), ct);
         var problemDayCounts = await _problems.CountByDayAsync(14, ianaTz, ct);
 
+        // Real availability per service over the 14-day window, from probe_event
+        // (the same source the trend bars use). Up = not down, so a slow-but-
+        // reachable service is not penalized as unavailable. This replaces the
+        // clamped [95-100] bar score that service_state.uptime_pct carries.
+        var uptimeByService = dailies
+            .GroupBy(d => d.ServiceId)
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    int probes = g.Sum(x => x.Probes);
+                    int up = g.Sum(x => x.UpCount);
+                    return probes == 0 ? 100m : Math.Round((decimal)up / probes * 100m, 2);
+                });
+
         // Per-service view. Paused services stay in the list so callers can render
         // them as paused; pass excludePaused=true to drop them from the response.
         var servicePayload = scopedServices
@@ -73,7 +88,7 @@ public sealed class StatusComposer
                     paused = m.ServicePaused,
                     status = s?.LastStatus ?? ServiceStatuses.Operational,
                     latencyMs = s?.LatencyMs ?? 0,
-                    uptime = s?.UptimePct ?? 100m,
+                    uptime = uptimeByService.TryGetValue(m.ServiceId, out var up) ? up : 100m,
                     history,
                     lastOutageAt = s?.LastOutageAt
                 };
@@ -213,7 +228,7 @@ public sealed class StatusComposer
                 g => new
                 {
                     Probes = g.Sum(x => x.Probes),
-                    Operational = g.Sum(x => x.OperationalCount),
+                    Up = g.Sum(x => x.UpCount),
                     LatencySum = g.Sum(x => x.LatencySumMs)
                 });
 
@@ -227,9 +242,9 @@ public sealed class StatusComposer
             var day = todayLocal.AddDays(-offset);
             byDay.TryGetValue(day, out var v);
             int probes = v?.Probes ?? 0;
-            int operational = v?.Operational ?? 0;
+            int up = v?.Up ?? 0;
             long latencySum = v?.LatencySum ?? 0;
-            decimal uptime = probes == 0 ? 100m : Math.Round((decimal)operational / probes * 100m, 2);
+            decimal uptime = probes == 0 ? 100m : Math.Round((decimal)up / probes * 100m, 2);
             int latencyMs = probes == 0 ? 0 : (int)(latencySum / probes);
             outagesByDay.TryGetValue(day, out var outageCount);
             result.Add(new
@@ -253,7 +268,7 @@ public sealed class StatusComposer
             .GroupBy(d => d.Day.Date)
             .ToDictionary(
                 g => g.Key,
-                g => new { Probes = g.Sum(x => x.Probes), Op = g.Sum(x => x.OperationalCount), L = g.Sum(x => x.LatencySumMs) });
+                g => new { Probes = g.Sum(x => x.Probes), Up = g.Sum(x => x.UpCount), L = g.Sum(x => x.LatencySumMs) });
 
         decimal recent = 0, prior = 0;
         int recentDays = 0, priorDays = 0;
@@ -262,7 +277,7 @@ public sealed class StatusComposer
             var d = todayLocal.AddDays(-i);
             if (!byDay.TryGetValue(d, out var v) || v.Probes == 0) continue;
             decimal val = kind == "uptime"
-                ? (decimal)v.Op / v.Probes * 100m
+                ? (decimal)v.Up / v.Probes * 100m
                 : (decimal)v.L / v.Probes;
             if (i < 7) { recent += val; recentDays++; } else { prior += val; priorDays++; }
         }

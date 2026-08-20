@@ -261,7 +261,12 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         public int ServiceId { get; set; }
         public DateTime Day { get; set; }
         public int Probes { get; set; }
+        // Strictly operational probes (excludes degraded). Kept for a future
+        // performance metric; availability math uses UpCount instead.
         public int OperationalCount { get; set; }
+        // Reachable probes = not down (operational + degraded). This is the
+        // availability numerator: a slow-but-reachable endpoint counts as up.
+        public int UpCount { get; set; }
         public long LatencySumMs { get; set; }
     }
 
@@ -322,6 +327,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    (date_trunc('day', checked_at AT TIME ZONE @Tz))::date    AS Day,
                    count(*)::int                                             AS Probes,
                    count(*) FILTER (WHERE is_operational)::int               AS OperationalCount,
+                   count(*) FILTER (WHERE probe_status <> @Down)::int        AS UpCount,
                    coalesce(sum(latency_ms), 0)::bigint                      AS LatencySumMs
               FROM probe_event
              WHERE service_key = @Id
@@ -330,7 +336,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
              GROUP BY 1, 2
              ORDER BY 2
             """,
-            new { Id = serviceId, Days = days, Tz = ianaTz });
+            new { Id = serviceId, Days = days, Tz = ianaTz, Down = ServiceStatuses.Down });
         return rows.AsList();
     }
 
@@ -345,6 +351,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    (date_trunc('day', checked_at AT TIME ZONE @Tz))::date    AS Day,
                    count(*)::int                                             AS Probes,
                    count(*) FILTER (WHERE is_operational)::int               AS OperationalCount,
+                   count(*) FILTER (WHERE probe_status <> @Down)::int        AS UpCount,
                    coalesce(sum(latency_ms), 0)::bigint                      AS LatencySumMs
               FROM probe_event
              WHERE service_key = ANY(@Ids)
@@ -353,7 +360,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
              GROUP BY 1, 2
              ORDER BY 2
             """,
-            new { Ids = ids, Days = days, Tz = ianaTz });
+            new { Ids = ids, Days = days, Tz = ianaTz, Down = ServiceStatuses.Down });
         return rows.AsList();
     }
 }

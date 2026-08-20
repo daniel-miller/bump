@@ -33,17 +33,33 @@ public sealed class ServicesController : ControllerBase
         var services = await _services.ListAsync(ct);
         var ids = services.Select(m => m.ServiceId).ToList();
         var states = await _services.GetStatesAsync(ids, ct);
+        var tz = await _tz.ResolveAsync(HttpContext.User, ct);
+        var dailies = await _services.GetDailyForServicesAsync(ids, 14, tz, ct);
+        var uptimeByService = dailies
+            .GroupBy(d => d.ServiceId)
+            .ToDictionary(g => g.Key, Availability);
         var dto = services.Select(m =>
         {
             states.TryGetValue(m.ServiceId, out var s);
             return new ServiceDto(
                 m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServiceApp,
                 m.ServicePaused, m.SiteId,
-                s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
+                s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0,
+                uptimeByService.TryGetValue(m.ServiceId, out var up) ? up : 100m,
                 s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
                 m.CreatedAt, m.UpdatedAt);
         }).ToList();
         return Ok(dto);
+    }
+
+    // Availability over the window: reachable probes (operational + degraded,
+    // i.e. not down) / total probes. The same definition the public board and
+    // the trend bars use. No data in the window reads as 100%.
+    private static decimal Availability(IEnumerable<ServiceRepository.DailyRow> rows)
+    {
+        int probes = rows.Sum(r => r.Probes);
+        int up = rows.Sum(r => r.UpCount);
+        return probes == 0 ? 100m : Math.Round((decimal)up / probes * 100m, 2);
     }
 
     public sealed record CreateServiceRequest(string Handle, string Name, string Url, string Owner, string Environment);
@@ -88,10 +104,12 @@ public sealed class ServicesController : ControllerBase
         var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
         var s = await _services.GetStateAsync(m.ServiceId, ct);
+        var tz = await _tz.ResolveAsync(HttpContext.User, ct);
+        var dailies = await _services.GetDailyAsync(m.ServiceId, 14, tz, ct);
         return Ok(new ServiceDto(
             m.ServiceId, m.ServiceHandle, m.ServiceName, m.ServiceUrl, m.ServiceOwner, m.ServiceEnvironment, m.ServiceApp,
             m.ServicePaused, m.SiteId,
-            s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, s?.UptimePct ?? 100m,
+            s?.LastStatus ?? ServiceStatuses.Operational, s?.LatencyMs ?? 0, Availability(dailies),
             s?.History ?? new List<string>(), s?.LastCheckAt, s?.LastOutageAt,
             m.CreatedAt, m.UpdatedAt));
     }
@@ -176,7 +194,7 @@ public sealed class ServicesController : ControllerBase
         {
             day = d.Day.ToString("yyyy-MM-dd"),
             probes = d.Probes,
-            uptime = d.Probes == 0 ? 100m : Math.Round((decimal)d.OperationalCount / d.Probes * 100m, 2)
+            uptime = d.Probes == 0 ? 100m : Math.Round((decimal)d.UpCount / d.Probes * 100m, 2)
         }).ToList();
         return Ok(new { range, points });
     }

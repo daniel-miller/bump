@@ -22,6 +22,15 @@ public sealed class ServicesSettings
     /// <summary>Latency in milliseconds above which a healthy service is reported degraded.</summary>
     public int DegradedLatencyMs { get; set; } = 1000;
 
+    /// <summary>
+    /// Consecutive down probes required before an outage is opened. Debounces
+    /// transient single-probe failures (a one-off CDN 5xx or timeout) that would
+    /// otherwise open and close incidents several times a day. At the default 60s
+    /// interval, 3 confirms a real outage within about two extra minutes. Set to 1
+    /// to open on the first failed probe.
+    /// </summary>
+    public int FailureThreshold { get; set; } = 3;
+
     /// <summary>Number of history bars retained per service on the status page.</summary>
     public int HistoryBars { get; set; } = 60;
 

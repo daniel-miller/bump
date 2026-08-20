@@ -25,6 +25,7 @@ public sealed class ServiceProber : BackgroundService
     private readonly TimeSpan _interval;
     private readonly TimeSpan _timeout;
     private readonly int _degradedLatencyMs;
+    private readonly int _failureThreshold;
     private readonly int _historyBars;
     private readonly string _publicBaseUrl;
     private readonly string? _alertRecipient;
@@ -54,6 +55,7 @@ public sealed class ServiceProber : BackgroundService
         _interval = settings.Interval;
         _timeout = settings.Timeout;
         _degradedLatencyMs = settings.DegradedLatencyMs;
+        _failureThreshold = settings.FailureThreshold;
         _historyBars = settings.HistoryBars;
         _publicBaseUrl = (config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
         _alertRecipient = alerts.Contact;
@@ -151,10 +153,15 @@ public sealed class ServiceProber : BackgroundService
         int badCount = history.Count(s => s != ServiceStatuses.Operational);
         decimal uptimePct = Math.Max(95.00m, 100.00m - (decimal)badCount * 5m / _historyBars);
 
+        // Debounce: one failed probe does not open an outage. A transient blip
+        // (a single CDN 5xx or a one-off timeout, routine on GitHub Pages) would
+        // otherwise open and close incidents several times a day. Only a run of
+        // consecutive down probes reaching FailureThreshold counts. Any reachable
+        // probe in between resets the run.
         DateTimeOffset? lastOutageAt = state?.LastOutageAt;
-        bool needsOutage = status == ServiceStatuses.Down;
-        Outage? existingOutage = needsOutage ? await _outages.GetOpenForServiceAsync(service.ServiceId, ct) : null;
-        bool freshOutage = needsOutage && existingOutage is null;
+        bool outageConfirmed = OutagePolicy.OutageConfirmed(history, _failureThreshold);
+        Outage? existingOutage = outageConfirmed ? await _outages.GetOpenForServiceAsync(service.ServiceId, ct) : null;
+        bool freshOutage = outageConfirmed && existingOutage is null;
         if (freshOutage) lastOutageAt = DateTimeOffset.UtcNow;
 
         await _services.UpsertStateAsync(

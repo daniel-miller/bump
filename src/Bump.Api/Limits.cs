@@ -29,6 +29,12 @@ public static class Limits
 
     public const int EnvironmentMaxLength = 100;
 
+    /// <summary>
+    /// Max length of the version a reporter declares for itself: a semver plus
+    /// an optional commit suffix, e.g. <c>1.3.174+db890ee</c>.
+    /// </summary>
+    public const int AppVersionMaxLength = 100;
+
     public const int ProblemTypeMaxLength     = 500;
     public const int ProblemTitleMaxLength    = 500;
     public const int ProblemInstanceMaxLength = 2048;

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
+\restrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -26,9 +26,9 @@ SET row_security = off;
 CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
 
 
-\unrestrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
+\unrestrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
 \connect bump
-\restrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
+\restrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -523,8 +523,16 @@ CREATE TABLE public.problem (
     app_key integer NOT NULL,
     environment_key integer NOT NULL,
     account_id uuid,
-    account_email character varying(254)
+    account_email character varying(254),
+    app_version character varying(100)
 );
+
+
+--
+-- Name: COLUMN problem.app_version; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.problem.app_version IS 'Version the reporting process declared for itself, e.g. 1.3.174+db890ee. NULL when the reporter sent none; readers then show the app registry version, which is the last build cut rather than the build that threw.';
 
 
 --
@@ -1405,5 +1413,5 @@ ALTER TABLE ONLY public.subscriber
 -- PostgreSQL database dump complete
 --
 
-\unrestrict HWDm0XsGdMOIfQPen1Lk34bq3Z14HiX9NFXadoLTyKIUwWf4ZOsmdw6raqjGj1o
+\unrestrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
 

@@ -175,6 +175,8 @@ Do not point the Apps list at the Problems key to save a variable. The Problems 
 
 If the consumer app auto-registers itself on startup via `POST /api/apps` instead, this step is unnecessary - though the app still needs the same key at runtime, since the route is behind the same filter.
 
+The registry number is the last build cut, not the build running in a given environment. A build script that bumps the version when it packages (before any deploy) moves the registry ahead of the slower environment, and a problem from that environment would display the newer number. So a problem report may carry its own `Version` field, and Bump shows a row under the version its reporter declared, falling back to the registry number only when the reporter sent none. A .NET consumer reads it from `AssemblyInformationalVersionAttribute` on the deployed assembly, which `dotnet publish /p:Version=1.3.174` stamps as `1.3.174+<commit>`. The SDK does not send `Version` yet; a consumer using its own client should.
+
 ## Verify integration
 
 After deploying the consumer with the new configuration:

@@ -62,12 +62,12 @@ public class ProblemRepository
             INSERT INTO problem
                 (problem_fingerprint, problem_type, problem_title, problem_status, problem_detail,
                  problem_instance, problem_extensions,
-                 app_key, environment_key,
+                 app_key, environment_key, app_version,
                  problem_exception, account_id, account_email)
             VALUES
                 (@fingerprint, @type, @title, @status, @detail,
                  @instance, @extensions::jsonb,
-                 @app_key, @environment_key,
+                 @app_key, @environment_key, @app_version,
                  @exception::jsonb, @account_id, @account_email)
             RETURNING problem_key
             """;
@@ -82,6 +82,7 @@ public class ProblemRepository
         cmd.Parameters.AddWithValue("extensions", (object?)extensions ?? DBNull.Value);
         cmd.Parameters.AddWithValue("app_key", appKey);
         cmd.Parameters.AddWithValue("environment_key", environmentKey);
+        cmd.Parameters.AddWithValue("app_version", (object?)payload.Version ?? DBNull.Value);
         cmd.Parameters.AddWithValue("exception", (object?)exception ?? DBNull.Value);
         cmd.Parameters.AddWithValue("account_id", payload.UserId.HasValue ? (object)payload.UserId.Value : DBNull.Value);
         cmd.Parameters.AddWithValue("account_email", (object?)payload.UserEmail ?? DBNull.Value);
@@ -190,7 +191,8 @@ public class ProblemRepository
         e.environment_handle, e.environment_name, e.environment_description,
         a.app_handle, a.app_name, a.version_major, a.version_minor, a.version_patch,
         p.problem_exception::text,
-        p.account_id, p.account_email
+        p.account_id, p.account_email,
+        p.app_version
         """;
 
     private static ProblemReportRecord Hydrate(Npgsql.NpgsqlDataReader reader) =>
@@ -212,7 +214,11 @@ public class ProblemRepository
             EnvironmentDescription = reader.IsDBNull(13) ? null : reader.GetString(13),
             AppHandle                = reader.GetString(14),
             AppName                = reader.GetString(15),
-            AppVersion             = $"{reader.GetInt32(16)}.{reader.GetInt32(17)}.{reader.GetInt32(18)}",
+            // The reporter's own version when it sent one. The registry number is
+            // the last build cut, which is not always the build that threw.
+            AppVersion             = reader.IsDBNull(22)
+                ? $"{reader.GetInt32(16)}.{reader.GetInt32(17)}.{reader.GetInt32(18)}"
+                : reader.GetString(22),
             Exception              = reader.IsDBNull(19)
                 ? null
                 : JsonConvert.DeserializeObject<ExceptionInfo>(reader.GetString(19)),

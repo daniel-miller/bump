@@ -16,6 +16,14 @@ public record ProblemReportPayload
 
     public string Application { get; init; } = "";
 
+    /// <summary>
+    /// The build that is reporting, as the process knows itself (for a .NET
+    /// consumer, the assembly's informational version, e.g. <c>1.3.174+db890ee</c>).
+    /// Optional. Without it the problem shows the app registry's version, which
+    /// is the last build cut, not necessarily the one running where it threw.
+    /// </summary>
+    public string? Version { get; init; }
+
     public Guid? UserId { get; init; }
     public string? UserEmail { get; init; }
 
@@ -49,6 +57,9 @@ public record ProblemReportPayload
 
         var handleErr = AppHandleRules.ValidateHandle(Application, "Application");
         if (handleErr is not null) return handleErr;
+
+        if (Version is { Length: > Limits.AppVersionMaxLength })
+            return TooLong("Version", Limits.AppVersionMaxLength);
 
         if (Exception is not null)
         {
@@ -98,6 +109,11 @@ public record ProblemReportRecord
 
     public string AppHandle { get; init; } = "";
     public string AppName { get; init; } = "";
+
+    /// <summary>
+    /// The version the reporter declared for itself, or the app registry's
+    /// version for a row whose reporter sent none.
+    /// </summary>
     public string AppVersion { get; init; } = "";
 
     public string Environment { get; init; } = "";

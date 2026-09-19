@@ -150,9 +150,6 @@ public sealed class ServiceProber : BackgroundService
         history.Add(status);
         if (history.Count > _historyBars) history = history.Skip(history.Count - _historyBars).ToList();
 
-        int badCount = history.Count(s => s != ServiceStatuses.Operational);
-        decimal uptimePct = Math.Max(95.00m, 100.00m - (decimal)badCount * 5m / _historyBars);
-
         // Debounce: one failed probe does not open an outage. A transient blip
         // (a single CDN 5xx or a one-off timeout, routine on GitHub Pages) would
         // otherwise open and close incidents several times a day. Only a run of
@@ -168,7 +165,6 @@ public sealed class ServiceProber : BackgroundService
             service.ServiceId,
             JsonConvert.SerializeObject(history),
             (int)latencyMs,
-            uptimePct,
             status,
             DateTimeOffset.UtcNow,
             lastOutageAt,

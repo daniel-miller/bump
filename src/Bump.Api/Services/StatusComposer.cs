@@ -57,8 +57,7 @@ public sealed class StatusComposer
 
         // Real availability per service over the 14-day window, from probe_event
         // (the same source the trend bars use). Up = not down, so a slow-but-
-        // reachable service is not penalized as unavailable. This replaces the
-        // clamped [95-100] bar score that service_state.uptime_pct carries.
+        // reachable service is not penalized as unavailable.
         var uptimeByService = dailies
             .GroupBy(d => d.ServiceId)
             .ToDictionary(

@@ -649,7 +649,6 @@ CREATE TABLE public.service_state (
     service_key integer NOT NULL,
     history_json jsonb DEFAULT '[]'::jsonb NOT NULL,
     latency_ms integer DEFAULT 0 NOT NULL,
-    uptime_pct numeric(5,2) DEFAULT 100.00 NOT NULL,
     last_status character varying(16) DEFAULT 'operational'::character varying NOT NULL,
     last_check_at timestamp with time zone,
     last_outage_at timestamp with time zone

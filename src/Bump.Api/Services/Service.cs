@@ -25,7 +25,6 @@ public sealed class ServiceState
     public int ServiceId { get; set; }
     public string HistoryJson { get; set; } = "[]";
     public int LatencyMs { get; set; }
-    public decimal UptimePct { get; set; } = 100.00m;
     public string LastStatus { get; set; } = ServiceStatuses.Operational;
     public DateTimeOffset? LastCheckAt { get; set; }
     public DateTimeOffset? LastOutageAt { get; set; }
@@ -207,7 +206,6 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
             SELECT service_key       AS ServiceId,
                    history_json::text AS HistoryJson,
                    latency_ms        AS LatencyMs,
-                   uptime_pct        AS UptimePct,
                    last_status       AS LastStatus,
                    last_check_at     AS LastCheckAt,
                    last_outage_at    AS LastOutageAt
@@ -226,7 +224,6 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
             SELECT service_key       AS ServiceId,
                    history_json::text AS HistoryJson,
                    latency_ms        AS LatencyMs,
-                   uptime_pct        AS UptimePct,
                    last_status       AS LastStatus,
                    last_check_at     AS LastCheckAt,
                    last_outage_at    AS LastOutageAt
@@ -236,22 +233,21 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return rows.ToDictionary(r => r.ServiceId);
     }
 
-    public async Task UpsertStateAsync(int serviceId, string historyJson, int latencyMs, decimal uptimePct, string lastStatus, DateTimeOffset lastCheckAt, DateTimeOffset? lastOutageAt, CancellationToken ct = default)
+    public async Task UpsertStateAsync(int serviceId, string historyJson, int latencyMs, string lastStatus, DateTimeOffset lastCheckAt, DateTimeOffset? lastOutageAt, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
             """
-            INSERT INTO service_state (service_key, history_json, latency_ms, uptime_pct, last_status, last_check_at, last_outage_at)
-            VALUES (@Id, @H::jsonb, @L, @U, @S, @C, @In)
+            INSERT INTO service_state (service_key, history_json, latency_ms, last_status, last_check_at, last_outage_at)
+            VALUES (@Id, @H::jsonb, @L, @S, @C, @In)
             ON CONFLICT (service_key) DO UPDATE
                SET history_json   = EXCLUDED.history_json,
                    latency_ms     = EXCLUDED.latency_ms,
-                   uptime_pct     = EXCLUDED.uptime_pct,
                    last_status    = EXCLUDED.last_status,
                    last_check_at  = EXCLUDED.last_check_at,
                    last_outage_at = COALESCE(EXCLUDED.last_outage_at, service_state.last_outage_at)
             """,
-            new { Id = serviceId, H = historyJson, L = latencyMs, U = uptimePct, S = lastStatus, C = lastCheckAt, In = lastOutageAt });
+            new { Id = serviceId, H = historyJson, L = latencyMs, S = lastStatus, C = lastCheckAt, In = lastOutageAt });
     }
 
     // ------- Daily metrics -------

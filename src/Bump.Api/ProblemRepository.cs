@@ -134,16 +134,28 @@ public class ProblemRepository
             parameters.Add(new NpgsqlParameter("fingerprint", filter.Fingerprint));
         }
 
-        if (filter.From != null)
+        if (filter.After != null)
         {
-            conditions.Add("p.reported_at >= @from");
-            parameters.Add(new NpgsqlParameter("from", NpgsqlDbType.TimestampTz) { Value = filter.From });
+            conditions.Add("p.reported_at > @after");
+            parameters.Add(new NpgsqlParameter("after", NpgsqlDbType.TimestampTz) { Value = filter.After });
         }
 
-        if (filter.To != null)
+        if (filter.Before != null)
         {
-            conditions.Add("p.reported_at <= @to");
-            parameters.Add(new NpgsqlParameter("to", NpgsqlDbType.TimestampTz) { Value = filter.To });
+            conditions.Add("p.reported_at < @before");
+            parameters.Add(new NpgsqlParameter("before", NpgsqlDbType.TimestampTz) { Value = filter.Before });
+        }
+
+        if (filter.Since != null)
+        {
+            conditions.Add("p.reported_at >= @since");
+            parameters.Add(new NpgsqlParameter("since", NpgsqlDbType.TimestampTz) { Value = filter.Since });
+        }
+
+        if (filter.Until != null)
+        {
+            conditions.Add("p.reported_at <= @until");
+            parameters.Add(new NpgsqlParameter("until", NpgsqlDbType.TimestampTz) { Value = filter.Until });
         }
 
         if (!filter.IncludeResolved)

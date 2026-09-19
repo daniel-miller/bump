@@ -56,14 +56,26 @@ public sealed class ProblemsController : ControllerBase
 
     /// <summary>Query stored problem reports with optional filters. Cap is 500 per page (limit clamped server-side).</summary>
     /// <remarks>Authenticated via either the Problems Bearer key or session cookie (admin).</remarks>
+    /// <param name="environment">Environment handle or any of its aliases.</param>
+    /// <param name="appHandle">App handle.</param>
+    /// <param name="fingerprint">Problem fingerprint.</param>
+    /// <param name="after">Reported strictly after this time (&gt;). A value with no offset is read as UTC.</param>
+    /// <param name="before">Reported strictly before this time (&lt;). A value with no offset is read as UTC.</param>
+    /// <param name="since">Reported at or after this time (&gt;=). A value with no offset is read as UTC.</param>
+    /// <param name="until">Reported at or before this time (&lt;=). A value with no offset is read as UTC.</param>
+    /// <param name="limit">Page size, clamped to 1-500.</param>
+    /// <param name="offset">Rows to skip.</param>
+    /// <param name="includeResolved">Include resolved problems.</param>
     [HttpGet("", Name = "listProblems")]
     [ProducesResponseType(typeof(IEnumerable<ProblemReportRecord>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Query(
         [FromQuery] string? environment,
         [FromQuery] string? appHandle,
         [FromQuery] string? fingerprint,
-        [FromQuery] DateTime? from,
-        [FromQuery] DateTime? to,
+        [FromQuery] DateTime? after,
+        [FromQuery] DateTime? before,
+        [FromQuery] DateTime? since,
+        [FromQuery] DateTime? until,
         [FromQuery] int limit = 50,
         [FromQuery] int offset = 0,
         [FromQuery] bool includeResolved = false)
@@ -73,8 +85,10 @@ public sealed class ProblemsController : ControllerBase
             Environment = environment,
             AppHandle = appHandle,
             Fingerprint = fingerprint,
-            From = from,
-            To = to,
+            After = ProblemReportFilter.AsUtc(after),
+            Before = ProblemReportFilter.AsUtc(before),
+            Since = ProblemReportFilter.AsUtc(since),
+            Until = ProblemReportFilter.AsUtc(until),
             Limit = Math.Clamp(limit, 1, 500),
             Offset = Math.Max(offset, 0),
             IncludeResolved = includeResolved,

@@ -131,11 +131,22 @@ public class ProblemReportFilter
     public string? Environment { get; set; }
     public string? AppHandle { get; set; }
     public string? Fingerprint { get; set; }
-    public DateTime? From { get; set; }
-    public DateTime? To { get; set; }
+    public DateTime? After { get; set; }
+    public DateTime? Before { get; set; }
+    public DateTime? Since { get; set; }
+    public DateTime? Until { get; set; }
     public int Limit { get; set; } = 50;
     public int Offset { get; set; } = 0;
     public bool IncludeResolved { get; set; } = false;
+
+    // The query-string binder returns Kind=Utc when the value carries Z or an
+    // offset, and Kind=Unspecified for a bare date like 2026-09-19. Npgsql
+    // refuses anything but Utc for timestamptz, so an offset-less value is read
+    // as UTC - the same zone reportedAt is returned in.
+    public static DateTime? AsUtc(DateTime? value) =>
+        value is null ? null
+        : value.Value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+        : value.Value.ToUniversalTime();
 }
 
 /// <summary>

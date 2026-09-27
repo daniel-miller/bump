@@ -12,20 +12,34 @@ namespace Bump.Api.Controllers;
 [Tags("Problems")]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status413PayloadTooLarge)]
 [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
 public sealed class ProblemsController : ControllerBase
 {
-    private readonly ProblemRepository _repo;
+    // The parameters Query binds. Anything else is refused rather than ignored: ASP.NET Core drops
+    // an unknown query parameter silently, so a misspelled or retired filter (from and to became
+    // since and until) used to answer an unfiltered or empty list that looked like a real answer.
+    private static readonly HashSet<string> QueryParameters = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "environment", "appHandle", "fingerprint", "after", "before", "since", "until",
+        "limit", "offset", "includeResolved",
+    };
 
-    public ProblemsController(ProblemRepository repo)
+    private readonly ProblemRepository _repo;
+    private readonly AppRepository _apps;
+    private readonly EnvironmentRepository _environments;
+
+    public ProblemsController(ProblemRepository repo, AppRepository apps, EnvironmentRepository environments)
     {
         _repo = repo;
+        _apps = apps;
+        _environments = environments;
     }
 
     /// <summary>Ingest a problem report. Payload is RFC 7807-style plus environment/app/user/exception metadata.</summary>
     /// <remarks>Requires the Problems Bearer key. Honors <c>Idempotency-Key</c>: resends return the original 201.</remarks>
-    [HttpPost("", Name = "createProblem")]
+    [HttpPost("", Name = ProblemsAuthFilter.ReportActionName)]
     [Idempotent]
     [RequestSizeLimit(Limits.ProblemBodyBytes)]
     [ProducesResponseType(typeof(ProblemCreatedResponse), StatusCodes.Status201Created)]
@@ -65,7 +79,10 @@ public sealed class ProblemsController : ControllerBase
     /// <param name="until">Reported at or before this time (&lt;=). A value with no offset is read as UTC.</param>
     /// <param name="limit">Page size, clamped to 1-500.</param>
     /// <param name="offset">Rows to skip.</param>
-    /// <param name="includeResolved">Include resolved problems.</param>
+    /// <param name="includeResolved">Include resolved problems. Off by default, so a resolved problem
+    /// the admin UI can show is left out of this list unless this is true.</param>
+    /// <response code="400">An unknown query parameter, or an app or environment Bump does not know.
+    /// A filter that cannot be honoured is an error, never an empty list.</response>
     [HttpGet("", Name = "listProblems")]
     [ProducesResponseType(typeof(IEnumerable<ProblemReportRecord>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Query(
@@ -80,6 +97,30 @@ public sealed class ProblemsController : ControllerBase
         [FromQuery] int offset = 0,
         [FromQuery] bool includeResolved = false)
     {
+        var unknown = Request.Query.Keys.Where(k => !QueryParameters.Contains(k)).ToList();
+        if (unknown.Count > 0)
+        {
+            return JsonResults.BadRequest(
+                title: "Unknown query parameter",
+                detail: $"GET /api/problems does not accept {string.Join(", ", unknown)}. "
+                    + $"It accepts {string.Join(", ", QueryParameters)}. The time filters are after, before, since and until.")
+                .AsAction();
+        }
+
+        if (appHandle is not null && await _apps.GetByHandleAsync(appHandle) is null)
+        {
+            return JsonResults.BadRequest(
+                title: "Unknown app",
+                detail: $"No app is registered with handle '{appHandle}'. Handles are matched exactly.").AsAction();
+        }
+
+        if (environment is not null && !await IsKnownEnvironmentAsync(environment))
+        {
+            return JsonResults.BadRequest(
+                title: "Unknown environment",
+                detail: $"No environment has the handle or alias '{environment}'.").AsAction();
+        }
+
         var filter = new ProblemReportFilter
         {
             Environment = environment,
@@ -170,6 +211,14 @@ public sealed class ProblemsController : ControllerBase
 
         var deleted = await _repo.DeleteManyAsync(request.ProblemKeys, HttpContext.RequestAborted);
         return JsonResults.Ok(new ProblemsDeletedResponse(deleted)).AsAction();
+    }
+
+    // The same match the query makes: the legacy token map first, then handle or alias.
+    private async Task<bool> IsKnownEnvironmentAsync(string environment)
+    {
+        var token = EnvironmentTokens.Resolve(environment);
+        var all = await _environments.GetAllAsync();
+        return all.Any(e => e.EnvironmentHandle == token || e.EnvironmentAliases.Contains(token));
     }
 
     private static bool WantsMarkdown(Microsoft.Extensions.Primitives.StringValues accept)

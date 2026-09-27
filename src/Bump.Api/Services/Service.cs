@@ -150,7 +150,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
               JOIN owner       o ON o.owner_key       = i.owner_key
               JOIN environment e ON e.environment_key = i.environment_key
             """,
-            new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment) }, tx);
+            new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment }, tx);
 
         // Pre-fill the history with operational so the UI bar isn't blank.
         var history = JsonConvert.SerializeObject(Enumerable.Repeat(ServiceStatuses.Operational, 60));
@@ -178,7 +178,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    site_id         = @SiteId,
                    updated_at      = now()
              WHERE service_handle = @Handle
-            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = EnvironmentTokens.Resolve(environment), SiteId = siteId });
+            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment, SiteId = siteId });
     }
 
     public async Task SetPausedAsync(string handle, bool paused, CancellationToken ct = default)

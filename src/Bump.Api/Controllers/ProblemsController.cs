@@ -213,12 +213,11 @@ public sealed class ProblemsController : ControllerBase
         return JsonResults.Ok(new ProblemsDeletedResponse(deleted)).AsAction();
     }
 
-    // The same match the query makes: the legacy token map first, then handle or alias.
+    // The same match the query makes: the handle or any alias.
     private async Task<bool> IsKnownEnvironmentAsync(string environment)
     {
-        var token = EnvironmentTokens.Resolve(environment);
         var all = await _environments.GetAllAsync();
-        return all.Any(e => e.EnvironmentHandle == token || e.EnvironmentAliases.Contains(token));
+        return all.Any(e => e.EnvironmentHandle == environment || e.EnvironmentAliases.Contains(environment));
     }
 
     private static bool WantsMarkdown(Microsoft.Extensions.Primitives.StringValues accept)

@@ -235,6 +235,24 @@ namespace Bump.Api
                     + "Bump__Api__Hosting__ClientSecret environment variable.");
             }
 
+            // Read keys are optional: without one, reading problems needs an admin session.
+            // A blank entry is refused because it reads as a key that is not there, and a
+            // read key equal to the reporter key is refused because every SDK consumer holds
+            // the reporter key, which would hand them read access by a side door.
+            var problemsReadSecrets = builder.Configuration.GetSection("Bump:Api:Problems:ReadSecrets").Get<string[]>()
+                ?? Array.Empty<string>();
+            if (problemsReadSecrets.Any(string.IsNullOrWhiteSpace))
+            {
+                throw new InvalidOperationException(
+                    "Bump:Api:Problems:ReadSecrets contains a blank entry. Remove it, or set it to a generated key.");
+            }
+            if (problemsReadSecrets.Contains(problemsSecret, StringComparer.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "A Bump:Api:Problems:ReadSecrets entry equals Bump:Api:Hosting:ClientSecret. The reporter key is "
+                    + "held by every Bump.Sdk consumer, so a read key must be a different value.");
+            }
+
             var appsSecrets = builder.Configuration.GetSection("Bump:Api:Security:Apps:ClientSecrets").Get<string[]>()
                 ?? Array.Empty<string>();
             if (appsSecrets.Length == 0 || appsSecrets.Any(string.IsNullOrWhiteSpace))
@@ -308,10 +326,11 @@ namespace Bump.Api
 
                         ## Authentication
 
-                        Three schemes are in use:
+                        Four schemes are in use:
 
                         - **Apps Bearer key** — `/api/apps/**` endpoints. Pre-shared key from `Bump:Api:Security:Apps:ClientSecrets`.
-                        - **Problems Bearer key** — `/api/problems` (write). Pre-shared key from `Bump:Api:Hosting:ClientSecret`.
+                        - **Problems reporter key** - `POST /api/problems` only. Pre-shared key from `Bump:Api:Hosting:ClientSecret`, held by every Bump.Sdk consumer.
+                        - **Problems read key** - `GET /api/problems` and `GET /api/problems/{id}` only. Any entry of `Bump:Api:Problems:ReadSecrets`.
                         - **Session cookie** — `/api/auth/**`, `/api/accounts/**`, and all admin surfaces. Established via `POST /api/auth/login`. State-changing requests must also send `X-Bump-Csrf` matching the `bump_csrf` cookie.
 
                         ## Idempotency

@@ -53,6 +53,9 @@ public static class JsonResults
             detail: detail,
             headers: new Dictionary<string, string?> { [HeaderNames.WWWAuthenticate] = "Bearer" });
 
+    public static IResult Forbidden(string detail) =>
+        Problem(StatusCodes.Status403Forbidden, title: "Not permitted", detail: detail);
+
     public static IResult NotFound(string title, string? detail = null) =>
         Problem(StatusCodes.Status404NotFound, title, detail);
 

@@ -226,11 +226,11 @@ public class ProblemRepository
             EnvironmentDescription = reader.IsDBNull(13) ? null : reader.GetString(13),
             AppHandle                = reader.GetString(14),
             AppName                = reader.GetString(15),
-            // The reporter's own version when it sent one. The registry number is
-            // the last build cut, which is not always the build that threw.
-            AppVersion             = reader.IsDBNull(22)
-                ? $"{reader.GetInt32(16)}.{reader.GetInt32(17)}.{reader.GetInt32(18)}"
-                : reader.GetString(22),
+            // Kept apart on purpose: the registry number is the last build cut,
+            // which is not always the build that threw, and substituting it for a
+            // missing reported version made August reports show a September build.
+            AppVersion             = reader.IsDBNull(22) ? null : reader.GetString(22),
+            RegistryVersion        = $"{reader.GetInt32(16)}.{reader.GetInt32(17)}.{reader.GetInt32(18)}",
             Exception              = reader.IsDBNull(19)
                 ? null
                 : JsonConvert.DeserializeObject<ExceptionInfo>(reader.GetString(19)),

@@ -35,7 +35,10 @@ interface ProblemRecord {
   extensions: string | null;
   appHandle: string;
   appName: string;
-  appVersion: string;
+  // The reporter's own version, null when it sent none. registryVersion is the
+  // registry's current number, which is not the build that threw.
+  appVersion: string | null;
+  registryVersion: string;
   environment: string;
   environmentName: string;
   environmentDescription: string | null;
@@ -369,7 +372,9 @@ export function ProblemDetailPage() {
           parts={[
             { mono: true, text: data.appHandle },
             { text: data.appName },
-            { mono: true, text: `v${data.appVersion}` },
+            data.appVersion
+              ? { mono: true, text: `v${data.appVersion}` }
+              : { muted: true, text: `version not reported (registry v${data.registryVersion})` },
           ]}
         />
         <ContextRow

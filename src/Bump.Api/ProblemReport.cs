@@ -19,8 +19,9 @@ public record ProblemReportPayload
     /// <summary>
     /// The build that is reporting, as the process knows itself (for a .NET
     /// consumer, the assembly's informational version, e.g. <c>1.3.174+db890ee</c>).
-    /// Optional. Without it the problem shows the app registry's version, which
-    /// is the last build cut, not necessarily the one running where it threw.
+    /// Optional. Without it the problem records no version: the app registry's
+    /// version is the last build cut, not necessarily the one running where it
+    /// threw, so it is returned separately as <c>registryVersion</c>.
     /// </summary>
     public string? Version { get; init; }
 
@@ -111,10 +112,17 @@ public record ProblemReportRecord
     public string AppName { get; init; } = "";
 
     /// <summary>
-    /// The version the reporter declared for itself, or the app registry's
-    /// version for a row whose reporter sent none.
+    /// The version the reporter declared for itself, or null when it sent none.
+    /// This is the only field that says which build threw.
     /// </summary>
-    public string AppVersion { get; init; } = "";
+    public string? AppVersion { get; init; }
+
+    /// <summary>
+    /// The app registry's current version, read when the problem is fetched. It
+    /// changes with every release, so it neither dates a report nor names the
+    /// build that produced it.
+    /// </summary>
+    public string RegistryVersion { get; init; } = "";
 
     public string Environment { get; init; } = "";
     public string EnvironmentName { get; init; } = "";

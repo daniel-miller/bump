@@ -35,7 +35,8 @@ public static class ProblemMarkdown
 
         sb.AppendLine("## Context");
         sb.AppendLine();
-        AppendKv(sb, "App",         Join(" · ", r.AppHandle, r.AppName, "v" + r.AppVersion));
+        AppendKv(sb, "App",         Join(" · ", r.AppHandle, r.AppName,
+            r.AppVersion is null ? $"version not reported (registry v{r.RegistryVersion})" : "v" + r.AppVersion));
         AppendKv(sb, "Environment", Join(" · ", r.Environment, r.EnvironmentName, r.EnvironmentDescription));
         AppendKv(sb, "Account",     Join(" · ", r.UserId?.ToString(), r.UserEmail));
         sb.AppendLine();

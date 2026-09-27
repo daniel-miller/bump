@@ -72,7 +72,8 @@ Both bearer keys ship empty in `config/appsettings.json` and the API refuses to 
   }
   ```
 
-- **Problems bearer key** — `POST /api/problems`. Single pre-shared key from `Bump:Api:Hosting:ClientSecret`. Same key every `Bump.Sdk` consumer presents, so it is named identically on both sides of the exchange.
+- **Problems reporter key** - `POST /api/problems` only; anything else answers 403. Single pre-shared key from `Bump:Api:Hosting:ClientSecret`. Same key every `Bump.Sdk` consumer presents, so it is named identically on both sides of the exchange.
+- **Problems read key** - `GET /api/problems` and `GET /api/problems/{id}` only. Any entry of `Bump:Api:Problems:ReadSecrets` (array, may be empty; no blank entry, and none equal to the reporter key). One per unattended reader.
 
   ```json
   {
@@ -135,9 +136,9 @@ All routes are prefixed with `/api`. Full request/response shapes are in Swagger
 
 | Method | Route                  | Auth              | Description                                                                                  |
 | :----- | :--------------------- | :---------------- | :------------------------------------------------------------------------------------------- |
-| POST   | `/api/problems`        | Problems bearer   | Ingest a problem report. Optional `appHandle` links the report to a Bump-managed app.          |
-| GET    | `/api/problems`        | Session           | Query stored reports. Filters: `environment`, `application`, `fingerprint`, `from`, `to`, `limit`, `offset`. |
-| GET    | `/api/problems/{id}`   | Session           | Get one stored report. `Accept: text/markdown` renders it for pasting into a bug tracker.      |
+| POST   | `/api/problems`        | Reporter key      | Ingest a problem report. Optional `appHandle` links the report to a Bump-managed app.          |
+| GET    | `/api/problems`        | Read key or session | Query stored reports. Filters: `environment`, `appHandle`, `fingerprint`, `after`, `before`, `since`, `until`, `limit`, `offset`, `includeResolved`. An unknown parameter, app or environment answers 400. |
+| GET    | `/api/problems/{id}`   | Read key or session | Get one stored report. `Accept: text/markdown` renders it for pasting into a bug tracker.      |
 | POST   | `/api/problems/{id}/resolve`   | Session   | Mark one report resolved.                                                            |
 | POST   | `/api/problems/{id}/unresolve` | Session   | Clear the resolved flag on one report.                                               |
 | DELETE | `/api/problems/{id}`   | Session           | Permanently delete one report.                                                               |
@@ -282,7 +283,8 @@ API only:
 | :-------------------------------------------- | :--------------------------------------------------------------------- |
 | `Bump:Api:LogPath`                            | Serilog file directory. Defaults to `tmp/logs/api` when empty.         |
 | `Bump:Api:Hosting:Urls`                       | Kestrel listen address. Refuses to start when empty.                   |
-| `Bump:Api:Hosting:ClientSecret`               | Bearer key for `POST /api/problems`. Same string every `Bump.Sdk` consumer presents. Refuses to start when empty. |
+| `Bump:Api:Hosting:ClientSecret`               | Bearer key for `POST /api/problems`, and nothing else. Same string every `Bump.Sdk` consumer presents. Refuses to start when empty. |
+| `Bump:Api:Problems:ReadSecrets`               | Read-only bearer keys for `GET /api/problems` and `GET /api/problems/{id}`. May be empty; refuses to start on a blank entry or one equal to the reporter key. |
 | `Bump:Api:AllowedOrigins`                     | SPA origin allowlist.                                                  |
 | `Bump:Api:Security:Apps:ClientSecrets`        | Bearer keys for `/api/apps/**`. Refuses to start when empty.           |
 | `Bump:Api:Security:Jwt:{Key,Issuer,Audience}` | JWT signing key, issuer, audience.                                     |

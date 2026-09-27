@@ -31,7 +31,7 @@ The SDK binds a `BumpOptions` record. Consuming projects put the following keys 
 | :------------------------ | :---------------------------------------------------------------------------------------- | :------------------------------------------------------ |
 | `Bump:Enabled`            | Whether problem reports are sent. Defaults to `true`. Set `false` to turn reporting off.  | Project-local; usually only set in local dev.           |
 | `Bump:Api:Hosting:BaseUrl` | Base URL of the Bump API.                                                                 | Library set `Bump:Api:Hosting:BaseUrl`                  |
-| `Bump:Api:Hosting:ClientSecret` | Bearer key for `POST /api/problems`. Same value across every consumer.              | Library set `Bump:Api:Hosting:ClientSecret`             |
+| `Bump:Api:Hosting:ClientSecret` | Bearer key for `POST /api/problems`, and nothing else. Same value across every consumer. | Library set `Bump:Api:Hosting:ClientSecret`             |
 | `Bump:AppHandle`            | Handle of the registered Bump app this consumer corresponds to. Unique per consumer.        | Project-local variable in the consumer.                 |
 | `Bump:Environment`        | Environment handle reported with every problem. Usually the deploy environment name.        | Project-local, typically `#{Octopus.Environment.Name}`. |
 | `Bump:ProblemTypeBaseUrl` | Optional base URL for RFC 9457 `type`. Turns bare exception type names into URLs.         | **Project-local** — the URL space belongs to the consumer. |
@@ -175,7 +175,7 @@ Do not point the Apps list at the Problems key to save a variable. The Problems 
 
 If the consumer app auto-registers itself on startup via `POST /api/apps` instead, this step is unnecessary - though the app still needs the same key at runtime, since the route is behind the same filter.
 
-The registry number is the last build cut, not the build running in a given environment. A build script that bumps the version when it packages (before any deploy) moves the registry ahead of the slower environment, and a problem from that environment would display the newer number. So a problem report may carry its own `Version` field, and Bump shows a row under the version its reporter declared, falling back to the registry number only when the reporter sent none. A .NET consumer reads it from `AssemblyInformationalVersionAttribute` on the deployed assembly, which `dotnet publish /p:Version=1.3.174` stamps as `1.3.174+<commit>`. The SDK does not send `Version` yet; a consumer using its own client should.
+The registry number is the last build cut, not the build running in a given environment. A build script that bumps the version when it packages (before any deploy) moves the registry ahead of the slower environment, and a problem from that environment would display the newer number. So a problem report may carry its own `Version` field. Bump returns it as `appVersion`, and returns `appVersion: null` when the reporter sent none; the registry number comes back separately as `registryVersion`, because it moves with every release and says nothing about which build threw. A .NET consumer reads it from `AssemblyInformationalVersionAttribute` on the deployed assembly, which `dotnet publish /p:Version=1.3.174` stamps as `1.3.174+<commit>`. The SDK does not send `Version` yet; a consumer using its own client should.
 
 ## Verify integration
 
@@ -183,7 +183,7 @@ After deploying the consumer with the new configuration:
 
 1. Trigger a known exception in the consumer app (a `/debug/throw` route, a failed action, whatever exists).
 2. Check the consumer's own log for a warning like `Bump rejected problem report: 401 ...` or `422 ...`. If present, the wiring is off - see troubleshooting below.
-3. If no warning, open the Bump admin UI. The report should appear at `/admin/problems` within a few seconds.
+3. If no warning, open the Bump admin UI. The report should appear at `/problems` within a few seconds.
 
 ## Troubleshooting
 
@@ -209,6 +209,14 @@ The Apps side rotates without downtime, because `Bump:Api:Security:Apps:ClientSe
 3. Drop the old entry from the array and delete its variable.
 
 Keep at least one non-blank entry throughout. Bump.Api refuses to start on an empty array or a blank element, which is deliberate - an empty list would otherwise reject every deploy pipeline with a 401 that looks like a credential problem rather than a configuration one.
+
+## Reading problems without a session
+
+The reporter key can only report. Every consumer holds it, so since 2026-09-27 it answers 403 on anything but `POST /api/problems`: listing, fetching, resolving and deleting all need something else.
+
+An unattended reader, such as a monitor or an agent checking whether production is faulting, uses a **read key**: any entry of `Bump:Api:Problems:ReadSecrets` in Bump.Api's own config. A read key may call `GET /api/problems` and `GET /api/problems/{id}` and nothing else, so it can never resolve or delete a report. Issue one key per reader, so one can be revoked without touching the others. The list may be empty, and Bump.Api refuses to start on a blank entry or on an entry equal to the reporter key.
+
+`GET /api/problems` answers 400, not an empty list, for an unknown query parameter or an app or environment Bump does not know. Resolved problems are left out unless `includeResolved=true`, which is why the admin UI can show a row the default query does not.
 
 ## Related
 

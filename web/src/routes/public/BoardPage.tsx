@@ -27,7 +27,10 @@ const announcementStyles = {
   },
 } as const;
 
-export function BoardPage({ handle: handleProp, logoUrl }: { handle?: string; logoUrl?: string } = {}) {
+export function BoardPage({
+  handle: handleProp,
+  logoUrl,
+}: { handle?: string; logoUrl?: string } = {}) {
   // Handle comes from the route param (/boards/:handle) or as a prop when the
   // HostGate resolves a custom hostname to an owner at the site root.
   const { handle: handleParam } = useParams<{ handle: string }>();

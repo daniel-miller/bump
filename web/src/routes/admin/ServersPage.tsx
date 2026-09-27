@@ -26,8 +26,8 @@ export function ServersPage() {
       <div>
         <h1 className="text-2xl font-semibold">Servers</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Server roster; names follow the NATO phonetic alphabet and the number is the leading
-          digit of an IIS site ID
+          Server roster; names follow the NATO phonetic alphabet and the number is the leading digit
+          of an IIS site ID
         </p>
       </div>
       {isLoading && <div className="text-muted-foreground text-sm">Loading...</div>}
@@ -58,8 +58,8 @@ export function ServersPage() {
             ))}
           </div>
           <p className="text-muted-foreground max-w-2xl text-xs">
-            Fleet servers take numbers from 1 (Alpha) upward; local workstations register as
-            server 26 (Zulu) so their site IDs can never collide with a fleet server's
+            Fleet servers take numbers from 1 (Alpha) upward; local workstations register as server
+            26 (Zulu) so their site IDs can never collide with a fleet server's
           </p>
         </>
       )}

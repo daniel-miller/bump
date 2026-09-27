@@ -84,7 +84,10 @@ export function OwnersListPage() {
               >
                 Cancel
               </Button>
-              <Button onClick={() => create.mutate()} disabled={!handle || !name || create.isPending}>
+              <Button
+                onClick={() => create.mutate()}
+                disabled={!handle || !name || create.isPending}
+              >
                 Create owner
               </Button>
             </div>

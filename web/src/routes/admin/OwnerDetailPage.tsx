@@ -217,8 +217,8 @@ export function OwnerDetailPage() {
         <CardContent className="space-y-2">
           <p className="text-muted-foreground text-sm">
             Serve this owner's status board at its own hostname instead of /boards/
-            {data.owner.ownerHandle}. Point a CNAME at this server, then enter the bare hostname here.
-            Leave empty to disable.
+            {data.owner.ownerHandle}. Point a CNAME at this server, then enter the bare hostname
+            here. Leave empty to disable.
           </p>
           <Input
             value={host}

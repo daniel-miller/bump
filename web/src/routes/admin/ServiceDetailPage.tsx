@@ -297,10 +297,7 @@ export function ServiceDetailPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit-owner">Owner</Label>
-                <Select
-                  value={edit.owner}
-                  onValueChange={(v) => setEdit({ ...edit, owner: v })}
-                >
+                <Select value={edit.owner} onValueChange={(v) => setEdit({ ...edit, owner: v })}>
                   <SelectTrigger id="edit-owner">
                     <SelectValue placeholder="Select owner" />
                   </SelectTrigger>

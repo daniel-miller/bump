@@ -33,10 +33,12 @@ public sealed class StatusController : ControllerBase
     }
 
     /// <summary>Public status payload scoped to one owner.</summary>
-    /// <remarks>Anonymous endpoint. Set <c>excludePaused=true</c> to omit paused services from the response.</remarks>
+    /// <remarks>Anonymous endpoint. Set <c>excludePaused=true</c> to omit paused services from the response.
+    /// Returns 404 when no owner holds the handle, rather than the global payload.</remarks>
     [HttpGet("owners/{handle}", Name = "getOwnerStatus")]
     public async Task<IActionResult> GetForOwner(string handle, [FromQuery] bool excludePaused = false, CancellationToken ct = default)
     {
+        if (await _owners.GetByHandleAsync(handle, ct) is null) return NotFound();
         var tz = await _tz.ResolveAsync(HttpContext.User, ct);
         var payload = await _composer.ComposeAsync(handle, excludePaused, tz, ct);
         return Ok(payload);

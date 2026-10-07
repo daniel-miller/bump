@@ -13,6 +13,7 @@ public class SpaFallbackTests
         var router = File.ReadAllText(Path.Combine(RepoRoot(), "web", "src", "router.tsx"));
         var paths = Regex.Matches(router, """path:\s*"([^"]+)"\s*""")
             .Select(m => m.Groups[1].Value)
+            .Where(p => p != "*") // the catch-all is the not-found page, never a 200
             .Order()
             .ToArray();
 

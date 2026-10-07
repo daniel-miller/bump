@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import { BoardPage } from "@/routes/public/BoardPage";
 import { HostGate } from "@/routes/public/HostGate";
+import { NotFoundPage } from "@/routes/public/NotFoundPage";
 import { LoginPage } from "@/routes/auth/LoginPage";
 import { TwoFactorPage } from "@/routes/auth/TwoFactorPage";
 import { SubscribeConfirmPage } from "@/routes/public/SubscribeConfirmPage";
@@ -57,4 +58,7 @@ export const router = createBrowserRouter([
       { path: "/about", element: <AboutPage /> },
     ],
   },
+  // Catch-all. The server already answered this path with a 404 status;
+  // SpaFallback.Routes mirrors every path above except this one.
+  { path: "*", element: <NotFoundPage /> },
 ]);

@@ -1,9 +1,11 @@
 import { useParams } from "react-router-dom";
 import { useStatus } from "@/hooks/useStatus";
+import { ApiError } from "@/lib/api";
 import { formatAbsolute } from "@/lib/dates";
 import { StatusDot } from "@/components/StatusDot";
 import { ServiceCard } from "@/components/ServiceCard";
 import { TrendBars } from "@/components/TrendBars";
+import { NotFoundPage } from "@/routes/public/NotFoundPage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const announcementStyles = {
@@ -38,6 +40,7 @@ export function BoardPage({
   const { data, isLoading, error } = useStatus(handle);
 
   if (isLoading) return <div className="text-muted-foreground p-8">Loading...</div>;
+  if (error instanceof ApiError && error.status === 404) return <NotFoundPage />;
   if (error || !data)
     return <div className="text-danger p-8">Couldn't load status. Try refreshing the page.</div>;
 

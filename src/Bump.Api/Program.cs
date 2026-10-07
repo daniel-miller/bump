@@ -438,9 +438,21 @@ namespace Bump.Api
             app.UseRateLimiter();
 
             app.MapControllers();
-            // Client-side routing fallback. MapFallback only fires when no
-            // other route matches, so /api/** and /swagger/** are unaffected.
-            app.MapFallbackToFile("index.html");
+
+            // The public board lived at /tenants/:slug until the owner and
+            // handle rename. Search engines still hold those URLs, so move
+            // them permanently rather than letting them fall through to 404.
+            app.MapGet("/tenants/{handle}", (string handle) =>
+                    Results.Redirect($"/boards/{Uri.EscapeDataString(handle)}", permanent: true))
+                .ExcludeFromDescription();
+
+            // Fallbacks only fire when no other endpoint matches. An unknown
+            // /api path is a problem+json 404, never the SPA shell; any other
+            // extensionless path is a client route (see SpaFallback).
+            app.MapFallback("/api/{**path}", () =>
+                    JsonResults.NotFound("Not found", "No API endpoint matches this path."))
+                .ExcludeFromDescription();
+            app.MapFallback(SpaFallback.HandleAsync);
 
             app.Run();
         }

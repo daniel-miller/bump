@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ExceptionInfo {
   type?: string;
@@ -280,46 +281,58 @@ export function ProblemDetailPage() {
                 {resolveBusy ? "Resolving..." : "Resolve"}
               </Button>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Download as Markdown"
-              title="Download as Markdown"
-              onClick={() => downloadMarkdown(data.problemKey)}
-            >
-              <i className="fa-sharp fa-regular fa-download" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Copy Markdown to clipboard"
-              title={copied ? "Copied!" : "Copy Markdown to clipboard"}
-              onClick={async () => {
-                await copyMarkdown(data.problemKey);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-            >
-              <i
-                className={`fa-sharp fa-regular fa-copy ${copied ? "text-success" : ""}`}
-                aria-hidden="true"
-              />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Delete problem"
-              title="Delete problem"
-              onClick={() => {
-                setDeleteError(null);
-                setConfirmOpen(true);
-              }}
-            >
-              <i className="fa-sharp fa-regular fa-trash-can text-danger" aria-hidden="true" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Download as Markdown"
+                  onClick={() => downloadMarkdown(data.problemKey)}
+                >
+                  <i className="fa-sharp fa-regular fa-download" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Download as Markdown</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Copy Markdown to clipboard"
+                  onClick={async () => {
+                    await copyMarkdown(data.problemKey);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                >
+                  <i
+                    className={`fa-sharp fa-regular fa-copy ${copied ? "text-success" : ""}`}
+                    aria-hidden="true"
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{copied ? "Copied!" : "Copy Markdown to clipboard"}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Delete problem"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setConfirmOpen(true);
+                  }}
+                >
+                  <i className="fa-sharp fa-regular fa-trash-can text-danger" aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete problem</TooltipContent>
+            </Tooltip>
           </div>
         }
       />

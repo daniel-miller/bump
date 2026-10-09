@@ -17,6 +17,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
 import { PageHeader } from "@/components/ui/page-header";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const STATUS_LABELS: Record<string, string> = {
   investigating: "Investigating",
@@ -82,15 +83,21 @@ export function OutageDetailPage() {
             {data.service && (
               <span className="mt-1 block">
                 Service:{" "}
-                <a
-                  href={data.service.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary break-all hover:underline"
-                  title="Open the service in a new tab to check if it is still down"
-                >
-                  {data.service.name}
-                </a>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <a
+                      href={data.service.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary break-all hover:underline"
+                    >
+                      {data.service.name}
+                    </a>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Open the service in a new tab to check if it is still down
+                  </TooltipContent>
+                </Tooltip>
               </span>
             )}
           </>

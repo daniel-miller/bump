@@ -11,12 +11,15 @@ import "@fortawesome/fontawesome-pro/css/sharp-regular.min.css";
 import "@fortawesome/fontawesome-pro/css/sharp-solid.min.css";
 import { router } from "./router";
 import { queryClient } from "./lib/queryClient";
+import { TooltipProvider } from "./components/ui/tooltip";
 import "./styles/globals.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <TooltipProvider>
+        <RouterProvider router={router} />
+      </TooltipProvider>
     </QueryClientProvider>
   </React.StrictMode>,
 );

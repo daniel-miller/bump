@@ -1,0 +1,13 @@
+/* bump: blue. */
+
+@theme static {
+  --color-primary: #3b73ff;
+  --color-primary-foreground: #ffffff;
+  --color-link: #3b73ff;
+}
+
+.dark {
+  --color-primary: #3b73ff;
+  --color-primary-foreground: #ffffff;
+  --color-link: oklch(0.72 0.16 262);
+}

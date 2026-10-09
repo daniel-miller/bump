@@ -14,6 +14,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface ExceptionInfo {
   type?: string;
@@ -159,22 +167,22 @@ function parseExtensions(raw: string | null): Array<[string, string]> | null {
 
 function ExtensionsTable({ rows }: { rows: Array<[string, string]> }) {
   return (
-    <table className="w-full border-collapse text-sm">
-      <thead>
-        <tr className="text-muted-foreground text-xs tracking-wide uppercase">
-          <th className="w-40 border-b py-1.5 pr-3 text-left font-medium">Key</th>
-          <th className="border-b py-1.5 text-left font-medium">Value</th>
-        </tr>
-      </thead>
-      <tbody>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-40">Key</TableHead>
+          <TableHead>Value</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {rows.map(([k, v]) => (
-          <tr key={k} className="border-b last:border-b-0">
-            <td className="text-muted-foreground py-1.5 pr-3 align-top font-mono">{k}</td>
-            <td className="py-1.5 font-mono break-all">{v}</td>
-          </tr>
+          <TableRow key={k}>
+            <TableCell className="text-muted-foreground align-top font-mono">{k}</TableCell>
+            <TableCell className="font-mono break-all">{v}</TableCell>
+          </TableRow>
         ))}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 

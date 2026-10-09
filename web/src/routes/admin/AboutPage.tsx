@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { formatAbsolute } from "@/lib/dates";
 import { useQuery } from "@tanstack/react-query";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface RepositoryInfo {
   url: string;
@@ -130,24 +131,26 @@ export function AboutPage() {
 
   return (
     <div className="max-w-5xl space-y-6 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">About</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Bump v{displayVersion} <span className="mx-2">·</span>{" "}
-          <a
-            href={repository.url}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:text-foreground inline-flex items-center gap-1 underline"
-          >
-            {repository.url.replace(/^https?:\/\//, "")}
-            <i
-              className="fa-sharp fa-regular fa-arrow-up-right-from-square text-xs"
-              aria-hidden="true"
-            />
-          </a>
-        </p>
-      </div>
+      <PageHeader
+        title="About"
+        subtitle={
+          <>
+            Bump v{displayVersion} <span className="mx-2">·</span>{" "}
+            <a
+              href={repository.url}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-foreground inline-flex items-center gap-1 underline"
+            >
+              {repository.url.replace(/^https?:\/\//, "")}
+              <i
+                className="fa-sharp fa-regular fa-arrow-up-right-from-square text-xs"
+                aria-hidden="true"
+              />
+            </a>
+          </>
+        }
+      />
 
       <Card>
         <CardHeader>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ExceptionInfo {
   type?: string;
@@ -90,23 +91,26 @@ export function ProblemsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Problems</h1>
-        <div className="flex items-center gap-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
-            <Checkbox
-              checked={includeResolved}
-              onCheckedChange={(v) => setIncludeResolved(v === true)}
-            />
-            Show resolved
-          </label>
-          {!isLoading && data.length > 0 && (
-            <span className="text-muted-foreground text-sm">
-              {data.length} report{data.length === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Problems"
+        actions={
+          <div className="flex items-center gap-4">
+            <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
+              <Checkbox
+                checked={includeResolved}
+                onCheckedChange={(v) => setIncludeResolved(v === true)}
+              />
+              Show resolved
+            </label>
+            {!isLoading && data.length > 0 && (
+              <span className="text-muted-foreground text-sm">
+                {data.length} report{data.length === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
+        }
+        className="items-center"
+      />
 
       {isLoading && <div className="text-muted-foreground">Loading...</div>}
       {error && (

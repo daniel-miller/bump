@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { environmentSwatchLabel, environmentSwatchStyle } from "@/lib/environmentColors";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface EnvironmentRecord {
   environmentKey: number;
@@ -138,13 +139,10 @@ export function EnvironmentsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Environments</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Deployment environments and their accepted aliases; numbers and order follow the infra
-          roster
-        </p>
-      </div>
+      <PageHeader
+        title="Environments"
+        subtitle="Deployment environments and their accepted aliases; numbers and order follow the infra roster"
+      />
       {isLoading && <div className="text-muted-foreground text-sm">Loading...</div>}
       {isError && (
         <div className="text-danger text-sm">

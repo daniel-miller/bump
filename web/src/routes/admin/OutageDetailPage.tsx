@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
+import { PageHeader } from "@/components/ui/page-header";
 
 const STATUS_LABELS: Record<string, string> = {
   investigating: "Investigating",
@@ -71,28 +72,30 @@ export function OutageDetailPage() {
   if (!data) return <div className="text-muted-foreground p-8">Loading...</div>;
   return (
     <div className="max-w-3xl space-y-4 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{data.outage.outageTitle}</h1>
-        <div className="text-muted-foreground text-sm">
-          {STATUS_LABELS[data.outage.outageStatus] ?? data.outage.outageStatus} · started{" "}
-          {formatAbsolute(data.outage.startedAt)}
-          {data.outage.resolvedAt && ` · resolved ${formatAbsolute(data.outage.resolvedAt)}`}
-        </div>
-        {data.service && (
-          <div className="mt-1 text-sm">
-            <span className="text-muted-foreground">Service: </span>
-            <a
-              href={data.service.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary break-all hover:underline"
-              title="Open the service in a new tab to check if it is still down"
-            >
-              {data.service.name}
-            </a>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title={data.outage.outageTitle}
+        subtitle={
+          <>
+            {STATUS_LABELS[data.outage.outageStatus] ?? data.outage.outageStatus} · started{" "}
+            {formatAbsolute(data.outage.startedAt)}
+            {data.outage.resolvedAt && ` · resolved ${formatAbsolute(data.outage.resolvedAt)}`}
+            {data.service && (
+              <span className="mt-1 block">
+                Service:{" "}
+                <a
+                  href={data.service.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary break-all hover:underline"
+                  title="Open the service in a new tab to check if it is still down"
+                >
+                  {data.service.name}
+                </a>
+              </span>
+            )}
+          </>
+        }
+      />
       <section className="space-y-2">
         {data.updates.map((u) => (
           <Card key={u.updateId}>

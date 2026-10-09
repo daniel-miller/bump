@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { formatAbsolute } from "@/lib/dates";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface OutageRow {
   outageId: number;
@@ -21,7 +22,7 @@ export function OutagesListPage() {
   });
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Outages</h1>
+      <PageHeader title="Outages" />
       {isLoading && <div className="text-muted-foreground">Loading...</div>}
       <div className="space-y-2">
         {data.map((i) => (

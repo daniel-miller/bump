@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 function getTimezones(): string[] {
   const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] };
@@ -113,7 +114,7 @@ export function AccountDetailsPage() {
 
   return (
     <div className="max-w-xl space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Account details</h1>
+      <PageHeader title="Account details" />
       <Card>
         <CardContent className="space-y-3 p-4">
           <div className="space-y-1.5">

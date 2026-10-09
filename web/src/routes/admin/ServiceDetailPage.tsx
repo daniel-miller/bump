@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 
 // Mechanical rendering of the infra naming convention: same tokens, one
 // separator rule per medium, DNS inverted to most-specific-first.
@@ -230,47 +231,55 @@ export function ServiceDetailPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
             <StatusDot status={m.lastStatus} size={14} />
             {m.name}
-          </h1>
-          <div className="text-sm">
+          </span>
+        }
+        subtitle={
+          <>
             <a
               href={m.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary break-all hover:underline"
+              className="text-primary block break-all hover:underline"
             >
               {m.url}
             </a>
-          </div>
-          <div className="text-muted-foreground mt-0.5 text-xs">
-            {m.owner} / {m.environment}
-            {m.app && <span className="ml-1">· app {m.app}</span>}
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="text-muted-foreground text-sm">
-            {m.latencyMs} ms · {Number(m.uptime).toFixed(2)}%
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={startEdit} disabled={editing}>
-              Edit
-            </Button>
-            {m.paused ? (
-              <Button variant="outline" onClick={() => resume.mutate()} disabled={resume.isPending}>
-                Resume
+            <span className="mt-0.5 block text-xs">
+              {m.owner} / {m.environment}
+              {m.app && <span className="ml-1">· app {m.app}</span>}
+            </span>
+          </>
+        }
+        actions={
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-muted-foreground text-sm">
+              {m.latencyMs} ms · {Number(m.uptime).toFixed(2)}%
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={startEdit} disabled={editing}>
+                Edit
               </Button>
-            ) : (
-              <Button variant="outline" onClick={() => pause.mutate()} disabled={pause.isPending}>
-                Pause
-              </Button>
-            )}
+              {m.paused ? (
+                <Button
+                  variant="outline"
+                  onClick={() => resume.mutate()}
+                  disabled={resume.isPending}
+                >
+                  Resume
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => pause.mutate()} disabled={pause.isPending}>
+                  Pause
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {editing && (
         <Card>

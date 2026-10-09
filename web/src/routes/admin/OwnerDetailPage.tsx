@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DangerZone, DangerZoneItem } from "@/components/ui/danger-zone";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface OwnerDetail {
   owner: {
@@ -148,29 +149,33 @@ export function OwnerDetailPage() {
   if (!data) return <div className="text-muted-foreground p-8">Loading...</div>;
   return (
     <div className="max-w-3xl space-y-4 p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-baseline gap-2">
+      <PageHeader
+        title={
+          <span className="flex items-baseline gap-2">
             {data.owner.ownerNumber !== null && (
-              <span className="text-muted-foreground font-mono text-lg">
+              <span className="text-muted-foreground font-mono text-lg font-normal">
                 {String(data.owner.ownerNumber).padStart(2, "0")}
               </span>
             )}
-            <h1 className="text-2xl font-semibold">{data.owner.ownerName}</h1>
-          </div>
-          {data.owner.ownerDescription && (
-            <p className="text-muted-foreground text-sm">{data.owner.ownerDescription}</p>
-          )}
-          <a
-            href={`/boards/${data.owner.ownerHandle}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary text-sm hover:underline"
-          >
-            /boards/{data.owner.ownerHandle}
-          </a>
-        </div>
-      </div>
+            {data.owner.ownerName}
+          </span>
+        }
+        subtitle={
+          <>
+            {data.owner.ownerDescription && (
+              <span className="block">{data.owner.ownerDescription}</span>
+            )}
+            <a
+              href={`/boards/${data.owner.ownerHandle}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline"
+            >
+              /boards/{data.owner.ownerHandle}
+            </a>
+          </>
+        }
+      />
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Services on this board</CardTitle>

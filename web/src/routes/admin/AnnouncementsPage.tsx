@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Row {
   announcementId: number;
@@ -83,7 +84,7 @@ export function AnnouncementsPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Announcements</h1>
+      <PageHeader title="Announcements" />
       <Card className="max-w-2xl">
         <CardContent className="space-y-3 p-4">
           <div className="space-y-1.5">

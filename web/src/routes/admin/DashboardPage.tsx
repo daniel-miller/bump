@@ -5,6 +5,7 @@ import { StatusDot } from "@/components/StatusDot";
 import { TrendBars } from "@/components/TrendBars";
 import { ProblemsBars } from "@/components/ProblemsBars";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 export function DashboardPage() {
   const { data, isLoading, dataUpdatedAt } = useStatus(undefined, { excludePaused: true });
@@ -28,13 +29,20 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <StatusDot status={data.overall} size={14} />
-        <div className="text-muted-foreground ml-auto text-xs tabular-nums">
-          Updated {updatedAtLabel} · {nextLabel}
-        </div>
-      </div>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            Dashboard
+            <StatusDot status={data.overall} size={14} />
+          </span>
+        }
+        actions={
+          <div className="text-muted-foreground text-xs tabular-nums">
+            Updated {updatedAtLabel} · {nextLabel}
+          </div>
+        }
+        className="items-center"
+      />
       <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {(["operational", "uptime", "latency", "outages", "problems"] as const).map((k) => {
           const kpi = data.kpis[k];

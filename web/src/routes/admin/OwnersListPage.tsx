@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface OwnerRow {
   ownerId: number;
@@ -41,15 +42,11 @@ export function OwnersListPage() {
   });
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Owners</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            The party each deployment belongs to; numbers and order follow the infra roster
-          </p>
-        </div>
-        <Button onClick={() => setShowNew(true)}>New owner</Button>
-      </div>
+      <PageHeader
+        title="Owners"
+        subtitle="The party each deployment belongs to; numbers and order follow the infra roster"
+        actions={<Button onClick={() => setShowNew(true)}>New owner</Button>}
+      />
       {showNew && (
         <Card>
           <CardContent className="space-y-3 p-4">

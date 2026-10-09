@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ExceptionInfo {
   type?: string;
@@ -213,100 +214,107 @@ export function ProblemDetailPage() {
 
   return (
     <div className="max-w-4xl space-y-4 p-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h1 className="flex items-baseline gap-2 text-2xl font-semibold">
-          Problem #{data.problemKey}
-          {data.resolvedAt && (
-            <span className="bg-success/15 text-success rounded-md px-2 py-0.5 text-xs font-medium">
-              Resolved
-            </span>
-          )}
-        </h1>
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground font-mono text-xs">{data.fingerprint}</span>
-          {data.resolvedAt ? (
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            Problem #{data.problemKey}
+            {data.resolvedAt && (
+              <span className="bg-success/15 text-success rounded-md px-2 py-0.5 text-xs font-medium">
+                Resolved
+              </span>
+            )}
+          </span>
+        }
+        className="items-center"
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-mono text-xs">{data.fingerprint}</span>
+            {data.resolvedAt ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={resolveBusy}
+                onClick={async () => {
+                  setResolveBusy(true);
+                  try {
+                    await api<void>(`/api/problems/${data.problemKey}/unresolve`, {
+                      method: "POST",
+                    });
+                    await qc.invalidateQueries({ queryKey: ["problems"] });
+                    await qc.invalidateQueries({ queryKey: ["problems", id] });
+                  } finally {
+                    setResolveBusy(false);
+                  }
+                }}
+              >
+                <i className="fa-sharp fa-regular fa-rotate-left" aria-hidden="true" />
+                {resolveBusy ? "Unresolving..." : "Unresolve"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={resolveBusy}
+                onClick={async () => {
+                  setResolveBusy(true);
+                  try {
+                    await api<void>(`/api/problems/${data.problemKey}/resolve`, { method: "POST" });
+                    await qc.invalidateQueries({ queryKey: ["problems"] });
+                    await qc.invalidateQueries({ queryKey: ["problems", id] });
+                  } finally {
+                    setResolveBusy(false);
+                  }
+                }}
+              >
+                <i className="fa-sharp fa-regular fa-check" aria-hidden="true" />
+                {resolveBusy ? "Resolving..." : "Resolve"}
+              </Button>
+            )}
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              disabled={resolveBusy}
-              onClick={async () => {
-                setResolveBusy(true);
-                try {
-                  await api<void>(`/api/problems/${data.problemKey}/unresolve`, { method: "POST" });
-                  await qc.invalidateQueries({ queryKey: ["problems"] });
-                  await qc.invalidateQueries({ queryKey: ["problems", id] });
-                } finally {
-                  setResolveBusy(false);
-                }
-              }}
+              variant="ghost"
+              size="icon"
+              aria-label="Download as Markdown"
+              title="Download as Markdown"
+              onClick={() => downloadMarkdown(data.problemKey)}
             >
-              <i className="fa-sharp fa-regular fa-rotate-left" aria-hidden="true" />
-              {resolveBusy ? "Unresolving..." : "Unresolve"}
+              <i className="fa-sharp fa-regular fa-download" aria-hidden="true" />
             </Button>
-          ) : (
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              disabled={resolveBusy}
+              variant="ghost"
+              size="icon"
+              aria-label="Copy Markdown to clipboard"
+              title={copied ? "Copied!" : "Copy Markdown to clipboard"}
               onClick={async () => {
-                setResolveBusy(true);
-                try {
-                  await api<void>(`/api/problems/${data.problemKey}/resolve`, { method: "POST" });
-                  await qc.invalidateQueries({ queryKey: ["problems"] });
-                  await qc.invalidateQueries({ queryKey: ["problems", id] });
-                } finally {
-                  setResolveBusy(false);
-                }
+                await copyMarkdown(data.problemKey);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
               }}
             >
-              <i className="fa-sharp fa-regular fa-check" aria-hidden="true" />
-              {resolveBusy ? "Resolving..." : "Resolve"}
+              <i
+                className={`fa-sharp fa-regular fa-copy ${copied ? "text-success" : ""}`}
+                aria-hidden="true"
+              />
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Download as Markdown"
-            title="Download as Markdown"
-            onClick={() => downloadMarkdown(data.problemKey)}
-          >
-            <i className="fa-sharp fa-regular fa-download" aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Copy Markdown to clipboard"
-            title={copied ? "Copied!" : "Copy Markdown to clipboard"}
-            onClick={async () => {
-              await copyMarkdown(data.problemKey);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            }}
-          >
-            <i
-              className={`fa-sharp fa-regular fa-copy ${copied ? "text-success" : ""}`}
-              aria-hidden="true"
-            />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Delete problem"
-            title="Delete problem"
-            onClick={() => {
-              setDeleteError(null);
-              setConfirmOpen(true);
-            }}
-          >
-            <i className="fa-sharp fa-regular fa-trash-can text-danger" aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Delete problem"
+              title="Delete problem"
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmOpen(true);
+              }}
+            >
+              <i className="fa-sharp fa-regular fa-trash-can text-danger" aria-hidden="true" />
+            </Button>
+          </div>
+        }
+      />
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

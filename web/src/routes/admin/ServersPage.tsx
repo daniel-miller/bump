@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ServerRecord {
   serverKey: number;
@@ -23,13 +24,10 @@ export function ServersPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Servers</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Server roster; names follow the NATO phonetic alphabet and the number is the leading digit
-          of an IIS site ID
-        </p>
-      </div>
+      <PageHeader
+        title="Servers"
+        subtitle="Server roster; names follow the NATO phonetic alphabet and the number is the leading digit of an IIS site ID"
+      />
       {isLoading && <div className="text-muted-foreground text-sm">Loading...</div>}
       {isError && (
         <div className="text-danger text-sm">Couldn't load servers. Try refreshing the page.</div>

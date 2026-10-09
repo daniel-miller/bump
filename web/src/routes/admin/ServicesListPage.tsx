@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ServiceRow {
   handle: string;
@@ -107,20 +108,22 @@ export function ServicesListPage() {
 
   return (
     <div className="space-y-4 p-6">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Services</h1>
-        <div className="flex items-center gap-2">
-          <Input
-            type="search"
-            placeholder="Search handle, name, URL, owner, environment"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-72"
-            aria-label="Search services"
-          />
-          <Button onClick={() => setShowNew(true)}>New service</Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Services"
+        actions={
+          <>
+            <Input
+              type="search"
+              placeholder="Search handle, name, URL, owner, environment"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-72"
+              aria-label="Search services"
+            />
+            <Button onClick={() => setShowNew(true)}>New service</Button>
+          </>
+        }
+      />
 
       {showNew && (
         <Card>

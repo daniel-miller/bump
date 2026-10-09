@@ -1,6 +1,17 @@
 import * as React from "react";
 import { Slot, Slottable } from "@radix-ui/react-slot";
+import { Button, type ButtonProps } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/cn";
+
+/** The drawer's open state, shared by AppShell, SidebarSheet and SidebarTrigger. */
+const DrawerContext = React.createContext<{
+  open: boolean;
+  setOpen: (open: boolean) => void;
+} | null>(null);
+
+/** Tells a Sidebar it is inside SidebarSheet, so it fills the drawer instead of sizing itself. */
+const InDrawerContext = React.createContext(false);
 
 /**
  * The frame an admin app puts its pages in: a tinted sidebar beside a white content area.
@@ -8,15 +19,18 @@ import { cn } from "@/lib/cn";
  * The warm background tint sits on the sidebar, so navigation reads as chrome rather than as the
  * brightest plane on screen, and the content area is white, so cards separate by their hairline
  * borders instead of fighting a tinted page for contrast. In dark mode the same two tokens keep the
- * sidebar one step darker than the content. This is the cmds shell handoff, variant 1b.
+ * sidebar one step darker than the content. This is variant 1b of the shell design handoff.
  *
  * Presentation only. Each app keeps its own routing, auth and menus. SidebarNavItem takes the
  * router's NavLink through asChild and styles the active item from aria-current="page", which
  * NavLink sets, so nothing here imports a router.
  *
+ * Below md the sidebar moves into a drawer. Render it twice, once hidden below md and once inside
+ * SidebarSheet, and put SidebarTrigger first in the Topbar to open the drawer.
+ *
  *   <AppShell>
  *     <SkipLink />
- *     <Sidebar>
+ *     <Sidebar className="hidden md:flex">
  *       <SidebarBrand>...</SidebarBrand>
  *       <SidebarNav>
  *         <SidebarNavItem asChild icon="fa-sharp fa-regular fa-gauge">
@@ -24,14 +38,28 @@ import { cn } from "@/lib/cn";
  *         </SidebarNavItem>
  *       </SidebarNav>
  *     </Sidebar>
+ *     <SidebarSheet>
+ *       <Sidebar>...the same brand and nav...</Sidebar>
+ *     </SidebarSheet>
  *     <ShellBody>
- *       <Topbar>...</Topbar>
+ *       <Topbar><SidebarTrigger />...</Topbar>
  *       <ShellMain><Outlet /></ShellMain>
  *     </ShellBody>
  *   </AppShell>
  */
 export function AppShell({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex h-full", className)} {...props} />;
+  const [open, setOpen] = React.useState(false);
+  const drawer = React.useMemo(() => ({ open, setOpen }), [open]);
+
+  // The whole shell sits inside the drawer's dialog root, so SidebarTrigger in the Topbar can be a
+  // real dialog trigger, and focus returns to it when the drawer closes.
+  return (
+    <DrawerContext.Provider value={drawer}>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <div className={cn("flex h-full", className)} {...props} />
+      </Sheet>
+    </DrawerContext.Provider>
+  );
 }
 
 /** The first focusable element on the page, so a keyboard can jump past the sidebar. */
@@ -56,13 +84,92 @@ export function SkipLink({
 }
 
 export function Sidebar({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
+  const inDrawer = React.useContext(InDrawerContext);
   return (
     <aside
       aria-label="Sidebar"
-      className={cn("bg-background border-border flex w-56 shrink-0 flex-col border-r", className)}
+      className={cn(
+        "bg-background border-border flex w-56 shrink-0 flex-col border-r",
+        inDrawer && "h-full w-full border-r-0",
+        className,
+      )}
       {...props}
     />
   );
+}
+
+/**
+ * The sidebar as a left drawer below md, where the Sidebar beside the content is hidden. Its child
+ * is a second Sidebar, which fills the drawer. Following any link inside closes the drawer, so the
+ * drawer needs no router and the nav items need no close handler.
+ */
+export function SidebarSheet({
+  title = "Menu",
+  className,
+  children,
+  onClick,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof SheetContent> & {
+  /** Read by screen readers as the drawer's name; never shown. */
+  title?: string;
+}) {
+  const { open, setOpen } = useDrawer("SidebarSheet");
+
+  // Widening the window past md hides the drawer but not its overlay, which would leave the page
+  // dimmed and inert, so close the drawer instead. 48rem is Tailwind's md.
+  React.useEffect(() => {
+    if (!open) return;
+    const wide = window.matchMedia("(min-width: 48rem)");
+    const close = () => {
+      if (wide.matches) setOpen(false);
+    };
+    wide.addEventListener("change", close);
+    return () => wide.removeEventListener("change", close);
+  }, [open, setOpen]);
+
+  return (
+    <SheetContent
+      side="left"
+      aria-describedby={undefined}
+      className={cn("w-64 p-0 md:hidden", className)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.target instanceof Element && event.target.closest("a[href]")) setOpen(false);
+      }}
+      {...props}
+    >
+      <SheetTitle className="sr-only">{title}</SheetTitle>
+      <InDrawerContext.Provider value={true}>{children}</InDrawerContext.Provider>
+    </SheetContent>
+  );
+}
+
+/** The Topbar's menu button that opens SidebarSheet. It hides itself from md up. */
+export const SidebarTrigger = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, ...props }, ref) => {
+    useDrawer("SidebarTrigger");
+    return (
+      <SheetTrigger asChild>
+        <Button
+          ref={ref}
+          variant="ghost"
+          size="icon"
+          aria-label="Open menu"
+          className={cn("h-8 w-8 md:hidden", className)}
+          {...props}
+        >
+          <i className="fa-sharp fa-regular fa-bars" aria-hidden="true" />
+        </Button>
+      </SheetTrigger>
+    );
+  },
+);
+SidebarTrigger.displayName = "SidebarTrigger";
+
+function useDrawer(component: string) {
+  const drawer = React.useContext(DrawerContext);
+  if (!drawer) throw new Error(`${component} must be rendered inside AppShell.`);
+  return drawer;
 }
 
 /** The wordmark row, as tall as the Topbar so the two bottom hairlines line up. */

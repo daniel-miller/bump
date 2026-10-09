@@ -6,6 +6,8 @@ import {
   SidebarBrand,
   SidebarNav,
   SidebarNavItem,
+  SidebarSheet,
+  SidebarTrigger,
   SkipLink,
   Topbar,
 } from "@/components/ui/app-shell";
@@ -35,6 +37,24 @@ const navItems = [
   { to: "/servers", label: "Servers", icon: "fa-server" },
   { to: "/owners", label: "Owners", icon: "fa-building" },
 ];
+
+// The same sidebar renders twice: beside the content from md up, and in the drawer below it.
+function AppSidebar({ className }: { className?: string }) {
+  return (
+    <Sidebar className={className}>
+      <SidebarBrand>
+        <Link to="/dashboard">Bump</Link>
+      </SidebarBrand>
+      <SidebarNav>
+        {navItems.map((n) => (
+          <SidebarNavItem key={n.to} asChild icon={`fa-sharp fa-regular ${n.icon}`}>
+            <NavLink to={n.to}>{n.label}</NavLink>
+          </SidebarNavItem>
+        ))}
+      </SidebarNav>
+    </Sidebar>
+  );
+}
 
 function UserMenu({
   fullName,
@@ -154,21 +174,17 @@ export function AppShell() {
     <Shell>
       <SkipLink />
 
-      <Sidebar>
-        <SidebarBrand>
-          <Link to="/dashboard">Bump</Link>
-        </SidebarBrand>
-        <SidebarNav>
-          {navItems.map((n) => (
-            <SidebarNavItem key={n.to} asChild icon={`fa-sharp fa-regular ${n.icon}`}>
-              <NavLink to={n.to}>{n.label}</NavLink>
-            </SidebarNavItem>
-          ))}
-        </SidebarNav>
-      </Sidebar>
+      <AppSidebar className="hidden md:flex" />
+      <SidebarSheet>
+        <AppSidebar />
+      </SidebarSheet>
 
       <ShellBody>
         <Topbar>
+          <SidebarTrigger />
+          <Link to="/dashboard" className="text-lg font-bold md:hidden">
+            Bump
+          </Link>
           <div className="ml-auto flex items-center gap-1">
             <UserMenu fullName={user.fullName} email={user.email} ipAddress={user.ipAddress} />
             <HelpMenu />

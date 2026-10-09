@@ -315,8 +315,7 @@ export function OwnerDetailPage() {
         title="Delete owner?"
         description={`"${data.owner.ownerName}" will be removed permanently. This cannot be undone.`}
         confirmLabel="Delete owner"
-        variant="danger"
-        disabled={remove.isPending}
+        busy={remove.isPending}
         onConfirm={() => {
           setConfirmOpen(false);
           remove.mutate();

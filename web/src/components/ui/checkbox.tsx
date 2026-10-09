@@ -18,8 +18,18 @@ export const Checkbox = React.forwardRef<
     )}
     {...props}
   >
-    <CheckboxPrimitive.Indicator className="flex h-full w-full items-center justify-center text-current">
-      <i className="fa-sharp fa-solid fa-check text-[10px]" aria-hidden="true" />
+    {/* The indicator carries the same data-state as the root, so CSS picks the glyph: a dash for
+        indeterminate, which would otherwise read as checked. Font Awesome sets display outside
+        any layer, so Tailwind's hidden cannot win against it; its --fa-display variable can. */}
+    <CheckboxPrimitive.Indicator className="group flex h-full w-full items-center justify-center text-current">
+      <i
+        className="fa-sharp fa-solid fa-check text-[10px] group-data-[state=indeterminate]:[--fa-display:none]"
+        aria-hidden="true"
+      />
+      <i
+        className="fa-sharp fa-solid fa-minus text-[10px] [--fa-display:none] group-data-[state=indeterminate]:[--fa-display:inline-block]"
+        aria-hidden="true"
+      />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ));

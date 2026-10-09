@@ -268,8 +268,7 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
         title="Delete app?"
         description={`"${app?.appName ?? ""}" will be removed permanently, along with every problem report filed against it. Services keep running but lose their app link. This cannot be undone.`}
         confirmLabel="Delete app"
-        variant="danger"
-        disabled={remove.isPending}
+        busy={remove.isPending}
         onConfirm={() => {
           setConfirmOpen(false);
           setError(null);

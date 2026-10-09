@@ -35,7 +35,9 @@ export function OutagesListPage() {
                     {i.resolvedAt && ` · Resolved ${formatAbsolute(i.resolvedAt)}`}
                   </div>
                 </div>
-                <Badge className="capitalize">{i.outageStatus}</Badge>
+                <Badge variant="secondary" className="capitalize">
+                  {i.outageStatus}
+                </Badge>
               </CardContent>
             </Card>
           </Link>

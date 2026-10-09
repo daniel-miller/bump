@@ -200,8 +200,7 @@ export function AnnouncementsPage() {
             : ""
         }
         confirmLabel="Delete announcement"
-        variant="danger"
-        disabled={remove.isPending}
+        busy={remove.isPending}
         onConfirm={() => {
           if (confirmId !== null) {
             remove.mutate(confirmId);

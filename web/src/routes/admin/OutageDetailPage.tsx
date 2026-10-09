@@ -162,8 +162,7 @@ export function OutageDetailPage() {
         title="Delete outage?"
         description={`"${data.outage.outageTitle}" and all its updates will be removed permanently. This cannot be undone.`}
         confirmLabel="Delete outage"
-        variant="danger"
-        disabled={remove.isPending}
+        busy={remove.isPending}
         onConfirm={() => {
           setConfirmOpen(false);
           remove.mutate();

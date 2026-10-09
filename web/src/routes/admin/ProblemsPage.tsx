@@ -153,9 +153,9 @@ export function ProblemsPage() {
         }}
         title={`Delete ${selectedKeys.length} problem${selectedKeys.length === 1 ? "" : "s"}?`}
         description="This permanently deletes the selected problem records. This can't be undone."
-        confirmLabel={remove.isPending ? "Deleting..." : "Delete"}
-        variant="danger"
-        disabled={remove.isPending}
+        confirmLabel="Delete"
+        busyLabel="Deleting..."
+        busy={remove.isPending}
         onConfirm={() => remove.mutate(selectedKeys)}
       />
 

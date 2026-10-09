@@ -58,7 +58,7 @@ export function DateTimePicker({
           {value ? format(value, "PPP p") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent align="start" className="w-auto p-0">
         <Calendar mode="single" selected={value ?? undefined} onSelect={handleDateSelect} />
         <div className="border-border border-t p-3">
           <label className="text-muted-foreground mb-1 block text-xs">Time</label>

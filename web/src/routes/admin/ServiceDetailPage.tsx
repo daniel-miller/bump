@@ -502,8 +502,7 @@ export function ServiceDetailPage() {
         title="Delete service?"
         description={`"${m.name}" will be removed permanently along with all probe history. This cannot be undone.`}
         confirmLabel="Delete service"
-        variant="danger"
-        disabled={remove.isPending}
+        busy={remove.isPending}
         onConfirm={() => {
           setConfirmOpen(false);
           remove.mutate();

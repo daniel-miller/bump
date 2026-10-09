@@ -37,7 +37,7 @@ export function ServiceCard({
             <div>
               <div className="flex items-center gap-2 font-medium">
                 {service.name}
-                {service.paused && <Badge variant="default">Paused</Badge>}
+                {service.paused && <Badge variant="secondary">Paused</Badge>}
               </div>
               <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
                 <span>{service.url}</span>

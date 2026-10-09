@@ -1,3 +1,14 @@
+import {
+  AppShell as Shell,
+  ShellBody,
+  ShellMain,
+  Sidebar,
+  SidebarBrand,
+  SidebarNav,
+  SidebarNavItem,
+  SkipLink,
+  Topbar,
+} from "@/components/ui/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,15 +25,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/problems", label: "Problems" },
-  { to: "/services", label: "Services" },
-  { to: "/outages", label: "Outages" },
-  { to: "/announcements", label: "Announcements" },
-  { to: "/apps", label: "Apps" },
-  { to: "/environments", label: "Environments" },
-  { to: "/servers", label: "Servers" },
-  { to: "/owners", label: "Owners" },
+  { to: "/dashboard", label: "Dashboard", icon: "fa-gauge" },
+  { to: "/problems", label: "Problems", icon: "fa-triangle-exclamation" },
+  { to: "/services", label: "Services", icon: "fa-signal" },
+  { to: "/outages", label: "Outages", icon: "fa-plug-circle-xmark" },
+  { to: "/announcements", label: "Announcements", icon: "fa-bullhorn" },
+  { to: "/apps", label: "Apps", icon: "fa-cube" },
+  { to: "/environments", label: "Environments", icon: "fa-layer-group" },
+  { to: "/servers", label: "Servers", icon: "fa-server" },
+  { to: "/owners", label: "Owners", icon: "fa-building" },
 ];
 
 function UserMenu({
@@ -140,46 +151,33 @@ export function AppShell() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="flex h-screen">
-      <a
-        href="#main"
-        className="focus:bg-primary focus:text-primary-foreground sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded focus:px-3 focus:py-2 focus:text-sm"
-      >
-        Skip to content
-      </a>
+    <Shell>
+      <SkipLink />
 
-      <aside aria-label="Sidebar" className="bg-card border-border flex w-56 flex-col border-r">
-        <div className="border-border flex h-12 shrink-0 items-center border-b px-4">
-          <Link to="/dashboard" className="text-xl font-bold tracking-tight">
-            Bump
-          </Link>
-        </div>
-        <nav aria-label="Primary" className="flex-1 space-y-1 overflow-y-auto p-2">
+      <Sidebar>
+        <SidebarBrand>
+          <Link to="/dashboard">Bump</Link>
+        </SidebarBrand>
+        <SidebarNav>
           {navItems.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) =>
-                `block rounded-lg px-3 py-2 text-sm ${isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`
-              }
-            >
-              {n.label}
-            </NavLink>
+            <SidebarNavItem key={n.to} asChild icon={`fa-sharp fa-regular ${n.icon}`}>
+              <NavLink to={n.to}>{n.label}</NavLink>
+            </SidebarNavItem>
           ))}
-        </nav>
-      </aside>
+        </SidebarNav>
+      </Sidebar>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-card flex h-12 shrink-0 items-center gap-2 border-b px-3">
+      <ShellBody>
+        <Topbar>
           <div className="ml-auto flex items-center gap-1">
             <UserMenu fullName={user.fullName} email={user.email} ipAddress={user.ipAddress} />
             <HelpMenu />
           </div>
-        </header>
-        <main id="main" className="relative flex-1 overflow-auto">
+        </Topbar>
+        <ShellMain>
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </ShellMain>
+      </ShellBody>
+    </Shell>
   );
 }

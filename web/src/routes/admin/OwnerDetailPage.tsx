@@ -184,7 +184,7 @@ export function OwnerDetailPage() {
           <CardTitle className="text-sm">Services on this board</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {services.map((m) => {
+          {[...services].sort(byText((m) => m.name)).map((m) => {
             const checked = selected.includes(m.serviceId);
             return (
               <label key={m.serviceId} className="flex cursor-pointer items-center gap-2 text-sm">
@@ -342,6 +342,12 @@ interface SubscriberRow {
   createdAt: string;
 }
 
+// Alphabetical, ignoring case and accents, so "acme" sits beside "Acme" rather than
+// after every capitalized entry.
+function byText<T>(key: (item: T) => string): (a: T, b: T) => number {
+  return (a, b) => key(a).localeCompare(key(b), undefined, { sensitivity: "base" });
+}
+
 interface AddResult {
   added: string[];
   already: string[];
@@ -465,6 +471,7 @@ function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: str
 
   const confirmed = subscribers.filter((s) => s.confirmedAt).length;
   const pending = subscribers.length - confirmed;
+  const sorted = [...subscribers].sort(byText((s) => s.subscriberEmail));
 
   return (
     <Card>
@@ -530,7 +537,7 @@ function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: str
                 `, ${pending} pending: signed up on the board, waiting for them to click the confirmation link, and removed after 7 days`}
             </p>
             <ul className="divide-border divide-y">
-              {subscribers.map((s) => (
+              {sorted.map((s) => (
                 <li key={s.subscriberId} className="flex items-center gap-3 py-2 text-sm">
                   {editingId === s.subscriberId ? (
                     <form

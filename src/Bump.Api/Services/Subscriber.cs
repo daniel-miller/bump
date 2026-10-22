@@ -109,6 +109,66 @@ public sealed class SubscriberRepository(NpgsqlDataSource dataSource)
         return rows > 0;
     }
 
+    private const string Returning = """
+        RETURNING subscriber_key    AS SubscriberId,
+                  owner_key         AS OwnerId,
+                  subscriber_email  AS SubscriberEmail,
+                  confirm_token     AS ConfirmToken,
+                  unsubscribe_token AS UnsubscribeToken,
+                  confirmed_at      AS ConfirmedAt,
+                  created_at        AS CreatedAt
+        """;
+
+    public async Task<Subscriber?> GetAsync(int subscriberId, int ownerId, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        return await conn.QuerySingleOrDefaultAsync<Subscriber>(
+            Cols + " WHERE subscriber_key = @I AND owner_key = @B",
+            new { I = subscriberId, B = ownerId });
+    }
+
+    /// <summary>
+    /// Adds a subscriber an operator vouches for, confirmed at once. A pending self
+    /// sign-up for the same address is confirmed in place and keeps the unsubscribe
+    /// token its confirmation email already carries. Returns null when the address is
+    /// already a confirmed subscriber.
+    /// </summary>
+    public async Task<Subscriber?> AdminAddAsync(int ownerId, string email, byte[] confirmHash, byte[] unsubRaw, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        return await conn.QuerySingleOrDefaultAsync<Subscriber>(
+            $"""
+            INSERT INTO subscriber (owner_key, subscriber_email, confirm_token, unsubscribe_token, confirmed_at)
+            VALUES (@B, @E, @C, @U, now())
+            ON CONFLICT (owner_key, lower(subscriber_email)) DO UPDATE
+               SET confirmed_at = now()
+             WHERE subscriber.confirmed_at IS NULL
+            {Returning}
+            """,
+            new { B = ownerId, E = email, C = confirmHash, U = unsubRaw });
+    }
+
+    /// <summary>
+    /// Changes a subscriber's address. The operator vouches for the new one, so it is
+    /// confirmed, and the unsubscribe token is replaced so a link sent to the old
+    /// address no longer acts on the new one. Throws a unique violation when another
+    /// subscriber of the same owner already has the address.
+    /// </summary>
+    public async Task<Subscriber?> AdminUpdateEmailAsync(int subscriberId, int ownerId, string email, byte[] unsubRaw, CancellationToken ct = default)
+    {
+        await using var conn = await dataSource.OpenConnectionAsync(ct);
+        return await conn.QuerySingleOrDefaultAsync<Subscriber>(
+            $"""
+            UPDATE subscriber
+               SET subscriber_email  = @E,
+                   unsubscribe_token = @U,
+                   confirmed_at      = COALESCE(confirmed_at, now())
+             WHERE subscriber_key = @I AND owner_key = @B
+            {Returning}
+            """,
+            new { I = subscriberId, B = ownerId, E = email, U = unsubRaw });
+    }
+
     public async Task<IReadOnlyList<Subscriber>> ListConfirmedAsync(int ownerId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);

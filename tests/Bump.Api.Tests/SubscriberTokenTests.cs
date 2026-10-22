@@ -1,3 +1,4 @@
+using Bump.Api.Mail.MailTemplates;
 using Bump.Api.Services;
 
 namespace Bump.Api.Tests;
@@ -34,5 +35,15 @@ public class SubscriberTokenTests
     public void A_mangled_token_decodes_to_nothing(string token)
     {
         Assert.Null(SubscriberRepository.DecodeToken(token));
+    }
+
+    [Fact]
+    public void Added_notice_names_the_board_and_offers_a_way_out()
+    {
+        var mail = SubscriberAdded.Build("a@example.com", "CMDS", "https://status.cmds.app", "https://bump.example/unsubscribe?token=t");
+        Assert.Equal("You are subscribed to CMDS status updates", mail.Subject);
+        Assert.Contains("An operator added this address.", mail.Text);
+        Assert.Contains("https://status.cmds.app", mail.Text);
+        Assert.Contains("unsubscribe?token=t", mail.Text);
     }
 }

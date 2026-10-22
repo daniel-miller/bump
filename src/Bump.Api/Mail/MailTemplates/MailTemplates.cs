@@ -112,6 +112,35 @@ public static class SubscriberConfirm
     }
 }
 
+/// <summary>Sent when an operator subscribes an address on the owner page, in place of
+/// the confirmation a self sign-up gets, so the person knows why the emails arrive.</summary>
+public static class SubscriberAdded
+{
+    public static MailMessage Build(string toEmail, string boardName, string boardUrl, string unsubscribeUrl)
+    {
+        var text = $"""
+            You have been subscribed to status updates for {boardName}.
+
+            An operator added this address. You will receive an email when a
+            service on the board has an outage, another when it recovers, and
+            announcements the board sends to subscribers.
+
+            Status board: {boardUrl}
+
+            To stop these emails, unsubscribe:
+
+            {unsubscribeUrl}
+            """;
+        return new MailMessage
+        {
+            To = new[] { toEmail },
+            Subject = $"You are subscribed to {boardName} status updates",
+            Text = text,
+            Tags = new[] { "subscriber", "added" }
+        };
+    }
+}
+
 public static class OutageOpened
 {
     public static MailMessage Build(string toEmail, string boardName, string title, string status, string startedAt, string unsubscribeUrl)

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, problemMessage } from "@/lib/api";
+import { formatDate } from "@/lib/dates";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -215,6 +217,8 @@ export function OwnerDetailPage() {
         </CardContent>
       </Card>
 
+      <SubscribersCard handle={handle} ownerName={data.owner.ownerName} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-sm">Custom domain</CardTitle>
@@ -327,5 +331,213 @@ export function OwnerDetailPage() {
         }}
       />
     </div>
+  );
+}
+
+interface SubscriberRow {
+  subscriberId: number;
+  subscriberEmail: string;
+  confirmedAt: string | null;
+  createdAt: string;
+}
+
+// The board's subscribers, which an operator can add, correct, and delete. Someone
+// added here is subscribed at once; the API emails them that they were added, with a
+// link to unsubscribe, in place of the confirmation link a self sign-up gets.
+function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: string }) {
+  const qc = useQueryClient();
+  const queryKey = ["owners", handle, "subscribers"];
+  const {
+    data: subscribers = [],
+    isLoading,
+    isError,
+  } = useQuery<SubscriberRow[]>({
+    queryKey,
+    queryFn: () => api<SubscriberRow[]>(`/api/admin/owners/${handle}/subscribers`),
+  });
+  const [email, setEmail] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editEmail, setEditEmail] = useState("");
+  const [deleting, setDeleting] = useState<SubscriberRow | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = () => qc.invalidateQueries({ queryKey });
+
+  const add = useMutation({
+    mutationFn: () =>
+      api(`/api/admin/owners/${handle}/subscribers`, {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim() }),
+      }),
+    onSuccess: async () => {
+      setEmail("");
+      setError(null);
+      await refresh();
+    },
+    onError: (err: Error) => setError(problemMessage(err)),
+  });
+
+  const update = useMutation({
+    mutationFn: (id: number) =>
+      api(`/api/admin/owners/${handle}/subscribers/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ email: editEmail.trim() }),
+      }),
+    onSuccess: async () => {
+      setEditingId(null);
+      setError(null);
+      await refresh();
+    },
+    onError: (err: Error) => setError(problemMessage(err)),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: number) =>
+      api(`/api/admin/owners/${handle}/subscribers/${id}`, { method: "DELETE" }),
+    onSuccess: async () => {
+      setDeleting(null);
+      setError(null);
+      await refresh();
+    },
+    onError: (err: Error) => {
+      setDeleting(null);
+      setError(problemMessage(err));
+    },
+  });
+
+  const confirmed = subscribers.filter((s) => s.confirmedAt).length;
+  const pending = subscribers.length - confirmed;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Subscribers</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-muted-foreground text-sm">
+          Subscribers get an email when a service on this board has an outage and when it recovers,
+          and announcements sent to subscribers. Anyone added here is subscribed at once, and
+          receives an email saying so, with a link to unsubscribe.
+        </p>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            add.mutate();
+          }}
+        >
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
+            aria-label="Email address to subscribe"
+            autoComplete="off"
+          />
+          <Button type="submit" disabled={!email.trim() || add.isPending}>
+            {add.isPending ? "Adding..." : "Add subscriber"}
+          </Button>
+        </form>
+        {error && <p className="text-danger text-sm">{error}</p>}
+        {isLoading && <p className="text-muted-foreground text-sm">Loading...</p>}
+        {isError && (
+          <p className="text-danger text-sm">Couldn't load subscribers. Try refreshing the page.</p>
+        )}
+        {!isLoading && !isError && subscribers.length === 0 && (
+          <p className="text-muted-foreground text-sm">No subscribers yet</p>
+        )}
+        {subscribers.length > 0 && (
+          <>
+            <p className="text-muted-foreground text-xs">
+              {confirmed} confirmed
+              {pending > 0 &&
+                `, ${pending} pending: signed up on the board, waiting for them to click the confirmation link, and removed after 7 days`}
+            </p>
+            <ul className="divide-border divide-y">
+              {subscribers.map((s) => (
+                <li key={s.subscriberId} className="flex items-center gap-3 py-2 text-sm">
+                  {editingId === s.subscriberId ? (
+                    <form
+                      className="flex flex-1 gap-2"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setError(null);
+                        update.mutate(s.subscriberId);
+                      }}
+                    >
+                      <Input
+                        type="email"
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        aria-label={`New address for ${s.subscriberEmail}`}
+                        autoComplete="off"
+                        autoFocus
+                      />
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!editEmail.trim() || update.isPending}
+                      >
+                        {update.isPending ? "Saving..." : "Save"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingId(null)}
+                        disabled={update.isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="min-w-0 flex-1 truncate">{s.subscriberEmail}</span>
+                      {s.confirmedAt ? (
+                        <Badge variant="success">Confirmed</Badge>
+                      ) : (
+                        <Badge variant="secondary">Pending</Badge>
+                      )}
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">
+                        Added {formatDate(s.createdAt)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingId(s.subscriberId);
+                          setEditEmail(s.subscriberEmail);
+                          setError(null);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setDeleting(s)}>
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </CardContent>
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+        title="Delete subscriber?"
+        description={`${deleting?.subscriberEmail ?? ""} will stop receiving ${ownerName} status emails. This cannot be undone.`}
+        confirmLabel="Delete subscriber"
+        busy={remove.isPending}
+        onConfirm={() => {
+          if (deleting) remove.mutate(deleting.subscriberId);
+        }}
+      />
+    </Card>
   );
 }

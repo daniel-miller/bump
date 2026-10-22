@@ -157,6 +157,81 @@ public sealed class OwnersController : ControllerBase
         return Ok(rows.Select(s => new { s.SubscriberId, s.SubscriberEmail, s.ConfirmedAt, s.CreatedAt }));
     }
 
+    public sealed record SubscriberEmailRequest(string Email);
+
+    /// <summary>Add a subscriber to an owner. Admin-only. The operator vouches for the address, so it is subscribed at once, and the subscriber is emailed that they were added, with the board link and an unsubscribe link.</summary>
+    /// <remarks>A pending sign-up for the same address is confirmed in place. 409 when the address is already subscribed.</remarks>
+    [HttpPost("{handle}/subscribers", Name = "addOwnerSubscriber")]
+    [RequestSizeLimit(2 * 1024)]
+    public async Task<IActionResult> AddSubscriber(string handle, [FromBody] SubscriberEmailRequest req, CancellationToken ct)
+    {
+        var email = req.Email?.Trim() ?? "";
+        if (!IsValidEmail(email))
+            return JsonResults.UnprocessableEntity("Invalid email", "Email is not a valid address.").AsAction();
+        var o = await _owners.GetByHandleAsync(handle, ct);
+        if (o is null) return NotFound();
+        if (await _subscribers.CountForOwnerAsync(o.OwnerId, ct) >= _settings.MaxPerOwner)
+        {
+            return JsonResults.Conflict(
+                "Subscriber cap reached",
+                $"{o.OwnerName} already has the maximum of {_settings.MaxPerOwner} subscribers.").AsAction();
+        }
+
+        var (_, confirmHash) = SubscriberRepository.NewToken();
+        var (_, unsubRaw) = SubscriberRepository.NewUnsubscribeToken();
+        var sub = await _subscribers.AdminAddAsync(o.OwnerId, email, confirmHash, unsubRaw, ct);
+        if (sub is null)
+            return JsonResults.Conflict("Already subscribed", $"{email} is already subscribed to {o.OwnerName}.").AsAction();
+
+        await SendAddedNoticeAsync(o, sub, ct);
+        return Created($"/api/admin/owners/{o.OwnerHandle}/subscribers/{sub.SubscriberId}", SubscriberView(sub));
+    }
+
+    /// <summary>Change a subscriber's address. Admin-only. The new address is subscribed at once and emailed that it was added.</summary>
+    /// <remarks>409 when another subscriber of the same owner already has the address.</remarks>
+    [HttpPatch("{handle}/subscribers/{subscriberId:int}", Name = "updateOwnerSubscriber")]
+    [RequestSizeLimit(2 * 1024)]
+    public async Task<IActionResult> UpdateSubscriber(string handle, int subscriberId, [FromBody] SubscriberEmailRequest req, CancellationToken ct)
+    {
+        var email = req.Email?.Trim() ?? "";
+        if (!IsValidEmail(email))
+            return JsonResults.UnprocessableEntity("Invalid email", "Email is not a valid address.").AsAction();
+        var o = await _owners.GetByHandleAsync(handle, ct);
+        if (o is null) return NotFound();
+        var current = await _subscribers.GetAsync(subscriberId, o.OwnerId, ct);
+        if (current is null) return NotFound();
+
+        // An unchanged address is not a new subscription: no email, no new token.
+        if (string.Equals(current.SubscriberEmail, email, StringComparison.OrdinalIgnoreCase))
+            return Ok(SubscriberView(current));
+
+        try
+        {
+            var (_, unsubRaw) = SubscriberRepository.NewUnsubscribeToken();
+            var sub = await _subscribers.AdminUpdateEmailAsync(subscriberId, o.OwnerId, email, unsubRaw, ct);
+            if (sub is null) return NotFound();
+            await SendAddedNoticeAsync(o, sub, ct);
+            return Ok(SubscriberView(sub));
+        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
+        {
+            return JsonResults.Conflict("Already subscribed", $"{email} is already subscribed to {o.OwnerName}.").AsAction();
+        }
+    }
+
+    private static object SubscriberView(Subscriber s) =>
+        new { s.SubscriberId, s.SubscriberEmail, s.ConfirmedAt, s.CreatedAt };
+
+    // Someone an operator subscribes hears about it from Bump, with a way out, so no
+    // one receives outage emails without knowing why.
+    private async Task SendAddedNoticeAsync(Owner o, Subscriber s, CancellationToken ct)
+    {
+        var publicUrl = (_config["Bump:Web:BaseUrl"] ?? "").TrimEnd('/');
+        var boardUrl = string.IsNullOrWhiteSpace(o.OwnerHost) ? $"{publicUrl}/boards/{o.OwnerHandle}" : $"https://{o.OwnerHost}";
+        var unsubUrl = $"{publicUrl}/unsubscribe?token={SubscriberRepository.EncodeToken(s.UnsubscribeToken)}";
+        await _mail.SendAsync(SubscriberAdded.Build(s.SubscriberEmail, o.OwnerName, boardUrl, unsubUrl), ct);
+    }
+
     /// <summary>Remove a subscriber from an owner. Admin-only; not the same as the public unsubscribe token flow.</summary>
     [HttpDelete("{handle}/subscribers/{subscriberId:int}", Name = "removeOwnerSubscriber")]
     public async Task<IActionResult> RemoveSubscriber(string handle, int subscriberId, CancellationToken ct)

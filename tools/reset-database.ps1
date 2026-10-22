@@ -15,7 +15,9 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dbDir = Join-Path $repoRoot 'db\migrations'
 $seedCanon = Join-Path $repoRoot 'db\seed-canon.sql'
-$seedTheme = Join-Path $repoRoot 'db\seed-openscorm-theme.sql'
+# One theme seed per custom-hostname board (seed-openscorm-theme.sql,
+# seed-cmds-theme.sql); each keys on its owner's hostname from seed-canon.sql.
+$seedThemes = @(Get-ChildItem (Join-Path $repoRoot 'db') -Filter 'seed-*-theme.sql' | Sort-Object Name)
 $reseed = Join-Path $repoRoot 'db\seed-work.sql'
 
 $env:PGPASSWORD = $Password
@@ -101,9 +103,9 @@ Write-Host ""
 Write-Host "Seeding canon rosters from db\seed-canon.sql..." -ForegroundColor Cyan
 Invoke-PsqlFile -DbName $Database -File $seedCanon
 
-if (Test-Path $seedTheme) {
-    Write-Host "Seeding OpenSCORM board theme..." -ForegroundColor Cyan
-    Invoke-PsqlFile -DbName $Database -File $seedTheme
+foreach ($seedTheme in $seedThemes) {
+    Write-Host "Seeding board theme from db\$($seedTheme.Name)..." -ForegroundColor Cyan
+    Invoke-PsqlFile -DbName $Database -File $seedTheme.FullName
 }
 
 if (Test-Path $reseed) {

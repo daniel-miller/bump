@@ -11,7 +11,7 @@ VALUES (1, 'share',      'Share',                                     'Global ow
        (3, 'nmb',        'Northern Mat and Bridge',                   NULL, NULL),
        (4, 'pgmf',       'Prince George and District Music Festival', NULL, NULL),
        (5, 'lemar',      'Ground Keepers Friend',                     'Formerly Lemar Tree Spades', NULL),
-       (6, 'cmds',       'CMDS',                                      'Keyera''s Competency Management and Development System support team', NULL),
+       (6, 'cmds',       'CMDS',                                      'Keyera''s Competency Management and Development System support team', 'status.cmds.app'),
        (7, 'openscorm',  'OpenSCORM',                                 'Open SCORM, the host organization for Scoop', 'status.openscorm.com'),
        (8, 'djm',        'Daniel Miller',                             'Personal pet projects (initials from Daniel James Miller)', NULL);
 

@@ -11,7 +11,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { formatDistanceToNowStrict } from "date-fns";
-import { api } from "@/lib/api";
+import { api, problemMessage } from "@/lib/api";
 import { formatAbsolute } from "@/lib/dates";
 import { StatusDot } from "@/components/StatusDot";
 import { HistoryStrip } from "@/components/HistoryStrip";
@@ -203,7 +203,7 @@ export function ServiceDetailPage() {
       const renamed = edit.handle.trim();
       if (renamed !== handle) nav(`/services/${renamed}`, { replace: true });
     },
-    onError: (err: Error) => setEditError(err.message),
+    onError: (err: Error) => setEditError(problemMessage(err)),
   });
 
   function startEdit() {

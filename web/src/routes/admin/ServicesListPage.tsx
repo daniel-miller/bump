@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, problemMessage } from "@/lib/api";
 import { ServiceCard } from "@/components/ServiceCard";
 import type { ServiceStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -103,7 +103,7 @@ export function ServicesListPage() {
       setError(null);
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(problemMessage(err)),
   });
 
   const q = query.trim().toLowerCase();

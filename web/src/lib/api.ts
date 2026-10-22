@@ -18,6 +18,19 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The reason to show a person for a failed call. ApiError's message is the
+ * HTTP status text ("Conflict"), which names the failure without explaining
+ * it; the problem body's detail does.
+ */
+export function problemMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const problem = err.problem as { title?: string; detail?: string } | undefined;
+    return problem?.detail ?? problem?.title ?? err.message;
+  }
+  return (err as Error).message;
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("Accept")) headers.set("Accept", "application/json");

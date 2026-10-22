@@ -4,7 +4,7 @@ A status-page and observability platform built around a versioned-app registry. 
 
 - **App version management.** Register an app, read its current version, and atomically bump major, minor, or patch.
 - **Problem reporting.** Ingest RFC 7807 problem reports from clients, store them, and email periodic digests.
-- **Uptime monitoring.** Probe HTTP services on a fixed interval, record per-bar uptime and latency, and roll up daily summaries.
+- **Uptime monitoring.** Probe HTTP services on a fixed interval, record per-bar uptime and latency, and roll up daily summaries. Three failed probes in a row (`Bump:Services:FailureThreshold`) open an outage and email the alert contact and the board's subscribers; the same number of answered probes resolves an outage the prober opened and emails them that the service is back.
 - **Outages and announcements.** Publish outage timelines and scheduled announcements, scoped globally or per owner.
 - **Public status pages.** Compose per-owner or global status, served by a bundled React SPA.
 - **Subscribers.** Confirmed-opt-in email subscribers per owner, with per-board caps and one-click unsubscribe.

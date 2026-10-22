@@ -136,12 +136,16 @@ public static class OutageOpened
 
 public static class OutageResolved
 {
-    public static MailMessage Build(string toEmail, string boardName, string title, string resolvedAt, string unsubscribeUrl)
+    public static MailMessage Build(
+        string toEmail, string boardName, string title, string startedAt, string resolvedAt, string downFor,
+        string unsubscribeUrl)
     {
         var text = $"""
             Outage resolved on {boardName}: {title}
 
+            Started:  {startedAt}
             Resolved: {resolvedAt}
+            Down for: {downFor}
 
             Manage notifications: {unsubscribeUrl}
             """;
@@ -172,6 +176,46 @@ public static class OutageAlert
             Text = text,
             Tags = new[] { "outage", "alert" }
         };
+    }
+}
+
+/// <summary>The alert contact's counterpart to <see cref="OutageAlert"/>, sent when the
+/// prober resolves an outage it opened.</summary>
+public static class OutageRecovered
+{
+    public static MailMessage Build(
+        string toEmail, string serviceName, string title, string startedAt, string resolvedAt, string downFor,
+        string detail)
+    {
+        var text = $"""
+            {serviceName} is responding again: {title}
+
+            Started:  {startedAt}
+            Resolved: {resolvedAt}
+            Down for: {downFor}
+            {detail}
+            """;
+        return new MailMessage
+        {
+            To = new[] { toEmail },
+            Subject = $"[Bump] Recovered: {title}",
+            Text = text,
+            Tags = new[] { "outage", "recovered" }
+        };
+    }
+}
+
+/// <summary>An outage's length for an email: "under a minute", "41 min", "3 h 41 min",
+/// "2 d 5 h". Whole units only; the email also carries the exact start and end.</summary>
+public static class OutageDuration
+{
+    public static string Describe(TimeSpan duration)
+    {
+        if (duration < TimeSpan.FromMinutes(1)) return "under a minute";
+        if (duration < TimeSpan.FromHours(1)) return $"{(int)duration.TotalMinutes} min";
+        if (duration < TimeSpan.FromDays(1))
+            return duration.Minutes == 0 ? $"{(int)duration.TotalHours} h" : $"{(int)duration.TotalHours} h {duration.Minutes} min";
+        return duration.Hours == 0 ? $"{(int)duration.TotalDays} d" : $"{(int)duration.TotalDays} d {duration.Hours} h";
     }
 }
 

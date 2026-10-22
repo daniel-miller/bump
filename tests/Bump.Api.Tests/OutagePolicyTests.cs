@@ -72,4 +72,69 @@ public sealed class OutagePolicyTests
         Assert.False(OutagePolicy.OutageConfirmed(History(ServiceStatuses.Degraded), 1));
         Assert.False(OutagePolicy.OutageConfirmed(History(ServiceStatuses.Operational), 1));
     }
+
+    [Fact]
+    public void TrailingUpStreak_counts_degraded_as_up()
+    {
+        // A slow answer is still an answer, on the way back up as on the way down.
+        var history = History(
+            ServiceStatuses.Down,
+            ServiceStatuses.Operational,
+            ServiceStatuses.Degraded,
+            ServiceStatuses.Operational);
+        Assert.Equal(3, OutagePolicy.TrailingUpStreak(history));
+    }
+
+    [Theory]
+    [InlineData(1, 3, false)]
+    [InlineData(2, 3, false)]
+    [InlineData(3, 3, true)]
+    public void RecoveryConfirmed_requires_threshold_consecutive_answers(int upCount, int threshold, bool expected)
+    {
+        var history = History(ServiceStatuses.Down, ServiceStatuses.Down, ServiceStatuses.Down)
+            .Concat(Enumerable.Repeat(ServiceStatuses.Operational, upCount)).ToList();
+        Assert.Equal(expected, OutagePolicy.RecoveryConfirmed(history, threshold));
+    }
+
+    private static readonly List<string> ThreeDown = History(ServiceStatuses.Down, ServiceStatuses.Down, ServiceStatuses.Down);
+    private static readonly List<string> ThreeUp = History(ServiceStatuses.Operational, ServiceStatuses.Operational, ServiceStatuses.Operational);
+    private static readonly List<string> Flapping = History(ServiceStatuses.Down, ServiceStatuses.Operational, ServiceStatuses.Down);
+
+    [Fact]
+    public void Decide_opens_on_confirmed_failure_with_nothing_open()
+    {
+        Assert.Equal(OutageAction.Open, OutagePolicy.Decide(ThreeDown, 3, hasOpenOutage: false, openOutageAutoCreated: false));
+    }
+
+    [Fact]
+    public void Decide_does_not_open_a_second_outage()
+    {
+        Assert.Equal(OutageAction.None, OutagePolicy.Decide(ThreeDown, 3, hasOpenOutage: true, openOutageAutoCreated: true));
+    }
+
+    [Fact]
+    public void Decide_resolves_an_outage_it_opened_once_recovered()
+    {
+        Assert.Equal(OutageAction.Resolve, OutagePolicy.Decide(ThreeUp, 3, hasOpenOutage: true, openOutageAutoCreated: true));
+    }
+
+    [Fact]
+    public void Decide_leaves_an_admin_outage_for_the_admin()
+    {
+        Assert.Equal(OutageAction.None, OutagePolicy.Decide(ThreeUp, 3, hasOpenOutage: true, openOutageAutoCreated: false));
+    }
+
+    [Fact]
+    public void Decide_does_nothing_for_a_healthy_service()
+    {
+        Assert.Equal(OutageAction.None, OutagePolicy.Decide(ThreeUp, 3, hasOpenOutage: false, openOutageAutoCreated: false));
+    }
+
+    [Fact]
+    public void Decide_neither_opens_nor_resolves_while_flapping()
+    {
+        // One answer between failures is not a recovery, and one failure is not an outage.
+        Assert.Equal(OutageAction.None, OutagePolicy.Decide(Flapping, 3, hasOpenOutage: true, openOutageAutoCreated: true));
+        Assert.Equal(OutageAction.None, OutagePolicy.Decide(Flapping, 3, hasOpenOutage: false, openOutageAutoCreated: false));
+    }
 }

@@ -52,4 +52,46 @@ public static class OutagePolicy
     /// </summary>
     public static bool OutageConfirmed(IReadOnlyList<string> history, int failureThreshold)
         => TrailingDownStreak(history) >= Math.Max(1, failureThreshold);
+
+    /// <summary>
+    /// Count of trailing reachable probes (<c>operational</c> or <c>degraded</c>) at the
+    /// end of the history, the mirror of <see cref="TrailingDownStreak"/>.
+    /// </summary>
+    public static int TrailingUpStreak(IReadOnlyList<string> history)
+    {
+        int n = 0;
+        for (int i = history.Count - 1; i >= 0 && history[i] != ServiceStatuses.Down; i--) n++;
+        return n;
+    }
+
+    /// <summary>
+    /// True once the service has answered <paramref name="threshold"/> probes in a row.
+    /// Recovery uses the same threshold as failure, so one lucky probe in the middle of
+    /// an outage does not close it, the same way one failed probe does not open one.
+    /// </summary>
+    public static bool RecoveryConfirmed(IReadOnlyList<string> history, int threshold)
+        => TrailingUpStreak(history) >= Math.Max(1, threshold);
+
+    /// <summary>
+    /// What the prober does about outages after a probe. It opens one when failures are
+    /// confirmed and none is open, and resolves an open one when recovery is confirmed,
+    /// but only an outage it opened itself: an outage an admin created carries the admin's
+    /// own account of events and is closed by hand.
+    /// </summary>
+    public static OutageAction Decide(
+        IReadOnlyList<string> history, int threshold, bool hasOpenOutage, bool openOutageAutoCreated)
+    {
+        if (OutageConfirmed(history, threshold))
+            return hasOpenOutage ? OutageAction.None : OutageAction.Open;
+        if (RecoveryConfirmed(history, threshold) && hasOpenOutage && openOutageAutoCreated)
+            return OutageAction.Resolve;
+        return OutageAction.None;
+    }
+}
+
+public enum OutageAction
+{
+    None,
+    Open,
+    Resolve,
 }

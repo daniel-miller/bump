@@ -9,8 +9,9 @@ namespace Bump.Worker.Services;
 
 /// <summary>
 /// Polls every active service on a fixed interval (default 60s), classifies
-/// the response, mutates service_state and service_daily, and opens an
-/// outage on a fresh down transition.
+/// the response, mutates service_state and service_daily, opens an outage
+/// once failures are confirmed, and resolves an outage it opened once
+/// recovery is confirmed.
 /// </summary>
 public sealed class ServiceProber : BackgroundService
 {
@@ -155,10 +156,16 @@ public sealed class ServiceProber : BackgroundService
         // otherwise open and close incidents several times a day. Only a run of
         // consecutive down probes reaching FailureThreshold counts. Any reachable
         // probe in between resets the run.
+        // The same threshold confirms recovery: a run of reachable probes resolves an
+        // outage the prober opened. The open outage matters both ways, since it stops
+        // a second one opening while the service stays down and it is what a recovery
+        // closes, so a healthy service looks it up every tick (one keyed read).
         DateTimeOffset? lastOutageAt = state?.LastOutageAt;
-        bool outageConfirmed = OutagePolicy.OutageConfirmed(history, _failureThreshold);
-        Outage? existingOutage = outageConfirmed ? await _outages.GetOpenForServiceAsync(service.ServiceId, ct) : null;
-        bool freshOutage = outageConfirmed && existingOutage is null;
+        bool lookForOutage = OutagePolicy.OutageConfirmed(history, _failureThreshold)
+            || OutagePolicy.RecoveryConfirmed(history, _failureThreshold);
+        Outage? openOutage = lookForOutage ? await _outages.GetOpenForServiceAsync(service.ServiceId, ct) : null;
+        var action = OutagePolicy.Decide(history, _failureThreshold, openOutage is not null, openOutage?.AutoCreated == true);
+        bool freshOutage = action == OutageAction.Open;
         if (freshOutage) lastOutageAt = DateTimeOffset.UtcNow;
 
         await _services.UpsertStateAsync(
@@ -205,18 +212,55 @@ public sealed class ServiceProber : BackgroundService
                 await _mail.SendAsync(OutageAlert.Build(_alertRecipient, service.ServiceName, title, outage.StartedAt.ToString("u"), detail), ct);
             }
 
-            // Notify subscribers of the owner whose board carries this service.
-            var ownerIds = await _owners.GetOwnerIdsForServiceAsync(service.ServiceId, ct);
-            foreach (var ownerId in ownerIds)
+            await NotifySubscribersAsync(service.ServiceId, (email, board, unsubUrl) =>
+                OutageOpened.Build(email, board, title, OutageStatuses.Investigating, outage.StartedAt.ToString("u"), unsubUrl), ct);
+        }
+        else if (action == OutageAction.Resolve)
+        {
+            await ResolveAsync(service, openOutage!, ct);
+        }
+    }
+
+    // Closes an outage the prober opened, and tells the same people the opening was
+    // sent to. Before this, an auto-detected outage stayed open until an admin closed
+    // it, nobody heard that the service was back, and while it stayed open the same
+    // service could not raise a new one.
+    private async Task ResolveAsync(Service service, Outage outage, CancellationToken ct)
+    {
+        var resolvedAt = DateTimeOffset.UtcNow;
+        var detail = $"Resolved automatically: the service answered {Math.Max(1, _failureThreshold)} probes in a row.";
+        await _outages.AppendUpdateAsync(outage.OutageId, OutageStatuses.Resolved, detail, published: true, createdBy: null, ct);
+
+        var startedAt = outage.StartedAt.ToString("u");
+        var resolved = resolvedAt.ToString("u");
+        var downFor = OutageDuration.Describe(resolvedAt - outage.StartedAt);
+        _logger.LogInformation("Resolved outage {OutageId} on {Handle} after {DownFor}.",
+            outage.OutageId, service.ServiceHandle, downFor);
+
+        if (!string.IsNullOrWhiteSpace(_alertRecipient))
+        {
+            await _mail.SendAsync(OutageRecovered.Build(_alertRecipient, service.ServiceName, outage.OutageTitle, startedAt, resolved, downFor, detail), ct);
+        }
+
+        await NotifySubscribersAsync(service.ServiceId, (email, board, unsubUrl) =>
+            OutageResolved.Build(email, board, outage.OutageTitle, startedAt, resolved, downFor, unsubUrl), ct);
+    }
+
+    // Emails the confirmed subscribers of every board that carries the service.
+    // build receives the address, the board name, and that subscriber's unsubscribe link.
+    private async Task NotifySubscribersAsync(
+        int serviceId, Func<string, string, string, MailMessage> build, CancellationToken ct)
+    {
+        var ownerIds = await _owners.GetOwnerIdsForServiceAsync(serviceId, ct);
+        foreach (var ownerId in ownerIds)
+        {
+            var owner = await _owners.GetByIdAsync(ownerId, ct);
+            if (owner is null) continue;
+            var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
+            foreach (var s in subs)
             {
-                var owner = await _owners.GetByIdAsync(ownerId, ct);
-                if (owner is null) continue;
-                var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
-                foreach (var s in subs)
-                {
-                    var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={SubscriberRepository.EncodeToken(s.UnsubscribeToken)}";
-                    await _mail.SendAsync(OutageOpened.Build(s.SubscriberEmail, owner.OwnerName, title, OutageStatuses.Investigating, outage.StartedAt.ToString("u"), unsubUrl), ct);
-                }
+                var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={SubscriberRepository.EncodeToken(s.UnsubscribeToken)}";
+                await _mail.SendAsync(build(s.SubscriberEmail, owner.OwnerName, unsubUrl), ct);
             }
         }
     }

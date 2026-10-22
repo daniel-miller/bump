@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, problemMessage } from "@/lib/api";
+import { ApiError, api, problemMessage } from "@/lib/api";
+import { parseAddresses } from "@/lib/addresses";
 import { formatDate } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -341,6 +342,31 @@ interface SubscriberRow {
   createdAt: string;
 }
 
+interface AddResult {
+  added: string[];
+  already: string[];
+  invalid: string[];
+  notAdded: string[];
+  capped: boolean;
+}
+
+interface AddSummary {
+  done: string | null;
+  problems: string[];
+}
+
+function summarize(r: AddResult): AddSummary {
+  const problems: string[] = [];
+  if (r.already.length > 0) problems.push(`Already subscribed: ${r.already.join(", ")}.`);
+  if (r.invalid.length > 0) problems.push(`Not valid addresses: ${r.invalid.join(", ")}.`);
+  if (r.capped)
+    problems.push(`The board reached its subscriber cap. Not added: ${r.notAdded.join(", ")}.`);
+  else if (r.notAdded.length > 0)
+    problems.push(`Could not add: ${r.notAdded.join(", ")}. Try again.`);
+  const n = r.added.length;
+  return { done: n > 0 ? `Added ${n} subscriber${n === 1 ? "" : "s"}.` : null, problems };
+}
+
 // The board's subscribers, which an operator can add, correct, and delete. Someone
 // added here is subscribed at once; the API emails them that they were added, with a
 // link to unsubscribe, in place of the confirmation link a self sign-up gets.
@@ -355,7 +381,8 @@ function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: str
     queryKey,
     queryFn: () => api<SubscriberRow[]>(`/api/admin/owners/${handle}/subscribers`),
   });
-  const [email, setEmail] = useState("");
+  const [emails, setEmails] = useState("");
+  const [summary, setSummary] = useState<AddSummary | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editEmail, setEditEmail] = useState("");
   const [deleting, setDeleting] = useState<SubscriberRow | null>(null);
@@ -363,18 +390,49 @@ function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: str
 
   const refresh = () => qc.invalidateQueries({ queryKey });
 
+  const parsed = parseAddresses(emails);
+
+  // One request per address, in order, so each gets the API's own answer: added,
+  // already subscribed, or not a valid address. It stops at the subscriber cap,
+  // since every later address would be refused the same way.
   const add = useMutation({
-    mutationFn: () =>
-      api(`/api/admin/owners/${handle}/subscribers`, {
-        method: "POST",
-        body: JSON.stringify({ email: email.trim() }),
-      }),
-    onSuccess: async () => {
-      setEmail("");
-      setError(null);
+    mutationFn: async (addresses: string[]) => {
+      const result: AddResult = {
+        added: [],
+        already: [],
+        invalid: [],
+        notAdded: [],
+        capped: false,
+      };
+      for (const [i, address] of addresses.entries()) {
+        try {
+          await api(`/api/admin/owners/${handle}/subscribers`, {
+            method: "POST",
+            body: JSON.stringify({ email: address }),
+          });
+          result.added.push(address);
+        } catch (err) {
+          const title =
+            err instanceof ApiError
+              ? (err.problem as { title?: string } | undefined)?.title
+              : undefined;
+          if (title === "Already subscribed") result.already.push(address);
+          else if (title === "Invalid email") result.invalid.push(address);
+          else if (title === "Subscriber cap reached") {
+            result.capped = true;
+            result.notAdded.push(...addresses.slice(i));
+            break;
+          } else result.notAdded.push(address);
+        }
+      }
+      return result;
+    },
+    onSuccess: async (result) => {
+      // Leave only what still needs attention in the box, ready to correct.
+      setEmails([...result.invalid, ...result.notAdded].join("\n"));
+      setSummary(summarize(result));
       await refresh();
     },
-    onError: (err: Error) => setError(problemMessage(err)),
   });
 
   const update = useMutation({
@@ -420,25 +478,42 @@ function SubscribersCard({ handle, ownerName }: { handle: string; ownerName: str
           receives an email saying so, with a link to unsubscribe.
         </p>
         <form
-          className="flex gap-2"
+          className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault();
             setError(null);
-            add.mutate();
+            setSummary(null);
+            add.mutate(parsed);
           }}
         >
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@example.com"
-            aria-label="Email address to subscribe"
-            autoComplete="off"
+          <Textarea
+            value={emails}
+            onChange={(e) => setEmails(e.target.value)}
+            placeholder="name@example.com, another@example.com"
+            aria-label="Email addresses to subscribe"
+            rows={2}
+            spellCheck={false}
           />
-          <Button type="submit" disabled={!email.trim() || add.isPending}>
-            {add.isPending ? "Adding..." : "Add subscriber"}
-          </Button>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-muted-foreground text-xs">
+              One or more addresses, separated by commas, semicolons or new lines; the Outlook form
+              Name &lt;address&gt; works too
+            </p>
+            <Button type="submit" disabled={parsed.length === 0 || add.isPending}>
+              {add.isPending
+                ? "Adding..."
+                : parsed.length > 1
+                  ? `Add ${parsed.length} subscribers`
+                  : "Add subscriber"}
+            </Button>
+          </div>
         </form>
+        {summary?.done && <p className="text-success text-sm">{summary.done}</p>}
+        {summary?.problems.map((line) => (
+          <p key={line} className="text-danger text-sm">
+            {line}
+          </p>
+        ))}
         {error && <p className="text-danger text-sm">{error}</p>}
         {isLoading && <p className="text-muted-foreground text-sm">Loading...</p>}
         {isError && (

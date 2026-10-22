@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LineChart,
@@ -250,7 +250,14 @@ export function ServiceDetailPage() {
             </a>
             <span className="mt-0.5 block text-xs">
               {m.owner} / {m.environment}
-              {m.app && <span className="ml-1">· app {m.app}</span>}
+              {m.app && (
+                <span className="ml-1">
+                  · app{" "}
+                  <Link to={`/apps/${m.app}`} className="text-primary hover:underline">
+                    {m.app}
+                  </Link>
+                </span>
+              )}
             </span>
           </>
         }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -54,10 +55,10 @@ export function AppsPage() {
         {data.map((a) => (
           <Card key={a.appKey}>
             <CardContent className="flex items-center justify-between p-3">
-              <div>
-                <div className="font-medium">{a.appName}</div>
+              <Link to={`/apps/${a.appHandle}`} className="group">
+                <div className="font-medium group-hover:underline">{a.appName}</div>
                 <div className="text-muted-foreground text-xs">{a.appHandle}</div>
-              </div>
+              </Link>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-sm">{a.version}</span>
                 <Button variant="outline" size="sm" onClick={() => setEditing(a)}>

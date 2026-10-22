@@ -7,6 +7,7 @@ public sealed class App
     public int AppKey { get; set; }
     public string AppHandle { get; set; } = string.Empty;
     public string AppName { get; set; } = string.Empty;
+    public string? AppDescription { get; set; }
     public int VersionMajor { get; set; }
     public int VersionMinor { get; set; }
     public int VersionPatch { get; set; }
@@ -104,6 +105,7 @@ public sealed record AppResponse(
     int AppKey,
     string AppHandle,
     string AppName,
+    string? AppDescription,
     string Version,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt
@@ -113,6 +115,7 @@ public sealed record AppResponse(
         a.AppKey,
         a.AppHandle,
         a.AppName,
+        a.AppDescription,
         a.Version,
         a.CreatedAt,
         a.UpdatedAt

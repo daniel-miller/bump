@@ -24,6 +24,18 @@ public sealed class AdminAppsController : ControllerBase
         return JsonResults.Ok(records.Select(AppResponse.From), ignoreNulls: true).AsAction();
     }
 
+    /// <summary>Fetch a single app by its handle for the admin UI. Session+admin authenticated; mirrors the bearer-keyed <c>GET /api/apps/{handle}</c>.</summary>
+    [HttpGet("{handle}", Name = "adminGetApp")]
+    [ProducesResponseType(typeof(AppResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Get(string handle)
+    {
+        var record = await _repo.GetByHandleAsync(handle);
+        return record is null
+            ? JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction()
+            : JsonResults.Ok(AppResponse.From(record), ignoreNulls: true).AsAction();
+    }
+
     /// <summary>Update an app's handle, name, and version. Session+admin authenticated.</summary>
     [HttpPatch("{handle}", Name = "adminUpdateApp")]
     [ProducesResponseType(typeof(AppResponse), StatusCodes.Status200OK)]

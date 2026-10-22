@@ -36,6 +36,7 @@ public static class SpaFallback
         "/owners/:handle",
         "/announcements",
         "/apps",
+        "/apps/:handle",
         "/environments",
         "/servers",
         "/problems",

@@ -165,7 +165,7 @@ Profile read/update, email change with confirmation, password change, and TOTP M
 | Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. |
 | Outages             | `GET/POST /api/admin/outages`, `GET/PATCH /api/admin/outages/{id}`, `POST .../updates`, `POST .../resolve`. |
 | Announcements       | `GET/POST /api/admin/announcements`, `PATCH/DELETE /api/admin/announcements/{id}`.                      |
-| Apps (read-only)    | `GET /api/admin/apps` — admin-UI listing; bearer-keyed mutations live at `/api/apps`.                   |
+| Apps                | `GET /api/admin/apps`, `GET/PATCH/DELETE /api/admin/apps/{handle}`. The bearer-keyed equivalents live at `/api/apps`. |
 
 ### Public status — `/api/status` (no auth)
 

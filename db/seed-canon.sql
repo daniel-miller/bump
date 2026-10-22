@@ -93,13 +93,13 @@ SELECT v.app_handle, v.app_name, v.app_description, o.owner_key, v.app_aliases, 
 INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key, app_key)
 SELECT s.service_handle, s.service_name, s.service_url, o.owner_key, e.environment_key, a.app_key
   FROM (VALUES
-               ('vesper-api',         'CMDS API',                          'https://live-api.cmds.app/diagnostic/health', 'cmds',      'live', 'vesper'),
-               ('vesper-web',         'CMDS Hub',                          'https://live.cmds.app',                       'cmds',      'live', 'vesper'),
-               ('vesper-saml',        'CMDS SSO',                          'https://hub.cmds.app/diagnostic/health',      'cmds',      'live', 'vesper'),
-               ('vesper-verify',      'CMDS certificate verification',     'https://cmds.app/healthz',                    'cmds',      'live', 'vesper'),
-               ('shift-ui',           'CMDS Application',                  'https://keyera.cmds.app',                     'cmds',      'live', 'quad'),
-               ('keyeracmds-www',     'CMDS Website',                      'https://www.keyeracmds.com',                  'cmds',      'live', 'ghost'),
-               ('myorientations-www', 'My Orientations Website',           'https://www.myorientations.com',              'cmds',      'live', 'ghost'),
+               ('vesper-api',         'CMDS v5 API',                       'https://live-api.cmds.app/diagnostic/health', 'cmds',      'live', 'vesper'),
+               ('vesper-web',         'CMDS v5 web app',                   'https://live.cmds.app',                       'cmds',      'live', 'vesper'),
+               ('vesper-saml',        'CMDS v5 SSO',                       'https://hub.cmds.app/diagnostic/health',      'cmds',      'live', 'vesper'),
+               ('vesper-verify',      'CMDS v5 certificate verification',  'https://cmds.app/healthz',                    'cmds',      'live', 'vesper'),
+               ('shift-ui',           'CMDS v4 web app',                   'https://keyera.cmds.app',                     'cmds',      'live', 'quad'),
+               ('keyeracmds-www',     'Keyera CMDS website',               'https://www.keyeracmds.com',                  'cmds',      'live', 'ghost'),
+               ('myorientations-www', 'My Orientations website',           'https://www.myorientations.com',              'cmds',      'live', 'ghost'),
 
                ('danielmiller-www',   'Daniel''s Career Portfolio',        'https://danielmiller.ca',                     'djm',       'live', 'portfolio'),
 

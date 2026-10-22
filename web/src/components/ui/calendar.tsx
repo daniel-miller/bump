@@ -33,10 +33,14 @@ export function Calendar({
         month: "space-y-2",
         month_caption: "flex justify-center pt-1 relative items-center",
         caption_label: usingDropdown ? "hidden" : "text-sm font-medium",
-        nav: "flex items-center justify-between absolute inset-x-1 top-1",
+        // The caption is positioned too and comes later, so it sat on top of the arrows and
+        // swallowed their clicks. The bar goes above it but lets clicks through, so only the
+        // arrows take them and the month and year dropdowns between them still work.
+        nav: "pointer-events-none z-10 flex items-center justify-between absolute inset-x-1 top-1",
         button_previous:
-          "h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-muted",
-        button_next: "h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-muted",
+          "pointer-events-auto h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-muted",
+        button_next:
+          "pointer-events-auto h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-muted",
         dropdowns: "flex items-center justify-center gap-1.5",
         dropdown_root: "relative",
         dropdown: "border-border bg-card rounded-md border px-1.5 py-1 text-sm",

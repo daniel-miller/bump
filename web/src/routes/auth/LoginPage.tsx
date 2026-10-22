@@ -26,7 +26,12 @@ export function LoginPage() {
         method: "POST",
         body: JSON.stringify({ email, password, totp: totp || undefined }),
       });
-      await qc.invalidateQueries({ queryKey: ["auth", "me"] });
+      // Remove, not invalidate. After a sign-out the cache holds the answer
+      // "not signed in", and invalidating an unobserved query only marks it
+      // stale: the shell would mount, read that stale null, and bounce back
+      // here while the refetch was still in flight. With nothing cached, the
+      // shell waits for a fresh answer.
+      qc.removeQueries({ queryKey: ["auth", "me"] });
       nav("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {

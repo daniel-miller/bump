@@ -164,13 +164,15 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return service;
     }
 
-    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, string app, int? siteId, CancellationToken ct = default)
+    // Renaming the handle is safe: every history table references service_key.
+    public async Task UpdateAsync(string handle, string newHandle, string name, string url, string owner, string environment, string app, int? siteId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
             """
             UPDATE service
-               SET service_name    = @Name,
+               SET service_handle  = @NewHandle,
+                   service_name    = @Name,
                    service_url     = @Url,
                    owner_key       = (SELECT owner_key       FROM owner       WHERE owner_handle       = @Owner),
                    environment_key = (SELECT environment_key FROM environment
@@ -181,7 +183,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    site_id         = @SiteId,
                    updated_at      = now()
              WHERE service_handle = @Handle
-            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment, App = app, SiteId = siteId });
+            """, new { Handle = handle, NewHandle = newHandle, Name = name, Url = url, Owner = owner, Environment = environment, App = app, SiteId = siteId });
     }
 
     public async Task SetPausedAsync(string handle, bool paused, CancellationToken ct = default)

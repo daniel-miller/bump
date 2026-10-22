@@ -164,10 +164,12 @@ Profile read/update, email change with confirmation, password change, and TOTP M
 | Group               | Routes                                                                                                  |
 | :------------------ | :------------------------------------------------------------------------------------------------------ |
 | Owners              | `GET/POST /api/admin/owners`, `GET/PATCH/DELETE /api/admin/owners/{handle}`, `GET/DELETE .../subscribers`. (Public `POST /api/owners/{handle}/subscribers` is the subscribe-form endpoint.) |
-| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. Creating a service requires `app`: every service belongs to an app. |
+| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. Creating a service requires `app`: every service belongs to an app. `PATCH` may rename the handle. |
 | Outages             | `GET/POST /api/admin/outages`, `GET/PATCH /api/admin/outages/{id}`, `POST .../updates`, `POST .../resolve`. |
 | Announcements       | `GET/POST /api/admin/announcements`, `PATCH/DELETE /api/admin/announcements/{id}`.                      |
 | Apps                | `GET /api/admin/apps`, `GET/PATCH/DELETE /api/admin/apps/{handle}`. The bearer-keyed equivalents live at `/api/apps`. |
+
+A service handle names the package the service deploys, lowercased with dots as hyphens: `Vesper.Api` is `vesper-api`. The live service takes the bare name, and a service in any other environment adds the environment as a suffix (`vesper-api-test`), because handles are unique across all of Bump rather than per environment. A site with no package of its own is `<site>-www`. Renaming a handle keeps the service's history, which is stored against its internal key.
 
 ### Public status — `/api/status` (no auth)
 

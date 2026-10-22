@@ -151,6 +151,7 @@ export function ServiceDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [edit, setEdit] = useState({
+    handle: "",
     name: "",
     url: "",
     owner: "",
@@ -184,6 +185,7 @@ export function ServiceDetailPage() {
       api(`/api/admin/services/${handle}`, {
         method: "PATCH",
         body: JSON.stringify({
+          handle: edit.handle.trim(),
           name: edit.name,
           url: edit.url,
           owner: edit.owner,
@@ -196,8 +198,10 @@ export function ServiceDetailPage() {
     onSuccess: async () => {
       setEditing(false);
       setEditError(null);
-      await qc.invalidateQueries({ queryKey: ["services", handle] });
       await qc.invalidateQueries({ queryKey: ["services"] });
+      // A new handle is a new URL; the old one no longer resolves.
+      const renamed = edit.handle.trim();
+      if (renamed !== handle) nav(`/services/${renamed}`, { replace: true });
     },
     onError: (err: Error) => setEditError(err.message),
   });
@@ -205,6 +209,7 @@ export function ServiceDetailPage() {
   function startEdit() {
     if (!m) return;
     setEdit({
+      handle: m.handle,
       name: m.name,
       url: m.url,
       owner: m.owner,
@@ -315,6 +320,20 @@ export function ServiceDetailPage() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label htmlFor="edit-handle">Handle</Label>
+                <Input
+                  id="edit-handle"
+                  className="font-mono"
+                  value={edit.handle}
+                  onChange={(e) => setEdit({ ...edit, handle: e.target.value })}
+                  autoComplete="off"
+                />
+                <p className="text-muted-foreground text-xs">
+                  The deployed package name, lowercase with hyphens; outside live, add the
+                  environment (vesper-api-test)
+                </p>
+              </div>
+              <div className="space-y-1.5">
                 <Label htmlFor="edit-name">Name</Label>
                 <Input
                   id="edit-name"
@@ -399,9 +418,6 @@ export function ServiceDetailPage() {
                   STTEA digits assigned in IIS; leave empty when not IIS-hosted
                 </p>
               </div>
-            </div>
-            <div className="text-muted-foreground text-xs">
-              Handle <code className="font-mono">{m.handle}</code> cannot be changed.
             </div>
             {editError && <div className="text-danger text-sm">{editError}</div>}
             <div className="flex justify-end gap-2">

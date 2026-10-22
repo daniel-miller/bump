@@ -87,15 +87,17 @@ SELECT v.app_handle, v.app_name, v.app_description, o.owner_key, v.app_aliases, 
 
 -- Monitoring roster: the live services bump probes. Every service belongs to
 -- an app; a site with nothing to report belongs to the app that serves it
--- (ghost for the Ghost marketing sites).
+-- (ghost for the Ghost marketing sites). A handle is the deployed package's
+-- name, lowercased with dots as hyphens (Vesper.Api is vesper-api); a site
+-- with no package keeps <site>-www (071).
 INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key, app_key)
 SELECT s.service_handle, s.service_name, s.service_url, o.owner_key, e.environment_key, a.app_key
   FROM (VALUES
-               ('prism-api',          'CMDS API',                          'https://live-api.cmds.app/diagnostic/health', 'cmds',      'live', 'vesper'),
-               ('spark-hub',          'CMDS Hub',                          'https://live.cmds.app',                       'cmds',      'live', 'vesper'),
+               ('vesper-api',         'CMDS API',                          'https://live-api.cmds.app/diagnostic/health', 'cmds',      'live', 'vesper'),
+               ('vesper-web',         'CMDS Hub',                          'https://live.cmds.app',                       'cmds',      'live', 'vesper'),
                ('vesper-saml',        'CMDS SSO',                          'https://hub.cmds.app/diagnostic/health',      'cmds',      'live', 'vesper'),
                ('vesper-verify',      'CMDS certificate verification',     'https://cmds.app/healthz',                    'cmds',      'live', 'vesper'),
-               ('prism-web',          'CMDS Application',                  'https://keyera.cmds.app',                     'cmds',      'live', 'quad'),
+               ('shift-ui',           'CMDS Application',                  'https://keyera.cmds.app',                     'cmds',      'live', 'quad'),
                ('keyeracmds-www',     'CMDS Website',                      'https://www.keyeracmds.com',                  'cmds',      'live', 'ghost'),
                ('myorientations-www', 'My Orientations Website',           'https://www.myorientations.com',              'cmds',      'live', 'ghost'),
 

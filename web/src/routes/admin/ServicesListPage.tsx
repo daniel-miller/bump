@@ -146,10 +146,15 @@ export function ServicesListPage() {
                 <Label htmlFor="handle">Handle</Label>
                 <Input
                   id="handle"
-                  placeholder="my-service"
+                  placeholder="vesper-api"
+                  className="font-mono"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value)}
                 />
+                <p className="text-muted-foreground text-xs">
+                  The deployed package name, lowercase with hyphens; outside live, add the
+                  environment (vesper-api-test)
+                </p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name</Label>

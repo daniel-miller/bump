@@ -118,16 +118,20 @@ public sealed class ServicesController : ControllerBase
             m.CreatedAt, m.UpdatedAt));
     }
 
-    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, int? SiteId, string? App = null);
+    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, int? SiteId, string? App = null, string? Handle = null);
 
-    /// <summary>Update service metadata. Omitted fields are left unchanged.</summary>
-    /// <remarks>Send <c>SiteId</c> as <c>0</c> to clear a previously recorded IIS site ID.</remarks>
+    /// <summary>Update service metadata, including its handle. Omitted fields are left unchanged.</summary>
+    /// <remarks>Send <c>SiteId</c> as <c>0</c> to clear a previously recorded IIS site ID. A new <c>Handle</c> renames the service's URL; its history moves with it, since every record references the service by key.</remarks>
     [HttpPatch("{handle}", Name = "updateService")]
     [RequestSizeLimit(4 * 1024)]
     public async Task<IActionResult> Update(string handle, [FromBody] UpdateServiceRequest req, CancellationToken ct)
     {
         var m = await _services.GetByHandleAsync(handle, ct);
         if (m is null) return NotFound();
+
+        var newHandle = req.Handle ?? m.ServiceHandle;
+        var handleErr = ServiceHandleRules.ValidateHandle(newHandle);
+        if (handleErr is not null) return handleErr.AsAction();
 
         var name = req.Name ?? m.ServiceName;
         var url = req.Url ?? m.ServiceUrl;
@@ -159,8 +163,15 @@ public sealed class ServicesController : ControllerBase
             return JsonResults.UnprocessableEntity("Invalid site ID", "Site ID must be a five- or six-digit IIS site identifier.").AsAction();
         }
 
-        await _services.UpdateAsync(handle, name, url, owner, environment, app, siteId, ct);
-        return NoContent();
+        try
+        {
+            await _services.UpdateAsync(handle, newHandle, name, url, owner, environment, app, siteId, ct);
+            return NoContent();
+        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+        {
+            return JsonResults.Conflict("Handle already exists", $"Another service already has the handle '{newHandle}'.").AsAction();
+        }
     }
 
     // A service's app is written by its current handle: an alias is for

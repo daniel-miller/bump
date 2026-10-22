@@ -379,15 +379,19 @@ public class ProblemRepository
 
         // Problems live in (app, environment) space, not service space. Map the
         // caller's service ids to their (app_key, environment_key) pairs and
-        // count problems that match any of those pairs in the window.
+        // count problems that match any of those pairs in the window. EXISTS,
+        // not a join: several services share an app, and a join counted each
+        // problem once per service, so four Vesper services read four times
+        // the reports.
         const string sql = """
             SELECT count(*)::int                                AS total,
                    count(DISTINCT p.problem_fingerprint)::int   AS distinct_fp
               FROM problem p
-              JOIN service s
-                ON s.app_key         = p.app_key
-               AND s.environment_key = p.environment_key
-             WHERE s.service_key = ANY(@ids)
+             WHERE EXISTS (SELECT 1
+                             FROM service s
+                            WHERE s.service_key     = ANY(@ids)
+                              AND s.app_key         = p.app_key
+                              AND s.environment_key = p.environment_key)
                AND p.reported_at >= now() - @window
                AND p.resolved_at IS NULL
             """;

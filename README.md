@@ -38,7 +38,7 @@ Copy `config/appsettings.work.example.json` to `config/appsettings.work.json` an
 `Bump.Api` and `Bump.Worker` both read `Bump:Database:ConnectionString`. Both projects link `config/appsettings.json` (committed defaults) and `config/appsettings.work.json` (gitignored local secrets) at build time. Edit `config/appsettings.work.json` or override via environment variable:
 
 ```bash
-export Bump__Database__ConnectionString="Host=localhost;Port=5432;Database=bump;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
+export Bump__Database__ConnectionString="Host=localhost;Port=5432;Database=bump_work;Username=postgres;Password=YOUR_LOCAL_PASSWORD"
 ```
 
 Environment variables override `config/appsettings.json`, but not `config/appsettings.work.json` - that file is added last and wins. Production ships without it, so the variables above apply there.
@@ -46,7 +46,7 @@ Environment variables override `config/appsettings.json`, but not `config/appset
 Schema migrations in `db/migrations/*.sql` are applied automatically at API startup by `Migrator`. No manual `psql` step is required for new databases — but you can apply the files manually if you prefer:
 
 ```bash
-psql -U postgres -d bump -f db/migrations/001-create-server.sql
+psql -U postgres -d bump_work -f db/migrations/001-create-server.sql
 # ...etc
 ```
 

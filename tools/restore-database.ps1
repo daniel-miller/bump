@@ -6,7 +6,7 @@
 param(
     [string] $BackupFile,
     [string] $BackupFolder = 'E:\base\srv\host\djm\live\backups',
-    [string] $Database = 'bump',
+    [string] $Database = 'bump_work',
     [string] $Server = 'localhost',
     [int]    $Port = 5432,
     [string] $Username = 'postgres',

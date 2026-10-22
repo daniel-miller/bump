@@ -3,7 +3,7 @@ param(
     [int]$Port = 5432,
     [string]$User = 'postgres',
     [string]$Password = $env:PGPASSWORD,
-    [string]$Database = 'bump'
+    [string]$Database = 'bump_work'
 )
 
 $ErrorActionPreference = 'Stop'

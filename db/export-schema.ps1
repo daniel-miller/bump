@@ -3,7 +3,7 @@
 # Requires pg_dump and psql on PATH; the SVG step requires GraphViz (dot).
 [CmdletBinding()]
 param(
-    [string] $Database = 'bump',
+    [string] $Database = 'bump_work',
     [string] $Server = 'localhost',
     [int]    $Port = 5432,
     [string] $Username = 'postgres',

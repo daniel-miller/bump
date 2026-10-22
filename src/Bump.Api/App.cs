@@ -8,6 +8,8 @@ public sealed class App
     public string AppHandle { get; set; } = string.Empty;
     public string AppName { get; set; } = string.Empty;
     public string? AppDescription { get; set; }
+    public string OwnerHandle { get; set; } = string.Empty;
+    public string[] AppAliases { get; set; } = [];
     public int VersionMajor { get; set; }
     public int VersionMinor { get; set; }
     public int VersionPatch { get; set; }
@@ -47,18 +49,55 @@ public static class AppHandleRules
         }
         return null;
     }
+
+    // Aliases are former handles, so each must be a valid handle in its own
+    // right, and none may repeat or shadow the app's current handle.
+    public static IResult? ValidateAliases(IReadOnlyList<string> aliases, string handle)
+    {
+        foreach (var alias in aliases)
+        {
+            var err = ValidateHandle(alias, "Each alias");
+            if (err is not null) return err;
+        }
+        if (aliases.Contains(handle))
+        {
+            return JsonResults.UnprocessableEntity(
+                title: "Invalid alias",
+                detail: "An alias cannot repeat the app's own handle.");
+        }
+        if (aliases.Distinct().Count() != aliases.Count)
+        {
+            return JsonResults.UnprocessableEntity(
+                title: "Invalid alias",
+                detail: "Aliases must not repeat.");
+        }
+        return null;
+    }
+
+    public static IResult? ValidateOwner(string? owner)
+    {
+        return string.IsNullOrWhiteSpace(owner)
+            ? JsonResults.UnprocessableEntity(
+                title: "Invalid owner",
+                detail: "Owner is required. Every app belongs to an owner.")
+            : null;
+    }
 }
 
 public sealed record CreateAppRequest(
     string Handle,
     string Name,
-    string? Version = null
+    string? Version = null,
+    string? Owner = null
 )
 {
     public IResult? Validate()
     {
         var handleErr = AppHandleRules.ValidateHandle(Handle);
         if (handleErr is not null) return handleErr;
+
+        var ownerErr = AppHandleRules.ValidateOwner(Owner);
+        if (ownerErr is not null) return ownerErr;
 
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -106,6 +145,8 @@ public sealed record AppResponse(
     string AppHandle,
     string AppName,
     string? AppDescription,
+    string Owner,
+    IReadOnlyList<string> Aliases,
     string Version,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt
@@ -116,6 +157,8 @@ public sealed record AppResponse(
         a.AppHandle,
         a.AppName,
         a.AppDescription,
+        a.OwnerHandle,
+        a.AppAliases,
         a.Version,
         a.CreatedAt,
         a.UpdatedAt
@@ -126,18 +169,36 @@ public sealed record VersionResponse(string Version);
 
 public sealed record SetVersionRequest(int? Major, int? Minor, int? Patch);
 
+/// <summary>
+/// Owner and Aliases are optional: null leaves the stored value unchanged, so
+/// a caller that only renames or re-versions need not restate them.
+/// </summary>
 public sealed record UpdateAppRequest(
     string Handle,
     string Name,
     int Major,
     int Minor,
-    int Patch
+    int Patch,
+    string? Owner = null,
+    string[]? Aliases = null
 )
 {
     public IResult? Validate()
     {
         var handleErr = AppHandleRules.ValidateHandle(Handle);
         if (handleErr is not null) return handleErr;
+
+        if (Owner is not null)
+        {
+            var ownerErr = AppHandleRules.ValidateOwner(Owner);
+            if (ownerErr is not null) return ownerErr;
+        }
+
+        if (Aliases is not null)
+        {
+            var aliasErr = AppHandleRules.ValidateAliases(Aliases, Handle);
+            if (aliasErr is not null) return aliasErr;
+        }
 
         if (string.IsNullOrWhiteSpace(Name))
         {

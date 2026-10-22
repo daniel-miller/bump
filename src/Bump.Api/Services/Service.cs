@@ -13,7 +13,7 @@ public sealed class Service
     public string ServiceUrl { get; set; } = "";
     public string ServiceOwner { get; set; } = "";
     public string ServiceEnvironment { get; set; } = "";
-    public string? ServiceApp { get; set; }
+    public string ServiceApp { get; set; } = "";
     public bool ServicePaused { get; set; }
     public int? SiteId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
@@ -82,7 +82,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
           FROM service s
           JOIN owner       o ON o.owner_key       = s.owner_key
           JOIN environment e ON e.environment_key = s.environment_key
-          LEFT JOIN app    a ON a.app_key         = s.app_key
+          JOIN app         a ON a.app_key         = s.app_key
         """;
 
     // Roster order, not alphabetical: owners in infra roster position, then
@@ -114,26 +114,27 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return rows.AsList();
     }
 
-    public async Task<Service> CreateAsync(string handle, string name, string url, string owner, string environment, CancellationToken ct = default)
+    // Every service belongs to an app (070). The caller has already checked
+    // the app handle exists; it is the current handle, never an alias.
+    public async Task<Service> CreateAsync(string handle, string name, string url, string owner, string environment, string app, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await using var tx = await conn.BeginTransactionAsync(ct);
-        // app_key stays NULL: the admin create-service surface registers a URL
-        // to probe, and version reporting attaches an app later (if ever).
         var service = await conn.QuerySingleAsync<Service>(
             """
             WITH ins AS (
-                INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key)
+                INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key, app_key)
                 VALUES (
                     @Handle, @Name, @Url,
                     (SELECT owner_key       FROM owner       WHERE owner_handle       = @Owner),
                     (SELECT environment_key FROM environment
                       WHERE environment_handle = @Environment
                          OR @Environment = ANY(environment_aliases)
-                      LIMIT 1)
+                      LIMIT 1),
+                    (SELECT app_key         FROM app         WHERE app_handle         = @App)
                 )
                 RETURNING service_key, service_handle, service_name, service_url,
-                          owner_key, environment_key, service_paused, site_id, created_at, updated_at
+                          owner_key, environment_key, app_key, service_paused, site_id, created_at, updated_at
             )
             SELECT i.service_key        AS ServiceId,
                    i.service_handle     AS ServiceHandle,
@@ -141,7 +142,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                    i.service_url        AS ServiceUrl,
                    o.owner_handle       AS ServiceOwner,
                    e.environment_handle AS ServiceEnvironment,
-                   NULL                 AS ServiceApp,
+                   a.app_handle         AS ServiceApp,
                    i.service_paused     AS ServicePaused,
                    i.site_id            AS SiteId,
                    i.created_at         AS CreatedAt,
@@ -149,8 +150,9 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
               FROM ins i
               JOIN owner       o ON o.owner_key       = i.owner_key
               JOIN environment e ON e.environment_key = i.environment_key
+              JOIN app         a ON a.app_key         = i.app_key
             """,
-            new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment }, tx);
+            new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment, App = app }, tx);
 
         // Pre-fill the history with operational so the UI bar isn't blank.
         var history = JsonConvert.SerializeObject(Enumerable.Repeat(ServiceStatuses.Operational, 60));
@@ -162,7 +164,7 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
         return service;
     }
 
-    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, int? siteId, CancellationToken ct = default)
+    public async Task UpdateAsync(string handle, string name, string url, string owner, string environment, string app, int? siteId, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         await conn.ExecuteAsync(
@@ -175,10 +177,11 @@ public sealed class ServiceRepository(NpgsqlDataSource dataSource)
                                        WHERE environment_handle = @Environment
                                           OR @Environment = ANY(environment_aliases)
                                        LIMIT 1),
+                   app_key         = (SELECT app_key         FROM app         WHERE app_handle         = @App),
                    site_id         = @SiteId,
                    updated_at      = now()
              WHERE service_handle = @Handle
-            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment, SiteId = siteId });
+            """, new { Handle = handle, Name = name, Url = url, Owner = owner, Environment = environment, App = app, SiteId = siteId });
     }
 
     public async Task SetPausedAsync(string handle, bool paused, CancellationToken ct = default)

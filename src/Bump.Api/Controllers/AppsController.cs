@@ -1,4 +1,5 @@
 using Bump.Api.Auth;
+using Bump.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Npgsql;
@@ -18,14 +19,16 @@ namespace Bump.Api.Controllers;
 public sealed class AppsController : ControllerBase
 {
     private readonly AppRepository _repo;
+    private readonly OwnerRepository _owners;
 
-    public AppsController(AppRepository repo)
+    public AppsController(AppRepository repo, OwnerRepository owners)
     {
         _repo = repo;
+        _owners = owners;
     }
 
-    /// <summary>Register a new app. The handle must be unique; if the optional version is omitted it defaults to 0.0.1.</summary>
-    /// <remarks>Requires the Apps Bearer key. Honors <c>Idempotency-Key</c>: replays return the original 201.</remarks>
+    /// <summary>Register a new app under an owner. The handle must be unique; if the optional version is omitted it defaults to 0.0.1.</summary>
+    /// <remarks>Requires the Apps Bearer key. <c>owner</c> is required: every app belongs to an owner. Honors <c>Idempotency-Key</c>: replays return the original 201.</remarks>
     [HttpPost("", Name = "createApp")]
     [Idempotent]
     [RequestSizeLimit(Limits.AppBodyBytes)]
@@ -37,10 +40,26 @@ public sealed class AppsController : ControllerBase
         var validationError = request.Validate();
         if (validationError is not null) return validationError.AsAction();
 
+        if (await _owners.GetByHandleAsync(request.Owner!) is null)
+        {
+            return JsonResults.UnprocessableEntity(
+                title: "Unknown owner",
+                detail: $"No owner has the handle '{request.Owner}'.").AsAction();
+        }
+
+        // A new handle that is already another app's alias would take over
+        // that app's problem reports and version bumps without a word.
+        if (await _repo.FindTakenAsync([request.Handle]) is not null)
+        {
+            return JsonResults.Conflict(
+                title: "App already exists",
+                detail: $"An app already answers to '{request.Handle}', as its handle or an alias.").AsAction();
+        }
+
         try
         {
             var (major, minor, patch) = request.GetVersionOrDefault();
-            var record = await _repo.CreateAsync(request.Handle, request.Name, major, minor, patch);
+            var record = await _repo.CreateAsync(request.Handle, request.Name, request.Owner!, major, minor, patch);
             return JsonResults.Created($"/api/apps/{record.AppHandle}", AppResponse.From(record)).AsAction();
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
@@ -60,43 +79,52 @@ public sealed class AppsController : ControllerBase
         return JsonResults.Ok(records.Select(AppResponse.From), ignoreNulls: true).AsAction();
     }
 
-    /// <summary>Fetch a single app by its handle.</summary>
+    /// <summary>Fetch a single app by its handle or a former handle (alias).</summary>
     [HttpGet("{handle}", Name = "getApp")]
     [ProducesResponseType(typeof(AppResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(string handle)
     {
-        var record = await _repo.GetByHandleAsync(handle);
+        var record = await _repo.ResolveAsync(handle);
         return record is null
             ? JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction()
             : JsonResults.Ok(AppResponse.From(record), ignoreNulls: true).AsAction();
     }
 
-    /// <summary>Permanently delete an app by handle.</summary>
+    /// <summary>Permanently delete an app by its current handle. Refused with 409 while any service still belongs to the app.</summary>
+    /// <remarks>Aliases are not accepted here: a script still sending a former handle must never delete the app that took it over.</remarks>
     [HttpDelete("{handle}", Name = "deleteApp")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(string handle)
     {
-        var deleted = await _repo.DeleteByHandleAsync(handle);
-        return deleted
-            ? NoContent()
-            : JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction();
+        try
+        {
+            var deleted = await _repo.DeleteByHandleAsync(handle);
+            return deleted
+                ? NoContent()
+                : JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction();
+        }
+        catch (PostgresException ex) when (ex.SqlState is PostgresErrorCodes.RestrictViolation or PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return AdminAppsController.AppHasServices(handle).AsAction();
+        }
     }
 
-    /// <summary>Read the current semver of an app.</summary>
+    /// <summary>Read the current semver of an app, by its handle or a former handle (alias).</summary>
     [HttpGet("{handle}/version", Name = "getAppVersion")]
     [ProducesResponseType(typeof(VersionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetVersion(string handle)
     {
-        var record = await _repo.GetByHandleAsync(handle);
+        var record = await _repo.ResolveAsync(handle);
         return record is null
             ? JsonResults.NotFound("App not found", $"No app with handle '{handle}'.").AsAction()
             : JsonResults.Ok(new VersionResponse(record.Version)).AsAction();
     }
 
-    /// <summary>Overwrite one or more semver components. Omitted components are left unchanged.</summary>
+    /// <summary>Overwrite one or more semver components. Omitted components are left unchanged. Accepts a former handle (alias).</summary>
     [HttpPatch("{handle}/version", Name = "setAppVersion")]
     [RequestSizeLimit(Limits.AppBodyBytes)]
     [ProducesResponseType(typeof(VersionResponse), StatusCodes.Status200OK)]
@@ -126,17 +154,17 @@ public sealed class AppsController : ControllerBase
 
     public sealed record BumpVersionRequest(string Level);
 
-    /// <summary>Bump one component of the app's semver. Body: <c>{"level": "major"|"minor"|"patch"}</c>. Creates the app at the matching seed (1.0.0 / 0.1.0 / 0.0.1) if the handle is unknown.</summary>
-    /// <remarks>Honors <c>Idempotency-Key</c>.</remarks>
+    /// <summary>Bump one component of the app's semver. Body: <c>{"level": "major"|"minor"|"patch"}</c>. Accepts a former handle (alias).</summary>
+    /// <remarks>Honors <c>Idempotency-Key</c>. An unknown handle is a 404: the app must be registered first with <c>POST /api/apps</c>, because every app needs an owner and a build script bumping a version cannot supply one.</remarks>
     [HttpPost("{handle}/version/bumps", Name = "bumpAppVersion")]
     [Idempotent]
     [RequestSizeLimit(Limits.AppBodyBytes)]
     [ProducesResponseType(typeof(VersionResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> BumpVersion(string handle, [FromBody] BumpVersionRequest request)
     {
-        Func<string, Task<App>> op = request.Level?.ToLowerInvariant() switch
+        Func<string, Task<App?>> op = request.Level?.ToLowerInvariant() switch
         {
             "major" => _repo.IncrementMajorAsync,
             "minor" => _repo.IncrementMinorAsync,
@@ -150,16 +178,9 @@ public sealed class AppsController : ControllerBase
                 detail: "Level must be one of: major, minor, patch.").AsAction();
         }
 
-        try
-        {
-            var record = await op(handle);
-            return JsonResults.Ok(new VersionResponse(record.Version)).AsAction();
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
-        {
-            return JsonResults.Conflict(
-                title: "App already exists",
-                detail: "An app with that key already exists.").AsAction();
-        }
+        var record = await op(handle);
+        return record is null
+            ? JsonResults.NotFound("App not found", $"No app with handle '{handle}'. Register it with POST /api/apps first.").AsAction()
+            : JsonResults.Ok(new VersionResponse(record.Version)).AsAction();
     }
 }

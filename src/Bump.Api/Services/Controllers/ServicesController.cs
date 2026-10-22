@@ -11,16 +11,18 @@ namespace Bump.Api.Services.Controllers;
 public sealed class ServicesController : ControllerBase
 {
     private readonly ServiceRepository _services;
+    private readonly AppRepository _apps;
     private readonly ITimezoneResolver _tz;
 
-    public ServicesController(ServiceRepository services, ITimezoneResolver tz)
+    public ServicesController(ServiceRepository services, AppRepository apps, ITimezoneResolver tz)
     {
         _services = services;
+        _apps = apps;
         _tz = tz;
     }
 
     public sealed record ServiceDto(
-        int ServiceId, string Handle, string Name, string Url, string Owner, string Environment, string? App,
+        int ServiceId, string Handle, string Name, string Url, string Owner, string Environment, string App,
         bool Paused, int? SiteId,
         string LastStatus, int LatencyMs, decimal Uptime,
         IReadOnlyList<string> History, DateTimeOffset? LastCheckAt, DateTimeOffset? LastOutageAt,
@@ -62,10 +64,10 @@ public sealed class ServicesController : ControllerBase
         return probes == 0 ? 100m : Math.Round((decimal)up / probes * 100m, 2);
     }
 
-    public sealed record CreateServiceRequest(string Handle, string Name, string Url, string Owner, string Environment);
+    public sealed record CreateServiceRequest(string Handle, string Name, string Url, string Owner, string Environment, string? App = null);
 
     /// <summary>Register a new service to monitor. The URL must resolve to a non-private address (RFC1918, link-local, and loopback are rejected).</summary>
-    /// <remarks>Honors <c>Idempotency-Key</c>.</remarks>
+    /// <remarks><c>App</c> is required and must be a current app handle: every service belongs to an app. Honors <c>Idempotency-Key</c>.</remarks>
     [HttpPost(Name = "createService")]
     [Idempotent]
     [RequestSizeLimit(4 * 1024)]
@@ -85,10 +87,12 @@ public sealed class ServicesController : ControllerBase
         if (ownerErr is not null) return ownerErr.AsAction();
         var envErr = ServiceHandleRules.ValidateTagHandle(req.Environment, "environment");
         if (envErr is not null) return envErr.AsAction();
+        var appErr = await ValidateAppAsync(req.App);
+        if (appErr is not null) return appErr.AsAction();
 
         try
         {
-            var m = await _services.CreateAsync(req.Handle, req.Name, req.Url, req.Owner, req.Environment, ct);
+            var m = await _services.CreateAsync(req.Handle, req.Name, req.Url, req.Owner, req.Environment, req.App!, ct);
             return Created($"/api/admin/services/{m.ServiceHandle}", new { handle = m.ServiceHandle });
         }
         catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
@@ -114,7 +118,7 @@ public sealed class ServicesController : ControllerBase
             m.CreatedAt, m.UpdatedAt));
     }
 
-    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, int? SiteId);
+    public sealed record UpdateServiceRequest(string? Name, string? Url, string? Owner, string? Environment, int? SiteId, string? App = null);
 
     /// <summary>Update service metadata. Omitted fields are left unchanged.</summary>
     /// <remarks>Send <c>SiteId</c> as <c>0</c> to clear a previously recorded IIS site ID.</remarks>
@@ -129,6 +133,7 @@ public sealed class ServicesController : ControllerBase
         var url = req.Url ?? m.ServiceUrl;
         var owner = req.Owner ?? m.ServiceOwner;
         var environment = req.Environment ?? m.ServiceEnvironment;
+        var app = req.App ?? m.ServiceApp;
         if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
         {
             return JsonResults.UnprocessableEntity("Invalid name", "Name must be 1-100 characters.").AsAction();
@@ -141,6 +146,11 @@ public sealed class ServicesController : ControllerBase
         if (ownerErr is not null) return ownerErr.AsAction();
         var envErr = ServiceHandleRules.ValidateTagHandle(environment, "environment");
         if (envErr is not null) return envErr.AsAction();
+        if (req.App is not null)
+        {
+            var appErr = await ValidateAppAsync(req.App);
+            if (appErr is not null) return appErr.AsAction();
+        }
 
         // Site ID semantics: null = leave unchanged, 0 = clear, otherwise set.
         var siteId = req.SiteId is null ? m.SiteId : (req.SiteId == 0 ? null : req.SiteId);
@@ -149,8 +159,19 @@ public sealed class ServicesController : ControllerBase
             return JsonResults.UnprocessableEntity("Invalid site ID", "Site ID must be a five- or six-digit IIS site identifier.").AsAction();
         }
 
-        await _services.UpdateAsync(handle, name, url, owner, environment, siteId, ct);
+        await _services.UpdateAsync(handle, name, url, owner, environment, app, siteId, ct);
         return NoContent();
+    }
+
+    // A service's app is written by its current handle: an alias is for
+    // reporters still sending an old name, not for new configuration.
+    private async Task<IResult?> ValidateAppAsync(string? app)
+    {
+        if (string.IsNullOrWhiteSpace(app))
+            return JsonResults.UnprocessableEntity("Invalid app", "App is required. Every service belongs to an app.");
+        if (await _apps.GetByHandleAsync(app) is null)
+            return JsonResults.UnprocessableEntity("Unknown app", $"No app has the handle '{app}'.");
+        return null;
     }
 
     /// <summary>Permanently delete a service.</summary>

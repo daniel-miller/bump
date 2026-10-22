@@ -13,6 +13,8 @@ interface AppRecord {
   appName: string;
   // Omitted from the payload when null (the API writes with ignoreNulls).
   appDescription?: string;
+  owner: string;
+  aliases: string[];
   version: string;
   createdAt: string;
   updatedAt?: string;
@@ -24,7 +26,7 @@ interface ServiceRow {
   url: string;
   owner: string;
   environment: string;
-  app: string | null;
+  app: string;
   paused: boolean;
   lastStatus: ServiceStatus;
   latencyMs: number;
@@ -70,6 +72,20 @@ export function AppDetailPage() {
     ["Name", app.appName],
     ["Handle", <span className="font-mono">{app.appHandle}</span>],
     ["Description", app.appDescription ?? <span className="text-muted-foreground">None</span>],
+    [
+      "Owner",
+      <Link to={`/owners/${app.owner}`} className="text-primary font-mono hover:underline">
+        {app.owner}
+      </Link>,
+    ],
+    [
+      "Aliases",
+      app.aliases.length > 0 ? (
+        <span className="font-mono">{app.aliases.join(", ")}</span>
+      ) : (
+        <span className="text-muted-foreground">None</span>
+      ),
+    ],
     ["Version", <span className="font-mono">{app.version}</span>],
     ["App key", <span className="font-mono">{app.appKey}</span>],
     ["Created", formatAbsolute(app.createdAt)],

@@ -124,13 +124,15 @@ All routes are prefixed with `/api`. Full request/response shapes are in Swagger
 
 | Method | Route                              | Description                                                                                |
 | :----- | :--------------------------------- | :----------------------------------------------------------------------------------------- |
-| POST   | `/api/apps`                        | Create an app. Optional `version` (e.g. `"0.0.4"`); defaults to `0.0.1`.                   |
+| POST   | `/api/apps`                        | Create an app. Required `owner` (an owner handle: every app belongs to one). Optional `version` (e.g. `"0.0.4"`); defaults to `0.0.1`. |
 | GET    | `/api/apps`                        | List all apps.                                                                             |
-| GET    | `/api/apps/{handle}`                 | Get one app.                                                                               |
-| DELETE | `/api/apps/{handle}`                 | Delete an app.                                                                             |
-| GET    | `/api/apps/{handle}/version`         | Get the current version string.                                                            |
-| PATCH  | `/api/apps/{handle}/version`         | Set any subset of `major`, `minor`, `patch` to absolute values; unspecified parts unchanged. |
-| POST   | `/api/apps/{handle}/version/bumps`   | Body `{ "component": "major"\|"minor"\|"patch" }`. Creates the app if missing.             |
+| GET    | `/api/apps/{handle}`                 | Get one app, by its handle or a former handle (alias).                                    |
+| DELETE | `/api/apps/{handle}`                 | Delete an app, by its current handle only. `409` while any service still belongs to it.    |
+| GET    | `/api/apps/{handle}/version`         | Get the current version string. Accepts an alias.                                          |
+| PATCH  | `/api/apps/{handle}/version`         | Set any subset of `major`, `minor`, `patch` to absolute values; unspecified parts unchanged. Accepts an alias. |
+| POST   | `/api/apps/{handle}/version/bumps`   | Body `{ "level": "major"\|"minor"\|"patch" }`. Accepts an alias. `404` for an unknown handle: register the app first. |
+
+An app's aliases are its former handles. Problem reports, the problem list's `appHandle` filter, and the version routes accept them, so a renamed app keeps hearing from repos that still send the old handle until they switch. Admin screens and deletes use the current handle only. Aliases are edited on the app's edit dialog.
 
 ### Problem reports — `/api/problems`
 
@@ -162,7 +164,7 @@ Profile read/update, email change with confirmation, password change, and TOTP M
 | Group               | Routes                                                                                                  |
 | :------------------ | :------------------------------------------------------------------------------------------------------ |
 | Owners              | `GET/POST /api/admin/owners`, `GET/PATCH/DELETE /api/admin/owners/{handle}`, `GET/DELETE .../subscribers`. (Public `POST /api/owners/{handle}/subscribers` is the subscribe-form endpoint.) |
-| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. |
+| Services            | `GET/POST /api/admin/services`, `GET/PATCH/DELETE /api/admin/services/{handle}`, `POST .../pause`, `POST .../resume`, `GET .../uptime`, `GET .../latency`. Creating a service requires `app`: every service belongs to an app. |
 | Outages             | `GET/POST /api/admin/outages`, `GET/PATCH /api/admin/outages/{id}`, `POST .../updates`, `POST .../resolve`. |
 | Announcements       | `GET/POST /api/admin/announcements`, `PATCH/DELETE /api/admin/announcements/{id}`.                      |
 | Apps                | `GET /api/admin/apps`, `GET/PATCH/DELETE /api/admin/apps/{handle}`. The bearer-keyed equivalents live at `/api/apps`. |

@@ -53,13 +53,18 @@ interface EnvironmentOption {
   environmentName: string;
 }
 
+interface AppOption {
+  appHandle: string;
+  appName: string;
+}
+
 interface ServiceDetail {
   handle: string;
   name: string;
   url: string;
   owner: string;
   environment: string;
-  app: string | null;
+  app: string;
   siteId: number | null;
   paused: boolean;
   lastStatus: ServiceStatus;
@@ -145,7 +150,14 @@ export function ServiceDetailPage() {
   });
 
   const [editing, setEditing] = useState(false);
-  const [edit, setEdit] = useState({ name: "", url: "", owner: "", environment: "", siteId: "" });
+  const [edit, setEdit] = useState({
+    name: "",
+    url: "",
+    owner: "",
+    environment: "",
+    app: "",
+    siteId: "",
+  });
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -161,6 +173,11 @@ export function ServiceDetailPage() {
     queryFn: () => api<EnvironmentOption[]>("/api/admin/environments"),
     enabled: editing,
   });
+  const { data: apps = [] } = useQuery<AppOption[]>({
+    queryKey: ["admin", "apps"],
+    queryFn: () => api<AppOption[]>("/api/admin/apps"),
+    enabled: editing,
+  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -171,6 +188,7 @@ export function ServiceDetailPage() {
           url: edit.url,
           owner: edit.owner,
           environment: edit.environment,
+          app: edit.app,
           // 0 clears a previously recorded site ID.
           siteId: edit.siteId.trim() === "" ? 0 : Number(edit.siteId),
         }),
@@ -191,6 +209,7 @@ export function ServiceDetailPage() {
       url: m.url,
       owner: m.owner,
       environment: m.environment,
+      app: m.app,
       siteId: m.siteId?.toString() ?? "",
     });
     setEditError(null);
@@ -343,6 +362,22 @@ export function ServiceDetailPage() {
                         <span className="text-muted-foreground ml-2 text-xs">
                           {e.environmentName}
                         </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-app">App</Label>
+                <Select value={edit.app} onValueChange={(v) => setEdit({ ...edit, app: v })}>
+                  <SelectTrigger id="edit-app">
+                    <SelectValue placeholder="Select app" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apps.map((a) => (
+                      <SelectItem key={a.appHandle} value={a.appHandle}>
+                        <span className="font-mono">{a.appHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{a.appName}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -107,11 +107,18 @@ public sealed class ProblemsController : ControllerBase
                 .AsAction();
         }
 
-        if (appHandle is not null && await _apps.GetByHandleAsync(appHandle) is null)
+        // A former handle (alias) filters as the app that holds it now, so a
+        // script still asking for its old name reads the same reports.
+        if (appHandle is not null)
         {
-            return JsonResults.BadRequest(
-                title: "Unknown app",
-                detail: $"No app is registered with handle '{appHandle}'. Handles are matched exactly.").AsAction();
+            var app = await _apps.ResolveAsync(appHandle);
+            if (app is null)
+            {
+                return JsonResults.BadRequest(
+                    title: "Unknown app",
+                    detail: $"No app is registered with handle or alias '{appHandle}'.").AsAction();
+            }
+            appHandle = app.AppHandle;
         }
 
         if (environment is not null && !await IsKnownEnvironmentAsync(environment))

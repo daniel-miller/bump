@@ -33,9 +33,15 @@ public class ProblemRepository
         // Environment lookup accepts the canonical handle *or* any alias listed
         // in environment_aliases so clients can keep sending "production",
         // "qa", "local", etc. without us forcing the canonical name on them.
+        // App lookup accepts a former handle from app_aliases the same way, so
+        // a renamed app keeps receiving reports from repos not yet switched.
         const string resolveSql = """
             SELECT
-                (SELECT app_key         FROM app         WHERE app_handle         = @app_handle),
+                (SELECT app_key         FROM app
+                  WHERE app_handle = @app_handle
+                     OR @app_handle = ANY(app_aliases)
+                  ORDER BY app_handle = @app_handle DESC
+                  LIMIT 1),
                 (SELECT environment_key FROM environment
                   WHERE environment_handle = @environment
                      OR @environment = ANY(environment_aliases)

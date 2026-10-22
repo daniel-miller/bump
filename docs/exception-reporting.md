@@ -9,7 +9,7 @@ Two integration paths are supported:
 
 ## Prerequisites
 
-- The consuming project must be registered in Bump. Log in to the admin UI, register the app under **Apps**, and note its handle. The handle is required at runtime - reports for an unregistered handle are rejected with 422.
+- The consuming project must be registered in Bump as an app under an owner: `POST /api/apps` with `handle`, `name` and `owner`, using the Apps bearer key. Note its handle. The handle is required at runtime - reports for an unregistered handle are rejected with 422. A renamed app keeps its old handle as an alias, so reports sent under the old handle still land until the consumer switches.
 - The environment handle you plan to report against must exist under **Environments**, or be listed among an existing environment's aliases (`live`, `production`, `prod`, `qa`, etc. all commonly alias to a single canonical row).
 - Access to the shared Octopus library variable set **Bump** (the API endpoint, the Problems bearer key, and the Apps bearer key used by the optional version-bump step). If your project isn't already using it: **Project variables** > **Library Variable Sets** > **Include** > pick **Bump**.
 
@@ -173,7 +173,7 @@ Invoke-RestMethod -Method Post `
 
 Do not point the Apps list at the Problems key to save a variable. The Problems key is copied into every consumer's configuration, and `/api/apps/**` creates, deletes, and re-versions app registry rows. Sharing one value would hand every consumer the ability to delete every other app.
 
-If the consumer app auto-registers itself on startup via `POST /api/apps` instead, this step is unnecessary - though the app still needs the same key at runtime, since the route is behind the same filter.
+The bump updates an existing app and answers `404` for an unknown handle; it no longer registers a missing app, because every app needs an owner and a deploy step cannot supply one. Register the app first with `POST /api/apps`.
 
 The registry number is the last build cut, not the build running in a given environment. A build script that bumps the version when it packages (before any deploy) moves the registry ahead of the slower environment, and a problem from that environment would display the newer number. So a problem report may carry its own `Version` field. Bump returns it as `appVersion`, and returns `appVersion: null` when the reporter sent none; the registry number comes back separately as `registryVersion`, because it moves with every release and says nothing about which build threw. A .NET consumer reads it from `AssemblyInformationalVersionAttribute` on the deployed assembly, which `dotnet publish /p:Version=1.3.174` stamps as `1.3.174+<commit>`. The SDK does not send `Version` yet; a consumer using its own client should.
 

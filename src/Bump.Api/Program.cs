@@ -386,13 +386,11 @@ namespace Bump.Api
                 var migrator = scope.ServiceProvider.GetRequiredService<Migrator>();
                 migrator.ApplyAsync().GetAwaiter().GetResult();
 
-                // Self-register the API as a tracked app so its current
-                // version is visible alongside other deployed services.
+                // The API used to self-register its own app row here. Every
+                // app now needs an owner, which the API cannot choose for
+                // itself, so the bump row comes from seed-canon.sql and boot
+                // only keeps its version current.
                 var apps = scope.ServiceProvider.GetRequiredService<AppRepository>();
-                apps.UpsertAsync(
-                    handle: "bump",
-                    name: "Bump",
-                    major: 0, minor: 0, patch: 1).GetAwaiter().GetResult();
 
                 // Push the deployed version from config to the DB row so
                 // the About page reflects what is actually running. Config

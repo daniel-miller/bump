@@ -56,46 +56,64 @@ VALUES ( 1, 'a', 'Alpha'),
        (26, 'z', 'Zulu');
 
 -- App tokens follow the naming convention: short single-word codenames.
--- Deployed apps must report versions under these handles; an unknown handle
--- self-registers a new row, so renaming here requires the reporting app's
--- CI to switch handles at the same time.
--- Versions are pinned to what live reported as of 2026-08-04, so a fresh
--- database starts at the real numbers instead of 0.0.1. On cutover,
--- ops/recreate-database.ps1 captures the versions from the old database
--- after this seed runs, so live's numbers still win if they have moved on.
-INSERT INTO app (app_handle, app_name, app_description, version_major, version_minor, version_patch)
-VALUES ('bump',     'Bump',     'Status, versions, and problem reports (this application)', 0, 3, 25),
-       ('spark',    'Spark',    'CMDS integration hub, formerly Cmds.Hub',                  0, 0, 107),
-       ('bridge',   'Bridge',   'BridgeMarket web application for Northern Mat and Bridge', 6, 1, 14),
-       ('slate',    'Slate',    'OpenSCORM platform API and web application',               1, 3, 111),
-       ('festival', 'Festival', 'Prince George and District Music Festival website',        7, 0, 14);
+-- Every app belongs to an owner (070). Deployed apps report problems and bump
+-- versions under these handles; an unknown handle is refused rather than
+-- registered, so a new app is added here or through POST /api/apps first.
+-- app_aliases carries former handles that reporting repos still send, until
+-- those repos switch: bridge's build reports as bridgemarket, and openscorm's
+-- as slate.
+-- Versions are pinned to what live reported as of 2026-10-22, so a fresh
+-- database starts at the real numbers instead of 0.0.1.
+INSERT INTO app (app_handle, app_name, app_description, owner_key, app_aliases, version_major, version_minor, version_patch)
+SELECT v.app_handle, v.app_name, v.app_description, o.owner_key, v.app_aliases, v.major, v.minor, v.patch
+  FROM (VALUES
+               ('vesper',        'CMDS v5',        'CMDS v5',                                                  'cmds',      ARRAY []::text[],              5, 0, 91),
+               ('quad',          'CMDS v4',        NULL,                                                       'cmds',      ARRAY []::text[],              0, 0, 1),
+               ('ghost',         'Ghost',          NULL,                                                       'cmds',      ARRAY []::text[],              0, 0, 1),
 
--- Monitoring roster: the live services bump probes. app is NULL where the
--- probed site has no application reporting versions to bump.
+               ('bump',          'Bump',           'Status, versions, and problem reports (this application)', 'djm',       ARRAY []::text[],              0, 3, 67),
+               ('portfolio',     'Portfolio',      NULL,                                                       'djm',       ARRAY []::text[],              0, 0, 1),
+               ('pourdecisions', 'Pour Decisions', NULL,                                                       'djm',       ARRAY []::text[],              0, 0, 8),
+
+               ('bridge',        'Bridge',         'BridgeMarket web application for Northern Mat and Bridge', 'nmb',       ARRAY ['bridgemarket']::text[], 6, 1, 21),
+
+               ('scoop',         'Scoop',          'OpenSCORM platform API and web application',               'openscorm', ARRAY ['slate']::text[],        1, 3, 312),
+
+               ('festival',      'Festival',       'Prince George and District Music Festival website',        'pgmf',      ARRAY []::text[],              8, 0, 29))
+
+      AS v(app_handle, app_name, app_description, owner_handle, app_aliases, major, minor, patch)
+           JOIN owner o
+           ON o.owner_handle = v.owner_handle;
+
+-- Monitoring roster: the live services bump probes. Every service belongs to
+-- an app; a site with nothing to report belongs to the app that serves it
+-- (ghost for the Ghost marketing sites).
 INSERT INTO service (service_handle, service_name, service_url, owner_key, environment_key, app_key)
 SELECT s.service_handle, s.service_name, s.service_url, o.owner_key, e.environment_key, a.app_key
   FROM (VALUES
-               ('prism-api',          'CMDS API',                          'https://live-api.cmds.app',             'cmds',      'live', NULL),
-               ('spark-hub',          'CMDS Hub',                          'https://hub.cmds.app/api/health',       'cmds',      'live', 'spark'),
-               ('prism-web',          'CMDS Application',                  'https://keyera.cmds.app',               'cmds',      'live', NULL),
-               ('keyeracmds-www',     'CMDS Website',                      'https://www.keyeracmds.com',            'cmds',      'live', NULL),
-               ('myorientations-www', 'My Orientations Website',           'https://www.myorientations.com',        'cmds',      'live', NULL),
+               ('prism-api',          'CMDS API',                          'https://live-api.cmds.app/diagnostic/health', 'cmds',      'live', 'vesper'),
+               ('spark-hub',          'CMDS Hub',                          'https://live.cmds.app',                       'cmds',      'live', 'vesper'),
+               ('vesper-saml',        'CMDS SSO',                          'https://hub.cmds.app/diagnostic/health',      'cmds',      'live', 'vesper'),
+               ('vesper-verify',      'CMDS certificate verification',     'https://cmds.app/healthz',                    'cmds',      'live', 'vesper'),
+               ('prism-web',          'CMDS Application',                  'https://keyera.cmds.app',                     'cmds',      'live', 'quad'),
+               ('keyeracmds-www',     'CMDS Website',                      'https://www.keyeracmds.com',                  'cmds',      'live', 'ghost'),
+               ('myorientations-www', 'My Orientations Website',           'https://www.myorientations.com',              'cmds',      'live', 'ghost'),
 
-               ('danielmiller-www',   'Daniel''s Career Portfolio',        'https://danielmiller.ca',               'djm',       'live', NULL),
+               ('danielmiller-www',   'Daniel''s Career Portfolio',        'https://danielmiller.ca',                     'djm',       'live', 'portfolio'),
 
-               ('bridge-web',         'BridgeMarket Web Application (UI)', 'https://prod-nmb.bridgemarket.app',     'nmb',       'live', 'bridge'),
+               ('bridge-web',         'BridgeMarket Web Application (UI)', 'https://prod-nmb.bridgemarket.app',           'nmb',       'live', 'bridge'),
 
-               ('slate-api',          'OpenSCORM API',                     'https://live.openscorm.com/api/health', 'openscorm', 'live', 'slate'),
-               ('slate-web',          'OpenSCORM Application',             'https://live.openscorm.com',            'openscorm', 'live', 'slate'),
-               ('slate-www',          'OpenSCORM Website',                 'https://www.openscorm.com',             'openscorm', 'live', 'slate'),
+               ('slate-api',          'OpenSCORM API',                     'https://live.openscorm.com/api/health',       'openscorm', 'live', 'scoop'),
+               ('slate-web',          'OpenSCORM Application',             'https://app.openscorm.com',                   'openscorm', 'live', 'scoop'),
+               ('slate-www',          'OpenSCORM Website',                 'https://www.openscorm.com',                   'openscorm', 'live', 'scoop'),
 
-               ('festival-www',       'PGMF Website and Application',      'https://www.pgmusicfestival.com',       'pgmf',      'live', 'festival'))
+               ('festival-www',       'PGMF Website and Application',      'https://www.pgmusicfestival.com',             'pgmf',      'live', 'festival'))
 
       AS s(service_handle, service_name, service_url, owner_handle, environment_handle, app_handle)
            JOIN owner o
            ON o.owner_handle = s.owner_handle
            JOIN environment e
            ON e.environment_handle = s.environment_handle
-           LEFT JOIN app a
+           JOIN app a
            ON a.app_handle = s.app_handle
 ORDER BY o.owner_number, s.service_handle;

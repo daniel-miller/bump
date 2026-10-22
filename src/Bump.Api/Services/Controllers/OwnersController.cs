@@ -128,14 +128,23 @@ public sealed class OwnersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Permanently delete an owner. Subscribers and announcements scoped to it are deleted too.</summary>
+    /// <summary>Permanently delete an owner. Subscribers and announcements scoped to it are deleted too. Refused with 409 while any app still belongs to the owner.</summary>
     [HttpDelete("{handle}", Name = "deleteOwner")]
     public async Task<IActionResult> Delete(string handle, CancellationToken ct)
     {
         var o = await _owners.GetByHandleAsync(handle, ct);
         if (o is null) return NotFound();
-        var ok = await _owners.DeleteAsync(o.OwnerId, ct);
-        return ok ? NoContent() : NotFound();
+        try
+        {
+            var ok = await _owners.DeleteAsync(o.OwnerId, ct);
+            return ok ? NoContent() : NotFound();
+        }
+        catch (Npgsql.PostgresException ex) when (ex.SqlState is Npgsql.PostgresErrorCodes.RestrictViolation or Npgsql.PostgresErrorCodes.ForeignKeyViolation)
+        {
+            return JsonResults.Conflict(
+                title: "Owner has apps",
+                detail: $"Apps still belong to '{handle}'. Move them to another owner before deleting it.").AsAction();
+        }
     }
 
     /// <summary>List confirmed and pending subscribers for an owner.</summary>

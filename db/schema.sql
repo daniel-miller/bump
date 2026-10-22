@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
+\restrict aR4oxaCe3ewue9Hfio7XI10S3XePclVXor42wi8hjvxlmStx44LubZKJzJi2Xni
 
--- Dumped from database version 18.3
--- Dumped by pg_dump version 18.3
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20,15 +20,15 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: bump; Type: DATABASE; Schema: -; Owner: -
+-- Name: bump_work; Type: DATABASE; Schema: -; Owner: -
 --
 
-CREATE DATABASE bump WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
+CREATE DATABASE bump_work WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'English_Canada.1252';
 
 
-\unrestrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
-\connect bump
-\restrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
+\unrestrict aR4oxaCe3ewue9Hfio7XI10S3XePclVXor42wi8hjvxlmStx44LubZKJzJi2Xni
+\connect bump_work
+\restrict aR4oxaCe3ewue9Hfio7XI10S3XePclVXor42wi8hjvxlmStx44LubZKJzJi2Xni
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -222,7 +222,7 @@ CREATE TABLE public.announcement (
     publish_at timestamp with time zone NOT NULL,
     auto_hide_at timestamp with time zone,
     dispatched_at timestamp with time zone,
-    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'maintenance'::character varying])::text[])))
+    CONSTRAINT announcement_announcement_type_check CHECK (((announcement_type)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('maintenance'::character varying)::text])))
 );
 
 
@@ -259,7 +259,9 @@ CREATE TABLE public.app (
     version_minor integer DEFAULT 0 NOT NULL,
     version_patch integer DEFAULT 1 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    owner_key integer NOT NULL,
+    app_aliases text[] DEFAULT ARRAY[]::text[] NOT NULL
 );
 
 
@@ -374,7 +376,7 @@ CREATE TABLE public.outage (
     started_at timestamp with time zone DEFAULT now() NOT NULL,
     resolved_at timestamp with time zone,
     updated_at timestamp with time zone,
-    CONSTRAINT outage_outage_status_check CHECK (((outage_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+    CONSTRAINT outage_outage_status_check CHECK (((outage_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
 );
 
 
@@ -410,7 +412,7 @@ CREATE TABLE public.outage_update (
     published boolean DEFAULT true NOT NULL,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT outage_update_update_status_check CHECK (((update_status)::text = ANY ((ARRAY['investigating'::character varying, 'identified'::character varying, 'monitoring'::character varying, 'resolved'::character varying])::text[])))
+    CONSTRAINT outage_update_update_status_check CHECK (((update_status)::text = ANY (ARRAY[('investigating'::character varying)::text, ('identified'::character varying)::text, ('monitoring'::character varying)::text, ('resolved'::character varying)::text])))
 );
 
 
@@ -599,12 +601,12 @@ CREATE TABLE public.service (
     service_name character varying(100) NOT NULL,
     service_url character varying(2048) NOT NULL,
     service_paused boolean DEFAULT false NOT NULL,
-    site_id integer,
     owner_key integer NOT NULL,
     environment_key integer NOT NULL,
-    app_key integer,
+    app_key integer NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone
+    updated_at timestamp with time zone,
+    site_id integer
 );
 
 
@@ -1040,6 +1042,13 @@ CREATE UNIQUE INDEX ix_app_handle ON public.app USING btree (app_handle);
 
 
 --
+-- Name: ix_app_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_app_owner ON public.app USING btree (owner_key);
+
+
+--
 -- Name: ix_environment_handle; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1305,6 +1314,14 @@ ALTER TABLE ONLY public.announcement
 
 
 --
+-- Name: app app_owner_key_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app
+    ADD CONSTRAINT app_owner_key_fkey FOREIGN KEY (owner_key) REFERENCES public.owner(owner_key) ON DELETE RESTRICT;
+
+
+--
 -- Name: outage outage_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1365,7 +1382,7 @@ ALTER TABLE ONLY public.problem
 --
 
 ALTER TABLE ONLY public.service
-    ADD CONSTRAINT service_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE SET NULL;
+    ADD CONSTRAINT service_app_key_fkey FOREIGN KEY (app_key) REFERENCES public.app(app_key) ON DELETE RESTRICT;
 
 
 --
@@ -1412,5 +1429,5 @@ ALTER TABLE ONLY public.subscriber
 -- PostgreSQL database dump complete
 --
 
-\unrestrict CRxbzsA8jyEYt9KXAEoZwUY9T0PRx7A4Fuu6x3OZDX0x4yUWcqti6mPTWoX7DtM
+\unrestrict aR4oxaCe3ewue9Hfio7XI10S3XePclVXor42wi8hjvxlmStx44LubZKJzJi2Xni
 

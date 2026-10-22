@@ -41,6 +41,11 @@ interface EnvironmentOption {
   environmentName: string;
 }
 
+interface AppOption {
+  appHandle: string;
+  appName: string;
+}
+
 export function ServicesListPage() {
   const qc = useQueryClient();
   const {
@@ -59,6 +64,7 @@ export function ServicesListPage() {
   const [url, setUrl] = useState("");
   const [owner, setOwner] = useState("");
   const [environment, setEnvironment] = useState("");
+  const [app, setApp] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   // Canon tokens only: owner and environment come from the rosters, so an
@@ -73,12 +79,18 @@ export function ServicesListPage() {
     queryFn: () => api<EnvironmentOption[]>("/api/admin/environments"),
     enabled: showNew,
   });
+  // Every service belongs to an app, so the app is chosen up front.
+  const { data: apps = [] } = useQuery<AppOption[]>({
+    queryKey: ["admin", "apps"],
+    queryFn: () => api<AppOption[]>("/api/admin/apps"),
+    enabled: showNew,
+  });
 
   const create = useMutation({
     mutationFn: () =>
       api("/api/admin/services", {
         method: "POST",
-        body: JSON.stringify({ handle, name, url, owner, environment }),
+        body: JSON.stringify({ handle, name, url, owner, environment, app }),
       }),
     onSuccess: async () => {
       setShowNew(false);
@@ -87,6 +99,7 @@ export function ServicesListPage() {
       setUrl("");
       setOwner("");
       setEnvironment("");
+      setApp("");
       setError(null);
       await qc.invalidateQueries({ queryKey: ["services"] });
     },
@@ -190,6 +203,22 @@ export function ServicesListPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="app">App</Label>
+                <Select value={app} onValueChange={setApp}>
+                  <SelectTrigger id="app">
+                    <SelectValue placeholder="Select app" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apps.map((a) => (
+                      <SelectItem key={a.appHandle} value={a.appHandle}>
+                        <span className="font-mono">{a.appHandle}</span>
+                        <span className="text-muted-foreground ml-2 text-xs">{a.appName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             {error && <div className="text-danger text-sm">{error}</div>}
             <div className="flex justify-end gap-2">
@@ -198,7 +227,9 @@ export function ServicesListPage() {
               </Button>
               <Button
                 onClick={() => create.mutate()}
-                disabled={!handle || !name || !url || !owner || !environment || create.isPending}
+                disabled={
+                  !handle || !name || !url || !owner || !environment || !app || create.isPending
+                }
               >
                 Create service
               </Button>

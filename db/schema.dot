@@ -1,11 +1,11 @@
 /*
- * bump schema ER diagram (crow's foot notation). GENERATED FILE -
+ * bump_work schema ER diagram (crow's foot notation). GENERATED FILE -
  * regenerate with db/export-schema.ps1; do not edit by hand.
  *
  * Edges go child -> parent: crow = many (child side), tee = one (parent
  * side). Non-CASCADE delete rules are labelled.
  */
-digraph bump_schema {
+digraph bump_work_schema {
     rankdir=LR;
     bgcolor="white";
     node [shape=box, style="filled,rounded", fillcolor="#f5f5f5", fontname="Helvetica", fontsize=11, color="#444444"];
@@ -37,6 +37,7 @@ digraph bump_schema {
     account_session -> account [arrowtail=crow, arrowhead=tee];
     announcement -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
     announcement -> owner [arrowtail=crow, arrowhead=tee];
+    app -> owner [arrowtail=crow, arrowhead=tee label="RESTRICT"];
     outage -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
     outage -> service [arrowtail=crow, arrowhead=tee label="SET NULL"];
     outage_update -> account [arrowtail=crow, arrowhead=tee label="SET NULL"];
@@ -44,7 +45,7 @@ digraph bump_schema {
     probe_event -> service [arrowtail=crow, arrowhead=tee];
     problem -> app [arrowtail=crow, arrowhead=tee];
     problem -> environment [arrowtail=crow, arrowhead=tee];
-    service -> app [arrowtail=crow, arrowhead=tee label="SET NULL"];
+    service -> app [arrowtail=crow, arrowhead=tee label="RESTRICT"];
     service -> environment [arrowtail=crow, arrowhead=tee];
     service -> owner [arrowtail=crow, arrowhead=tee];
     service_daily -> service [arrowtail=crow, arrowhead=tee];

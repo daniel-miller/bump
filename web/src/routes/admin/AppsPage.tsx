@@ -16,14 +16,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface AppRecord {
   appKey: number;
   appHandle: string;
   appName: string;
+  owner: string;
+  aliases: string[];
   version: string;
   createdAt: string;
   updatedAt: string | null;
+}
+
+interface OwnerOption {
+  ownerHandle: string;
+  ownerName: string;
 }
 
 interface ProblemDetail {
@@ -57,7 +71,9 @@ export function AppsPage() {
             <CardContent className="flex items-center justify-between p-3">
               <Link to={`/apps/${a.appHandle}`} className="group">
                 <div className="font-medium group-hover:underline">{a.appName}</div>
-                <div className="text-muted-foreground text-xs">{a.appHandle}</div>
+                <div className="text-muted-foreground text-xs">
+                  {a.appHandle} · {a.owner}
+                </div>
               </Link>
               <div className="flex items-center gap-3">
                 <span className="font-mono text-sm">{a.version}</span>
@@ -79,14 +95,16 @@ export function AppsPage() {
         onSaved={async () => {
           setEditing(null);
           await qc.invalidateQueries({ queryKey: ["admin", "apps"] });
+          // A rename changes the app handle every service row shows.
+          await qc.invalidateQueries({ queryKey: ["services"] });
         }}
         onDeleted={async () => {
           setEditing(null);
           await qc.invalidateQueries({ queryKey: ["admin", "apps"] });
-          // Deleting an app cascades its problem reports and detaches its
-          // services, so the lists that join on it are stale too.
+          // Deleting an app cascades its problem reports, so the problem
+          // lists that join on it are stale too. (An app with services is
+          // refused, so no service list changes.)
           await qc.invalidateQueries({ queryKey: ["problems"] });
-          await qc.invalidateQueries({ queryKey: ["services"] });
         }}
       />
     </div>
@@ -111,8 +129,16 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
   const [major, setMajor] = useState(0);
   const [minor, setMinor] = useState(0);
   const [patch, setPatch] = useState(0);
+  const [owner, setOwner] = useState("");
+  const [aliases, setAliases] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const { data: owners = [] } = useQuery<OwnerOption[]>({
+    queryKey: ["owners"],
+    queryFn: () => api<OwnerOption[]>("/api/admin/owners"),
+    enabled: app !== null,
+  });
 
   useEffect(() => {
     if (app) {
@@ -122,6 +148,8 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
       setMajor(ma);
       setMinor(mi);
       setPatch(pa);
+      setOwner(app.owner);
+      setAliases(app.aliases.join(", "));
       setError(null);
       setConfirmOpen(false);
     }
@@ -141,7 +169,16 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
       if (!app) throw new Error("no app");
       return api<AppRecord>(`/api/admin/apps/${encodeURIComponent(app.appHandle)}`, {
         method: "PATCH",
-        body: JSON.stringify({ handle, name, major, minor, patch }),
+        body: JSON.stringify({
+          handle,
+          name,
+          major,
+          minor,
+          patch,
+          owner,
+          // Commas or spaces both separate; an empty field clears the list.
+          aliases: aliases.split(/[\s,]+/).filter(Boolean),
+        }),
       });
     },
     onSuccess: () => onSaved(),
@@ -175,8 +212,8 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
           <DialogHeader>
             <DialogTitle>Edit app</DialogTitle>
             <DialogDescription>
-              Changing the handle renames the app's URL. Existing SDK clients pinned to the old
-              handle will need to be updated.
+              Changing the handle renames the app's URL. Add the old handle as an alias to keep
+              reporters that still send it working until they switch.
             </DialogDescription>
           </DialogHeader>
 
@@ -206,6 +243,37 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="off"
                 required
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-app-owner">Owner</Label>
+              {/* Inside a form, Radix mirrors the value into a hidden native
+                  select. Opened before the owner list loads, that select has
+                  no matching option, resets to "", and reports it back as a
+                  change. Owner cannot be cleared, so an empty value is noise. */}
+              <Select value={owner} onValueChange={(v) => v && setOwner(v)}>
+                <SelectTrigger id="edit-app-owner">
+                  <SelectValue placeholder="Select owner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {owners.map((o) => (
+                    <SelectItem key={o.ownerHandle} value={o.ownerHandle}>
+                      <span className="font-mono">{o.ownerHandle}</span>
+                      <span className="text-muted-foreground ml-2 text-xs">{o.ownerName}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-app-aliases">Aliases</Label>
+              <Input
+                id="edit-app-aliases"
+                value={aliases}
+                onChange={(e) => setAliases(e.target.value)}
+                placeholder="Former handles, separated by commas"
+                autoComplete="off"
+                className="font-mono"
               />
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -268,7 +336,7 @@ function EditAppDialog({ app, onClose, onSaved, onDeleted }: EditAppDialogProps)
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Delete app?"
-        description={`"${app?.appName ?? ""}" will be removed permanently, along with every problem report filed against it. Services keep running but lose their app link. This cannot be undone.`}
+        description={`"${app?.appName ?? ""}" will be removed permanently, along with every problem report filed against it. An app that still has services cannot be deleted; move them to another app first. This cannot be undone.`}
         confirmLabel="Delete app"
         busy={remove.isPending}
         onConfirm={() => {

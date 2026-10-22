@@ -60,9 +60,15 @@ public static class RateLimiting
                         ((int)Math.Ceiling(after.TotalSeconds)).ToString();
                 }
 
+                // The limit that tripped decides what the caller is told. The
+                // action-level attribute wins over the controller's, the same
+                // resolution the limiter itself uses.
+                var policy = context.HttpContext.GetEndpoint()?.Metadata
+                    .GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
+
                 var result = JsonResults.TooManyRequests(
                     title: "Too many requests",
-                    detail: "The rate limit for your API key has been exceeded. Retry after the interval indicated in the Retry-After header.",
+                    detail: RejectionDetail(policy, retryAfter),
                     retryAfter: retryAfter);
                 await result.ExecuteAsync(context.HttpContext);
             };
@@ -156,6 +162,33 @@ public static class RateLimiting
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// What a rejected caller reads. Only the apps and problems limits are keyed by
+    /// a bearer token; every other limit meets a person or a browser on a shared IP
+    /// address, who holds no API key. The sign-in form used to tell an admin who
+    /// mistyped a password five times that their API key was over its limit.
+    /// </summary>
+    public static string RejectionDetail(string? policy, TimeSpan? retryAfter)
+    {
+        var wait = WaitPhrase(retryAfter);
+        return policy switch
+        {
+            AppsPolicy or ProblemsPolicy =>
+                "The rate limit for your API key has been exceeded. Retry after the interval indicated in the Retry-After header.",
+            AuthLoginPolicy => $"Too many sign-in attempts from this network. Try again {wait}.",
+            AuthPolicy => $"Too many account requests from this network. Try again {wait}.",
+            SubscribePolicy => $"Too many subscription requests from this network. Try again {wait}.",
+            _ => $"Too many requests from this network. Try again {wait}.",
+        };
+    }
+
+    private static string WaitPhrase(TimeSpan? retryAfter)
+    {
+        if (retryAfter is not { } after) return "later";
+        var minutes = (int)Math.Ceiling(after.TotalMinutes);
+        return minutes <= 1 ? "in a minute" : $"in {minutes} minutes";
     }
 
     private static void Validate(string name, RateLimitPolicySettings policy)

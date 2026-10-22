@@ -197,8 +197,8 @@ public sealed class OwnersController : ControllerBase
         }
 
         var (confirmToken, confirmHash) = SubscriberRepository.NewToken();
-        var (unsubToken, unsubHash) = SubscriberRepository.NewToken();
-        var sub = await _subscribers.CreateOrGetAsync(o.OwnerId, req.Email, confirmHash, unsubHash, ct);
+        var (unsubToken, unsubRaw) = SubscriberRepository.NewUnsubscribeToken();
+        var sub = await _subscribers.CreateOrGetAsync(o.OwnerId, req.Email, confirmHash, unsubRaw, ct);
         if (sub is null)
         {
             return Accepted();

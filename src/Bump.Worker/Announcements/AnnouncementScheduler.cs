@@ -116,7 +116,7 @@ public sealed class AnnouncementScheduler : BackgroundService
                 var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
                 foreach (var s in subs)
                 {
-                    var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={Convert.ToBase64String(s.UnsubscribeToken).Replace('+', '-').Replace('/', '_').TrimEnd('=')}";
+                    var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={SubscriberRepository.EncodeToken(s.UnsubscribeToken)}";
                     await _mail.SendAsync(AnnouncementPublished.Build(s.SubscriberEmail, owner.OwnerName, a.AnnouncementTitle, a.AnnouncementContent, unsubUrl), ct);
                 }
             }

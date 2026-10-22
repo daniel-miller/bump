@@ -214,7 +214,7 @@ public sealed class ServiceProber : BackgroundService
                 var subs = await _subscribers.ListConfirmedAsync(ownerId, ct);
                 foreach (var s in subs)
                 {
-                    var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={Convert.ToBase64String(s.UnsubscribeToken).Replace('+', '-').Replace('/', '_').TrimEnd('=')}";
+                    var unsubUrl = $"{_publicBaseUrl}/unsubscribe?token={SubscriberRepository.EncodeToken(s.UnsubscribeToken)}";
                     await _mail.SendAsync(OutageOpened.Build(s.SubscriberEmail, owner.OwnerName, title, OutageStatuses.Investigating, outage.StartedAt.ToString("u"), unsubUrl), ct);
                 }
             }

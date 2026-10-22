@@ -33,8 +33,11 @@ public sealed class SubscribersController : ControllerBase
     public async Task<IActionResult> Unsubscribe([FromQuery] string token, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(token)) return BadRequest();
-        var hash = SubscriberRepository.HashToken(token);
-        var ok = await _subscribers.UnsubscribeAsync(hash, ct);
+        // Unsubscribe tokens are stored as issued (see NewUnsubscribeToken), so the
+        // link's token decodes straight to the stored bytes.
+        var raw = SubscriberRepository.DecodeToken(token);
+        if (raw is null) return NotFound();
+        var ok = await _subscribers.UnsubscribeAsync(raw, ct);
         return ok ? NoContent() : NotFound();
     }
 }

@@ -28,10 +28,11 @@ public sealed class SubscriberRepository(NpgsqlDataSource dataSource)
           FROM subscriber
         """;
 
+    // Confirm tokens are emailed once and stored hashed.
     public static (string Token, byte[] Hash) NewToken()
     {
         var raw = RandomNumberGenerator.GetBytes(32);
-        var token = Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+        var token = EncodeToken(raw);
         var hash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return (token, hash);
     }
@@ -39,7 +40,30 @@ public sealed class SubscriberRepository(NpgsqlDataSource dataSource)
     public static byte[] HashToken(string token) =>
         SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
 
-    public async Task<Subscriber?> CreateOrGetAsync(int ownerId, string email, byte[] confirmHash, byte[] unsubHash, CancellationToken ct = default)
+    // Unsubscribe tokens are stored as issued, not hashed: every outage, recovery and
+    // announcement email rebuilds the link from the stored value. When they were stored
+    // hashed, those links carried the hash, the endpoint hashed it again, and nothing
+    // matched, so only the link in the confirmation email ever worked.
+    public static (string Token, byte[] Raw) NewUnsubscribeToken()
+    {
+        var raw = RandomNumberGenerator.GetBytes(32);
+        return (EncodeToken(raw), raw);
+    }
+
+    /// <summary>Base64url without padding, the form a token takes in a link.</summary>
+    public static string EncodeToken(byte[] raw) =>
+        Convert.ToBase64String(raw).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+    /// <summary>The bytes a link's token stands for, or null when it is not base64url.</summary>
+    public static byte[]? DecodeToken(string token)
+    {
+        var s = token.Replace('-', '+').Replace('_', '/');
+        s = s.PadRight(s.Length + (4 - s.Length % 4) % 4, '=');
+        try { return Convert.FromBase64String(s); }
+        catch (FormatException) { return null; }
+    }
+
+    public async Task<Subscriber?> CreateOrGetAsync(int ownerId, string email, byte[] confirmHash, byte[] unsubRaw, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         return await conn.QuerySingleOrDefaultAsync<Subscriber>(
@@ -55,7 +79,7 @@ public sealed class SubscriberRepository(NpgsqlDataSource dataSource)
                       confirmed_at      AS ConfirmedAt,
                       created_at        AS CreatedAt
             """,
-            new { B = ownerId, E = email, C = confirmHash, U = unsubHash });
+            new { B = ownerId, E = email, C = confirmHash, U = unsubRaw });
     }
 
     public async Task<Subscriber?> ConfirmAsync(byte[] confirmHash, CancellationToken ct = default)
@@ -76,12 +100,12 @@ public sealed class SubscriberRepository(NpgsqlDataSource dataSource)
             new { H = confirmHash });
     }
 
-    public async Task<bool> UnsubscribeAsync(byte[] unsubHash, CancellationToken ct = default)
+    public async Task<bool> UnsubscribeAsync(byte[] unsubRaw, CancellationToken ct = default)
     {
         await using var conn = await dataSource.OpenConnectionAsync(ct);
         var rows = await conn.ExecuteAsync(
-            "DELETE FROM subscriber WHERE unsubscribe_token = @H",
-            new { H = unsubHash });
+            "DELETE FROM subscriber WHERE unsubscribe_token = @U",
+            new { U = unsubRaw });
         return rows > 0;
     }
 

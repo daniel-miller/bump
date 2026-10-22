@@ -178,6 +178,8 @@ namespace Bump.Api
             builder.Services.AddSingleton<OwnerRepository>();
             builder.Services.AddSingleton<AnnouncementRepository>();
             builder.Services.AddSingleton<SubscriberRepository>();
+            // Admin screens take and show wall-clock times in the host's zone, not the browser's.
+            builder.Services.AddSingleton(new ServerTimeZone(TimeZoneInfo.Local));
             builder.Services.AddSingleton<StatusComposer>();
             builder.Services.AddMemoryCache();
             builder.Services.AddSingleton<ITimezoneResolver, TimezoneResolver>();

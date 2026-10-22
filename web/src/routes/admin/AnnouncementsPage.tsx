@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { formatAbsolute } from "@/lib/dates";
+import { api, problemMessage } from "@/lib/api";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,23 @@ interface Row {
   announcementContent: string;
   publishAt: string;
   autoHideAt: string | null;
+  // The same instants in the server's time zone, formatted by the server.
+  publishAtLocal: string;
+  autoHideAtLocal: string | null;
+}
+
+interface ServerTime {
+  timeZoneId: string;
+  displayName: string;
+  now: string;
+}
+
+// The date and time exactly as picked, with no time zone: the server reads it in its
+// own zone. Converting here with toISOString would apply the browser's zone, and a
+// browser that misreads the system zone (Chrome on Windows' new Alberta zone, which it
+// took for a fixed UTC-7) moves every announcement by the difference.
+function wallClock(d: Date): string {
+  return format(d, "yyyy-MM-dd'T'HH:mm");
 }
 
 export function AnnouncementsPage() {
@@ -33,6 +50,11 @@ export function AnnouncementsPage() {
   const { data = [], isLoading } = useQuery<Row[]>({
     queryKey: ["announcements"],
     queryFn: () => api<Row[]>("/api/admin/announcements"),
+  });
+  const { data: serverTime } = useQuery<ServerTime>({
+    queryKey: ["server-time"],
+    queryFn: () => api<ServerTime>("/api/admin/server-time"),
+    staleTime: Infinity,
   });
   const [title, setTitle] = useState("");
   const [type, setType] = useState("info");
@@ -50,8 +72,9 @@ export function AnnouncementsPage() {
           title,
           type,
           content,
-          publishAt: (publishAt ?? new Date()).toISOString(),
-          autoHideAt: autoHideAt ? autoHideAt.toISOString() : null,
+          // Blank publishes now, by the server's clock.
+          publishAtLocal: publishAt ? wallClock(publishAt) : null,
+          autoHideAtLocal: autoHideAt ? wallClock(autoHideAt) : null,
           notifySubscribers: true,
         }),
       }),
@@ -63,7 +86,7 @@ export function AnnouncementsPage() {
       setError(null);
       await qc.invalidateQueries({ queryKey: ["announcements"] });
     },
-    onError: (err: Error) => setError(err.message),
+    onError: (err: Error) => setError(problemMessage(err)),
   });
 
   const remove = useMutation({
@@ -87,16 +110,16 @@ export function AnnouncementsPage() {
       <PageHeader title="Announcements" />
       <Card className="max-w-2xl">
         <CardContent className="space-y-3 p-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              placeholder="Scheduled maintenance — May 15"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
           <div className="flex gap-2">
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                placeholder="Scheduled maintenance — May 15"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
             <div className="w-44 space-y-1.5">
               <Label>Type</Label>
               <Select value={type} onValueChange={setType}>
@@ -110,6 +133,8 @@ export function AnnouncementsPage() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="flex gap-2">
             <div className="flex-1 space-y-1.5">
               <Label>Publish at</Label>
               <DateTimePicker
@@ -117,6 +142,17 @@ export function AnnouncementsPage() {
                 onChange={setPublishAt}
                 placeholder="Pick date and time"
                 className="w-full"
+              />
+            </div>
+            <div className="w-80 space-y-1.5">
+              <Label htmlFor="time-zone">Time zone</Label>
+              <Input
+                id="time-zone"
+                readOnly
+                value={serverTime?.displayName ?? ""}
+                placeholder="Loading"
+                title="Announcement times are read in the server's time zone"
+                className="bg-muted text-muted-foreground"
               />
             </div>
           </div>
@@ -166,8 +202,8 @@ export function AnnouncementsPage() {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{a.announcementTitle}</div>
                 <div className="text-muted-foreground text-xs">
-                  {a.announcementType} · publishes {formatAbsolute(a.publishAt)}
-                  {a.autoHideAt && ` · hides ${formatAbsolute(a.autoHideAt)}`}
+                  {a.announcementType} · publishes {a.publishAtLocal}
+                  {a.autoHideAtLocal && ` · hides ${a.autoHideAtLocal}`}
                 </div>
                 <div className="mt-1 whitespace-pre-wrap">{a.announcementContent}</div>
               </div>

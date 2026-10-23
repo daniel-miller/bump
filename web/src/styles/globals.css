@@ -1,6 +1,6 @@
 @import "tailwindcss";
-/* Tokens and base rules come from the design registry (@design/palette-bump); reinstall them
-   through the shadcn CLI rather than editing src/styles/design/ by hand. Bump's own rules go
+/* Tokens and base rules come from the Loom registry (@loom/palette-bump); reinstall them
+   through the shadcn CLI rather than editing src/styles/loom/ by hand. Bump's own rules go
    below the imports. */
-@import "./design/base.css";
-@import "./design/palettes/bump.css";
+@import "./loom/base.css";
+@import "./loom/palettes/bump.css";
